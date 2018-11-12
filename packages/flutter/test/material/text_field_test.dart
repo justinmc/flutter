@@ -3331,27 +3331,30 @@ void main() {
   testWidgets('TextField positions cursor at end when aligned to end', (WidgetTester tester) async {
     // This is a regression https://github.com/flutter/flutter/issues/18512
 
-    final Key textField1 = UniqueKey();
-    final ScrollController scrollController = ScrollController();
+    final Key textField = UniqueKey();
+    final TextEditingController controller = TextEditingController();
 
     Widget buildFrame(Axis scrollDirection) {
-      return const MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: SizedBox(
-              width: 200.0,
-              child: TextField(textAlign: TextAlign.end), // or TextAlign.right, TextAlign.center
-            ),
+      return MaterialApp(
+        home: Material(
+          child: TextField(
+            controller: controller,
+            key: textField,
+            textAlign: TextAlign.end, // or TextAlign.right, TextAlign.center
           ),
         ),
       );
     }
 
     await tester.pumpWidget(buildFrame(Axis.vertical));
-    await tester.enterText(find.byKey(textField1), '1');
-    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(textField));
 
-    expect(minOffset, 0.0);
-    expect(maxOffset, 50.0);
+    // With nothing in the TextField, the only position for the cursor is 0
+    expect(controller.selection.baseOffset, 0);
+
+    await tester.enterText(find.byKey(textField), 'A');
+
+    // With 1 character or more, the cursor should be on the end of the string
+    expect(controller.selection.baseOffset, 1);
   });
 }
