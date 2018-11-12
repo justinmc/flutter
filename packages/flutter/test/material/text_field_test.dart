@@ -3327,4 +3327,31 @@ void main() {
     expect(minOffset, 0.0);
     expect(maxOffset, 50.0);
   });
+
+  testWidgets('TextField positions cursor at end when aligned to end', (WidgetTester tester) async {
+    // This is a regression https://github.com/flutter/flutter/issues/18512
+
+    final Key textField1 = UniqueKey();
+    final ScrollController scrollController = ScrollController();
+
+    Widget buildFrame(Axis scrollDirection) {
+      return const MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 200.0,
+              child: TextField(textAlign: TextAlign.end), // or TextAlign.right, TextAlign.center
+            ),
+          ),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(buildFrame(Axis.vertical));
+    await tester.enterText(find.byKey(textField1), '1');
+    await tester.pumpAndSettle();
+
+    expect(minOffset, 0.0);
+    expect(maxOffset, 50.0);
+  });
 }
