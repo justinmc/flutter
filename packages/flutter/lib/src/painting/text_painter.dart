@@ -199,6 +199,7 @@ class TextPainter {
 
   ui.Paragraph _layoutTemplate;
 
+  // TODO Justin what causes it to render 1/multiple lines? This?
   ui.ParagraphStyle _createParagraphStyle([TextDirection defaultTextDirection]) {
     // The defaultTextDirection argument is used for preferredLineHeight in case
     // textDirection hasn't yet been set.
@@ -348,6 +349,7 @@ class TextPainter {
       return;
     _needsLayout = false;
     if (_paragraph == null) {
+      // TODO Justin maxlines is still "unspecified" here hmm...
       final ui.ParagraphBuilder builder = ui.ParagraphBuilder(_createParagraphStyle());
       _text.build(builder, textScaleFactor: textScaleFactor);
       _paragraph = builder.build();
