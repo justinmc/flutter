@@ -9,6 +9,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/globals.dart' as globals;
 
 
 import 'box.dart';
@@ -223,12 +224,22 @@ class RenderParagraph extends RenderBox {
   @override
   double computeMinIntrinsicWidth(double height) {
     _layoutText();
+    /*
+    if (globals.isMyTestCall) {
+      print('justin RenderParagraph computeMinIntrinsicWidth $height result: ${_textPainter.minIntrinsicWidth}');
+    }
+    */
     return _textPainter.minIntrinsicWidth;
   }
 
   @override
   double computeMaxIntrinsicWidth(double height) {
     _layoutText();
+    /*
+    if (globals.isMyTestCall) {
+      print('justin RenderParagraph computeMaxIntrinsicWidth $height result: ${_textPainter.maxIntrinsicWidth}');
+    }
+    */
     return _textPainter.maxIntrinsicWidth;
   }
 

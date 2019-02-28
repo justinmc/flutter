@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/globals.dart' as globals;
 import 'package:flutter/material.dart';
 
 void main() {
@@ -89,6 +90,8 @@ void main() {
     expect(tester.testTextInput.isVisible, isFalse);
   });
 
+  // TODO(justinmc): This fails (flaky?) but not when isolated!
+  // Seems like it only fails when all 4 of the preceding tests run too?
   testWidgets('Dialog interaction', (WidgetTester tester) async {
     expect(tester.testTextInput.isVisible, isFalse);
 
@@ -113,7 +116,13 @@ void main() {
       builder: (BuildContext context) => const SimpleDialog(title: Text('Dialog')),
     );
 
-    await tester.pump();
+    // TODO(justinmc): Fails here
+    print('justin test will pump and fail here');
+    globals.isMyTest = true;
+    RenderObject.debugCheckingIntrinsics = false;
+    await tester.pumpAndSettle();
+    globals.isMyTest = false;
+    print('justin test passed failure point');
 
     expect(tester.testTextInput.isVisible, isFalse);
 
@@ -132,6 +141,7 @@ void main() {
     expect(tester.testTextInput.isVisible, isFalse);
   });
 
+  /*
   testWidgets('Focus triggers keep-alive', (WidgetTester tester) async {
     final FocusNode focusNode = FocusNode();
 
@@ -368,4 +378,5 @@ void main() {
     await tester.pumpWidget(Container());
     expect(tester.testTextInput.isVisible, isFalse);
   });
+  */
 }

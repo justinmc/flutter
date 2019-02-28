@@ -5,6 +5,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/globals.dart' as globals;
 
 import 'box.dart';
 import 'debug.dart';
@@ -22,6 +23,15 @@ abstract class RenderShiftedBox extends RenderBox with RenderObjectWithChildMixi
 
   @override
   double computeMinIntrinsicWidth(double height) {
+    if (globals.justKidding) {
+      print('justin called parent class computeMinIntrinsicWidth with justKidding');
+      return 0.0;
+    }
+    /*
+    if (globals.isMyTestCall) {
+      print('justin computeMinIntrinsicWidth on parent class RenderShiftedBox $height ${this.runtimeType} ${this is RenderPadding}');
+    }
+    */
     if (child != null)
       return child.getMinIntrinsicWidth(height);
     return 0.0;
@@ -29,6 +39,25 @@ abstract class RenderShiftedBox extends RenderBox with RenderObjectWithChildMixi
 
   @override
   double computeMaxIntrinsicWidth(double height) {
+    if (globals.justKidding) {
+      print('justin called parent class computeMaxIntrinsicWidth with justKidding');
+      return 0.0;
+    }
+    // TODO(justinmc): It appears that RenderPadding.computeMaxIntrinsicWidth
+    // goes here instead of to its own definition! I don't know why...
+    // Eventually, the returned result comes from
+    // RenderParagraph.computeMaxIntrinsicWidth as 120.0.
+    // Looking at a successful run, max IS 120, but min is also 120. So problem
+    // is min?
+    // When succeeding, min is called here and not directly on RenderParagraph!
+    // How?
+    // Both are called from _computeIntrinsicDimension by looking at the stack
+    // trace. Both have this.runtimeType as RenderPadding.
+    /*
+    if (globals.isMyTestCall) {
+      print('justin computeMaxIntrinsicWidth on parent RenderShiftedBox $height ${child.runtimeType}');
+    }
+    */
     if (child != null)
       return child.getMaxIntrinsicWidth(height);
     return 0.0;
@@ -146,21 +175,53 @@ class RenderPadding extends RenderShiftedBox {
 
   @override
   double computeMinIntrinsicWidth(double height) {
+    if (globals.justKidding) {
+      print('justin called child class computeMinIntrinsicWidth with justKidding');
+      return 0.0;
+    }
+    /*
+    if (globals.isMyTestCall) {
+      // TODO(justinmc): Stack traces appear to be identical here and success
+      // above.
+      print('justin computeminin child start ${this.runtimeType}');
+    }
+    */
     _resolve();
     final double totalHorizontalPadding = _resolvedPadding.left + _resolvedPadding.right;
     final double totalVerticalPadding = _resolvedPadding.top + _resolvedPadding.bottom;
-    if (child != null) // next line relies on double.infinity absorption
-      return child.getMinIntrinsicWidth(math.max(0.0, height - totalVerticalPadding)) + totalHorizontalPadding;
+    if (child != null) {// next line relies on double.infinity absorption
+      final double out = child.getMinIntrinsicWidth(math.max(0.0, height - totalVerticalPadding)) + totalHorizontalPadding;
+      /*
+      if (globals.isMyTestCall) {
+        // TODO(justinmc): When failing, the result is 120 + 48 padding.
+        // When not failing, doesn't come here at all. Directly to
+        // RenderShiftedBox.
+        print('justin computeminin child renderpadding $out $totalHorizontalPadding');
+      }
+      */
+      return out;
+    }
     return totalHorizontalPadding;
   }
 
   @override
   double computeMaxIntrinsicWidth(double height) {
+    if (globals.justKidding) {
+      print('justin called child class computeMaxIntrinsicWidth with justKidding');
+      return 0.0;
+    }
+    /*
+    if (globals.isMyTestCall) {
+      print('justin why no max? $height');
+    }
+    */
     _resolve();
     final double totalHorizontalPadding = _resolvedPadding.left + _resolvedPadding.right;
     final double totalVerticalPadding = _resolvedPadding.top + _resolvedPadding.bottom;
-    if (child != null) // next line relies on double.infinity absorption
-      return child.getMaxIntrinsicWidth(math.max(0.0, height - totalVerticalPadding)) + totalHorizontalPadding;
+    if (child != null) {// next line relies on double.infinity absorption
+      final double out = child.getMaxIntrinsicWidth(math.max(0.0, height - totalVerticalPadding)) + totalHorizontalPadding;
+      return out;
+    }
     return totalHorizontalPadding;
   }
 

@@ -2,11 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'dart:developer';
 import 'dart:math' as math;
 import 'dart:ui' as ui show lerpDouble;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/globals.dart' as globals;
 
 import 'package:vector_math/vector_math_64.dart';
 
@@ -1088,8 +1090,9 @@ abstract class RenderBox extends RenderObject {
     assert(() {
       // we don't want the checked-mode intrinsic tests to affect
       // who gets marked dirty, etc.
-      if (RenderObject.debugCheckingIntrinsics)
+      if (RenderObject.debugCheckingIntrinsics) {
         shouldCache = false;
+      }
       return true;
     }());
     if (shouldCache) {
@@ -1099,6 +1102,22 @@ abstract class RenderBox extends RenderObject {
         () => computer(argument),
       );
     }
+    /*
+    double out = computer(argument);
+    if (globals.isMyTestCall && runtimeType.toString() == 'RenderPadding') {
+      globals.justKidding = true;
+      print('justin _computeIntrinsicDimension $dimension ${computeMaxIntrinsicWidth(double.infinity)} ${computeMinIntrinsicWidth(double.infinity)} $computer $out');
+      globals.justKidding = false;
+      /*
+      try {
+        throw(new Error());
+      } catch(e, stacktrace) {
+        print(stacktrace);
+      }
+      */
+    }
+    return out;
+    */
     return computer(argument);
   }
 
@@ -1139,6 +1158,13 @@ abstract class RenderBox extends RenderObject {
       }
       return true;
     }());
+    /*
+    if (globals.isMyTestCall && runtimeType.toString() == 'RenderPadding') {
+      globals.justKidding = true;
+      print('justin getMinIntrinsicWidth ${computeMinIntrinsicWidth(double.infinity)}');
+      globals.justKidding = false;
+    }
+    */
     return _computeIntrinsicDimension(_IntrinsicDimension.minWidth, height, computeMinIntrinsicWidth);
   }
 
@@ -1259,6 +1285,9 @@ abstract class RenderBox extends RenderObject {
   /// [computeMaxIntrinsicWidth].
   @mustCallSuper
   double getMaxIntrinsicWidth(double height) {
+    //return _computeIntrinsicDimension(_IntrinsicDimension.maxWidth, height, computeMaxIntrinsicWidth);
+    // TODO(justinmc): Commenting out this block is causing the failure somehow.
+    // I get a different value when I call it directly.
     assert(() {
       if (height == null) {
         throw FlutterError(
@@ -1278,6 +1307,16 @@ abstract class RenderBox extends RenderObject {
       }
       return true;
     }());
+    /*
+    // TODO(justinmc): Adding anything at all here stops the failure for some
+    // reason.
+    if (globals.isMyTestCall && runtimeType.toString() == 'RenderPadding') {
+      //globals.justKidding = true;
+      //print('justin getMaxIntrinsicWidth in box.dart calling_computeIntrinsicD ${globals.justKidding}');
+      //computeMaxIntrinsicWidth(double.infinity);
+      //globals.justKidding = false;
+    }
+    */
     return _computeIntrinsicDimension(_IntrinsicDimension.maxWidth, height, computeMaxIntrinsicWidth);
   }
 
@@ -1777,6 +1816,11 @@ abstract class RenderBox extends RenderObject {
         int failureCount = 0;
 
         double testIntrinsic(double function(double extent), String name, double constraint) {
+          /*
+          if (globals.isMyTestCall) {
+            print('justin call function $function');
+          }
+          */
           final double result = function(constraint);
           if (result < 0) {
             failures.writeln(' * $name($constraint) returned a negative value: $result');
@@ -1793,17 +1837,41 @@ abstract class RenderBox extends RenderObject {
           final double min = testIntrinsic(getMin, 'getMinIntrinsic$name', constraint);
           final double max = testIntrinsic(getMax, 'getMaxIntrinsic$name', constraint);
           if (min > max) {
+            // TODO(justinmc): This failure is coming from RenderPadding.
+            print('justin fail. getMin$name = $min > getMax$name = $max for constraint $constraint');
             failures.writeln(' * getMinIntrinsic$name($constraint) returned a larger value ($min) than getMaxIntrinsic$name($constraint) ($max)');
             failureCount += 1;
+            /*
+          } else if (globals.isMyTestCall) {
+            print('justin no fail $min - $max');
+            */
           }
         }
 
+        // TODO(justinmc): This first one fails. How is it possible that
+        // RenderPadding.computeMaxIntrinsicWidth isn't called?
+        if (globals.isMyTest) {
+          if (runtimeType.toString() == 'RenderPadding') {
+            globals.isMyTestCall = true;
+            //print('justin renderpadding width min-max: ${getMinIntrinsicWidth(double.infinity)} - ${getMaxIntrinsicWidth(double.infinity)}, more direct: ${computeMinIntrinsicWidth(double.infinity)} - ${computeMaxIntrinsicWidth(double.infinity)}, super direct: ${_computeIntrinsicDimension(_IntrinsicDimension.minWidth, double.infinity, computeMaxIntrinsicWidth)} - ${_computeIntrinsicDimension(_IntrinsicDimension.maxWidth, double.infinity, computeMaxIntrinsicWidth)} for ${this.runtimeType}');
+            print('justin testIntrinsicsForValues start ${this.runtimeType}.');
+          }
+        }
+        // TODO(justinmc): this ends up calling getMinIntrinsicWidth 3 times,
+        // because getMinIntrinsicWidth calls itself!
         testIntrinsicsForValues(getMinIntrinsicWidth, getMaxIntrinsicWidth, 'Width', double.infinity);
+        if (globals.isMyTestCall) {
+          print('justin done calling testIntrinsicsForValues');
+          globals.isMyTestCall = false;
+        }
         testIntrinsicsForValues(getMinIntrinsicHeight, getMaxIntrinsicHeight, 'Height', double.infinity);
-        if (constraints.hasBoundedWidth)
+        // TODO(justinmc): This one also fails
+        if (constraints.hasBoundedWidth) {
           testIntrinsicsForValues(getMinIntrinsicWidth, getMaxIntrinsicWidth, 'Width', constraints.maxHeight);
-        if (constraints.hasBoundedHeight)
+        }
+        if (constraints.hasBoundedHeight) {
           testIntrinsicsForValues(getMinIntrinsicHeight, getMaxIntrinsicHeight, 'Height', constraints.maxWidth);
+        }
 
         // TODO(ianh): Test that values are internally consistent in more ways than the above.
 

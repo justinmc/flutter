@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/globals.dart' as globals;
 
 import 'debug.dart';
 import 'framework.dart';
@@ -1557,6 +1558,8 @@ class Padding extends SingleChildRenderObjectWidget {
 
   @override
   RenderPadding createRenderObject(BuildContext context) {
+    // TODO(justinmc): When calling computeMin/MaxIntrinsicWidth here on the
+    // newly created instance, it always calls the child methods.
     return RenderPadding(
       padding: padding,
       textDirection: Directionality.of(context),

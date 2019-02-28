@@ -6,6 +6,7 @@ import 'dart:async';
 
 import 'dart:ui' as ui show ImageFilter, Gradient, Image;
 
+import 'package:flutter/globals.dart' as globals;
 import 'package:flutter/animation.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
@@ -73,6 +74,11 @@ mixin RenderProxyBoxMixin<T extends RenderBox> on RenderBox, RenderObjectWithChi
 
   @override
   double computeMaxIntrinsicWidth(double height) {
+    /*
+    if (globals.isMyTestCall) {
+      print('justin RenderProxyBoxMixin (RenderSemanticsAnnotations) computeMaxIntrinsicWidth $height');
+    }
+    */
     if (child != null)
       return child.getMaxIntrinsicWidth(height);
     return 0.0;
