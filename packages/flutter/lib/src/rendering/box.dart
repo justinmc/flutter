@@ -1278,6 +1278,16 @@ abstract class RenderBox extends RenderObject {
       }
       return true;
     }());
+    // TODO(justinmc): Changing this method in any slight way, even adding this:
+    // if (false) print('hi');
+    // will cause the test to never flake. It seems like the flake is caused by
+    // computeMaxIntrinsicWidth, passed in below, somehow referring to
+    // RenderShiftedBox instead of RenderPadding.  However, I'm not able to log
+    // anything here, because logging anything will cause the test to always
+    // pass.
+    // How could computeMaxIntrinsic width refer directly to the definition in
+    // its parent class (RenderShiftedBox) without invoking its child class
+    // (RenderPadding) first? And why does it do so flakily?
     return _computeIntrinsicDimension(_IntrinsicDimension.maxWidth, height, computeMaxIntrinsicWidth);
   }
 
@@ -1793,11 +1803,22 @@ abstract class RenderBox extends RenderObject {
           final double min = testIntrinsic(getMin, 'getMinIntrinsic$name', constraint);
           final double max = testIntrinsic(getMax, 'getMaxIntrinsic$name', constraint);
           if (min > max) {
+            // TODO(justinmc): the failure is written here because min > max.
+            // When it passes for RenderPadding, min and max are both either
+            // 120 or 168 (calling RenderShiftedBox.computeMin/MaxIntrinsicWidth
+            // or RenderPadding.computeMin/MaxIntrinsicWidth, respectively).
+            // When it fails, there is a mismatch and
+            // RenderPadding.computeMinIntrinsicWidth is called and
+            // RenderShiftedBox.computeMaxIntrinsicWidth is also called. The
+            // stack traces are identical in both cases.
             failures.writeln(' * getMinIntrinsic$name($constraint) returned a larger value ($min) than getMaxIntrinsic$name($constraint) ($max)');
             failureCount += 1;
           }
         }
 
+        // TODO(justinmc): The failure happens in the line below (as well as at
+        // least one other call to the same function below this) when this is
+        // called for RenderPadding.
         testIntrinsicsForValues(getMinIntrinsicWidth, getMaxIntrinsicWidth, 'Width', double.infinity);
         testIntrinsicsForValues(getMinIntrinsicHeight, getMaxIntrinsicHeight, 'Height', double.infinity);
         if (constraints.hasBoundedWidth)

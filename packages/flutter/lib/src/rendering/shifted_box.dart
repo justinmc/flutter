@@ -20,6 +20,9 @@ abstract class RenderShiftedBox extends RenderBox with RenderObjectWithChildMixi
     this.child = child;
   }
 
+  // TODO(justinmc): This method and computeMaxIntrinsicWidth below are
+  // sometimes called from RenderBox, but this is the parent class of
+  // RenderPadding.
   @override
   double computeMinIntrinsicWidth(double height) {
     if (child != null)
@@ -144,6 +147,8 @@ class RenderPadding extends RenderShiftedBox {
     _markNeedResolution();
   }
 
+  // TODO(justinmc): This method and computeMaxIntrinsicWidth below are
+  // called from RenderBox.
   @override
   double computeMinIntrinsicWidth(double height) {
     _resolve();
