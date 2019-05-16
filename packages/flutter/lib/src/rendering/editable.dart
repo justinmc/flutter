@@ -1525,6 +1525,8 @@ class RenderEditable extends RenderBox {
     _maxScrollExtent = _getMaxScrollExtent(contentSize);
     offset.applyViewportDimension(_viewportExtent);
     offset.applyContentDimensions(0.0, _maxScrollExtent);
+    // TODO(justinmc): constraints are different here. Why?
+    print('justin size yo $size from constraints $constraints');//, constraints.maxWidth ${constraints.maxWidth}, _preferredHeight of that ${_preferredHeight(constraints.maxWidth)}, and constrain all of that ${constraints.constrainHeight(_preferredHeight(constraints.maxWidth))}');
   }
 
   Offset _getPixelPerfectCursorOffset(Rect caretRect) {

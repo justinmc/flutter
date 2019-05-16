@@ -6,6 +6,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/material.dart';
 
 import 'button.dart';
 import 'colors.dart';
@@ -297,6 +298,31 @@ class _CupertinoTextSelectionControls extends TextSelectionControls {
 
     return ConstrainedBox(
       constraints: BoxConstraints.tight(globalEditableRegion.size),
+      child: Container(
+        width: 10,
+        height: 10,
+        color: Colors.green,
+      ),
+      /*
+      child: CustomSingleChildLayout(
+        delegate: _TextSelectionToolbarLayout(
+          MediaQuery.of(context).size,
+          globalEditableRegion,
+          preciseMidpoint,
+        ),
+        child: _TextSelectionToolbar(
+          handleCut: canCut(delegate) ? () => handleCut(delegate) : null,
+          handleCopy: canCopy(delegate) ? () => handleCopy(delegate) : null,
+          handlePaste: canPaste(delegate) ? () => handlePaste(delegate) : null,
+          handleSelectAll: canSelectAll(delegate) ? () => handleSelectAll(delegate) : null,
+          arrowDirection: direction,
+        ),
+      ),
+      */
+    );
+    /*
+    return ConstrainedBox(
+      constraints: BoxConstraints.tight(globalEditableRegion.size),
       child: CustomSingleChildLayout(
         delegate: _TextSelectionToolbarLayout(
           MediaQuery.of(context).size,
@@ -312,6 +338,7 @@ class _CupertinoTextSelectionControls extends TextSelectionControls {
         ),
       ),
     );
+    */
   }
 
   /// Builder for iOS text selection edges.

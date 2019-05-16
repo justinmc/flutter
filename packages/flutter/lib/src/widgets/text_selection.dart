@@ -10,6 +10,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/material.dart';
 
 import 'basic.dart';
 import 'container.dart';
@@ -464,12 +465,69 @@ class TextSelectionOverlay {
       renderObject.localToGlobal(renderObject.size.bottomRight(Offset.zero)),
     );
 
+    final Offset offset = -editingRegion.topLeft;
+    // TODO(justinmc): The difference between coop and mat seems like renderObject.size.
+    print('justin put it here $offset. But what matters is $editingRegion. from ${renderObject.localToGlobal(Offset.zero)} x ${renderObject.localToGlobal(renderObject.size.bottomRight(Offset.zero))}');
+
+    /*
     return FadeTransition(
       opacity: _toolbarOpacity,
       child: CompositedTransformFollower(
         link: layerLink,
         showWhenUnlinked: false,
-        offset: -editingRegion.topLeft,
+        //offset: -editingRegion.topLeft,
+        offset: offset,
+        child: Stack(
+          children: <Widget>[
+            Positioned(
+              top: -offset.dy,
+              left: -offset.dx,
+              child: Container(
+                width: 10,
+                height: 10,
+                color: Colors.red,
+              ),
+            ),
+          ],
+        ),
+      /*
+        child: selectionControls.buildToolbar(
+          context,
+          editingRegion,
+          midpoint,
+          endpoints,
+          selectionDelegate,
+        ),
+      */
+      ),
+    );
+    */
+    return FadeTransition(
+      opacity: _toolbarOpacity,
+      child: Stack(
+        children: <Widget>[
+          Positioned(
+            top: -offset.dy,
+            left: -offset.dx,
+            child: selectionControls.buildToolbar(
+              context,
+              editingRegion,
+              midpoint,
+              endpoints,
+              selectionDelegate,
+            ),
+          ),
+        ],
+      ),
+    );
+    /*
+    return FadeTransition(
+      opacity: _toolbarOpacity,
+      child: CompositedTransformFollower(
+        link: layerLink,
+        showWhenUnlinked: false,
+        //offset: -editingRegion.topLeft,
+        offset: offset,
         child: selectionControls.buildToolbar(
           context,
           editingRegion,
@@ -479,6 +537,7 @@ class TextSelectionOverlay {
         ),
       ),
     );
+    */
   }
 
   void _handleSelectionHandleChanged(TextSelection newSelection, _TextSelectionHandlePosition position) {
