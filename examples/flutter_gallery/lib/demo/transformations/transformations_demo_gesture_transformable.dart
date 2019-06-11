@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:vector_math/vector_math_64.dart' show Vector3;
+import 'package:vector_math/vector_math_64.dart' show Vector3, Vector4;
 import 'transformations_demo_inertial_motion.dart';
 
 // This widget allows 2D transform interactions on its child in relation to its
@@ -284,16 +284,28 @@ class _GestureTransformableState extends State<GestureTransformable> with Ticker
       onScaleEnd: _onScaleEnd,
       onScaleStart: _onScaleStart,
       onScaleUpdate: _onScaleUpdate,
-      child: ClipRect(
-        // The scene is panned/zoomed/rotated using this Transform widget.
-        child: Transform(
-          transform: _transform,
-          child: Container(
-            child: widget.child,
-            height: widget.size.height,
-            width: widget.size.width,
+      child: Stack(
+        children: <Widget>[
+          ClipRect(
+            // The scene is panned/zoomed/rotated using this Transform widget.
+            child: Transform(
+              transform: _transform,
+              child: Container(
+                child: widget.child,
+                height: widget.size.height,
+                width: widget.size.width,
+              ),
+            ),
           ),
-        ),
+          /*
+          Container(
+            width: 200,
+            height: 100,
+            color: Colors.white.withOpacity(0.7),
+            child: Text('${formatMatrix(_transform)}'),
+          ),
+          */
+        ],
       ),
     );
   }
@@ -568,4 +580,21 @@ class _GestureTransformableState extends State<GestureTransformable> with Ticker
     _controllerReset.dispose();
     super.dispose();
   }
+}
+
+String formatMatrix(Matrix4 matrix) {
+  String out = '';
+  out += formatMatrixRow(matrix.row0) + '\n';
+  out += formatMatrixRow(matrix.row1) + '\n';
+  out += formatMatrixRow(matrix.row2) + '\n';
+  out += formatMatrixRow(matrix.row3) + '\n';
+  return out;
+}
+
+String formatMatrixRow(Vector4 vector) {
+  return '${formatMatrixCell(vector.x)} ${formatMatrixCell(vector.y)} ${formatMatrixCell(vector.z)} ${formatMatrixCell(vector.w)}';
+}
+
+String formatMatrixCell(double cell) {
+  return cell.toStringAsPrecision(4);
 }
