@@ -1002,6 +1002,7 @@ class EditableTextState extends State<EditableText> with AutomaticKeepAliveClien
     _stopCursorTimer();
     assert(_cursorTimer == null);
     _selectionOverlay?.dispose();
+    print('justin set _selectionOverlay to null dispose');
     _selectionOverlay = null;
     _focusAttachment.detach();
     widget.focusNode.removeListener(_handleFocusChanged);
@@ -1258,6 +1259,7 @@ class EditableTextState extends State<EditableText> with AutomaticKeepAliveClien
 
   void _hideSelectionOverlayIfNeeded() {
     _selectionOverlay?.hide();
+    print('justin set _selectionOverlay to null hsoin');
     _selectionOverlay = null;
   }
 
@@ -1267,12 +1269,19 @@ class EditableTextState extends State<EditableText> with AutomaticKeepAliveClien
         _selectionOverlay.update(_value);
       } else {
         _selectionOverlay.dispose();
+        print('justin set _selectionOverlay to null uodsoin');
         _selectionOverlay = null;
       }
     }
   }
 
   void _handleSelectionChanged(TextSelection selection, RenderEditable renderObject, SelectionChangedCause cause) {
+    print('justin _handleSelectionChanged');
+    try {
+      throw Error();
+    } catch(error, stacktrace) {
+      print(stacktrace);
+    }
     widget.controller.selection = selection;
 
     // This will show the keyboard for all selection changes on the
@@ -1282,6 +1291,7 @@ class EditableTextState extends State<EditableText> with AutomaticKeepAliveClien
     _hideSelectionOverlayIfNeeded();
 
     if (widget.selectionControls != null) {
+      print('justin build _selectionOverlay');
       _selectionOverlay = TextSelectionOverlay(
         context: context,
         value: _value,
@@ -1547,6 +1557,7 @@ class EditableTextState extends State<EditableText> with AutomaticKeepAliveClien
   /// Returns `false` if a toolbar couldn't be shown, such as when the toolbar
   /// is already shown, or when no text selection currently exists.
   bool showToolbar() {
+    print('justin show toolbar ${_selectionOverlay == null} ${_selectionOverlay?.toolbarIsVisible}');
     if (_selectionOverlay == null || _selectionOverlay.toolbarIsVisible) {
       return false;
     }

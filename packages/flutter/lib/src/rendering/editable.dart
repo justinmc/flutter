@@ -1445,6 +1445,14 @@ class RenderEditable extends RenderBox {
         affinity: fromPosition.affinity,
       );
       // Call [onSelectionChanged] only when the selection actually changed.
+      print('justin selectposat might call handlepotentialselectionchange $newSelection $selection');
+      // TODO(justinmc): The problem is here again. In the situation where there
+      // is text in the field when I longpress, there is a simple affinity
+      // difference that makes HPSC get called. When there is no text, the
+      // affinity is the same, and HPSC never gets called.
+      // This seems random and like there is something not right!
+      // At it's root, the relation on this being called and the selection menu
+      // being able to be shown seems like it shouldn't be related.
       if (newSelection != _selection) {
         _handlePotentialSelectionChange(newSelection, cause);
       }
