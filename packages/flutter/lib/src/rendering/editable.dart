@@ -881,6 +881,11 @@ class RenderEditable extends RenderBox {
   ViewportOffset get offset => _offset;
   ViewportOffset _offset;
   set offset(ViewportOffset value) {
+    try {
+      throw FlutterError('omg');
+    } catch (error, stacktrace) {
+      print(stacktrace);
+    }
     assert(value != null);
     if (_offset == value)
       return;
@@ -1298,11 +1303,13 @@ class RenderEditable extends RenderBox {
     _layoutText(constraints.maxWidth);
     final Offset caretOffset = _textPainter.getOffsetForCaret(caretPosition, _caretPrototype);
     // This rect is the same as _caretPrototype but without the vertical padding.
+    // TODO(justinmc): _paintOffset jumps
     Rect rect = Rect.fromLTWH(0.0, 0.0, cursorWidth, preferredLineHeight).shift(caretOffset + _paintOffset);
     // Add additional cursor offset (generally only if on iOS).
     if (_cursorOffset != null)
       rect = rect.shift(_cursorOffset);
 
+    print('justin paintoffset get $_paintOffset');
     return rect.shift(_getPixelPerfectCursorOffset(rect));
   }
 
@@ -1613,6 +1620,8 @@ class RenderEditable extends RenderBox {
         .constrainWidth(_textPainter.size.width + _caretMargin);
     size = Size(width, constraints.constrainHeight(_preferredHeight(constraints.maxWidth)));
     final Size contentSize = Size(textPainterSize.width + _caretMargin, textPainterSize.height);
+    // TODO(justinmc): size and contentSize seem fine here. Equal.
+    // _maxScrollExtent is zero, which also seems like it shouldn't scroll...
     _maxScrollExtent = _getMaxScrollExtent(contentSize);
     offset.applyViewportDimension(_viewportExtent);
     offset.applyContentDimensions(0.0, _maxScrollExtent);

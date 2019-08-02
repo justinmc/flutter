@@ -1281,6 +1281,9 @@ class EditableTextState extends State<EditableText> with AutomaticKeepAliveClien
       final double caretOffset = (lineHeight - caretRect.height) / 2;
       caretStart = caretRect.top - caretOffset;
       caretEnd = caretRect.bottom + caretOffset;
+      // TODO(justinmc): It seems that caretRect.bottom shoots up by 2.5 when
+      // the bug happens.
+      //print('justin carrot end $caretEnd = ${caretRect.bottom} + $caretOffset');
     } else {
       caretStart = caretRect.left;
       caretEnd = caretRect.right;
@@ -1291,6 +1294,9 @@ class EditableTextState extends State<EditableText> with AutomaticKeepAliveClien
     if (caretStart < 0.0) { // cursor before start of bounds
       scrollOffset += caretStart;
     } else if (caretEnd >= viewportExtent) { // cursor after end of bounds
+      // TODO(justinmc): The 2.5 pixel difference shows up here because caretEnd
+      // is bigger than viewportExtent.
+      //print('justin scrollOff $scrollOffset += $caretEnd - $viewportExtent');
       scrollOffset += caretEnd - viewportExtent;
     }
     return scrollOffset;
@@ -1432,6 +1438,7 @@ class EditableTextState extends State<EditableText> with AutomaticKeepAliveClien
         return;
       }
       final double scrollOffsetForCaret = _getScrollOffsetForCaret(_currentCaretRect);
+      print('justin _scrollControl animate to $scrollOffsetForCaret');
       _scrollController.animateTo(
         scrollOffsetForCaret,
         duration: _caretAnimationDuration,
@@ -1639,6 +1646,13 @@ class EditableTextState extends State<EditableText> with AutomaticKeepAliveClien
 
   @override
   void bringIntoView(TextPosition position) {
+    // TODO(justinmc): This causes the bounce, but maybe some sizing is actually
+    // the root cause...
+    // Well it's true that here this ends up being greater than zero only when
+    // the bounce happens: _getScrollOffsetForCaret(renderEditable.getLocalRectForCaret(position))
+    // It seems renderEditable.getLocalRectForCaret(position) jumps up at the
+    // exact call that the bug happens. Why?
+    //print('justin jump to it ${renderEditable.getLocalRectForCaret(position)}');
     _scrollController.jumpTo(_getScrollOffsetForCaret(renderEditable.getLocalRectForCaret(position)));
   }
 
