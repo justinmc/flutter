@@ -164,6 +164,7 @@ class _ToolbarRenderBox extends RenderShiftedBox {
     child.layout(heightConstraint.enforce(enforcedConstraint), parentUsesSize: true,);
     final _ToolbarParentData childParentData = child.parentData;
 
+    // TODO(justinmc): 3. This is where the error happens.
     final Offset localTopCenter = globalToLocal(Offset(_arrowTipX, _barTopY));
 
     // The local x-coordinate of the center of the toolbar.
@@ -361,6 +362,7 @@ class _CupertinoTextSelectionControls extends TextSelectionControls {
     addToolbarButtonIfNeeded(localizations.pasteButtonLabel, canPaste, handlePaste);
     addToolbarButtonIfNeeded(localizations.selectAllButtonLabel, canSelectAll, handleSelectAll);
 
+    // TODO(justinmc): 2. Returning an empty Container here stops the error.
     return CupertinoTextSelectionToolbar._(
       barTopY: localBarTopY + globalEditableRegion.top,
       arrowTipX: arrowTipX,

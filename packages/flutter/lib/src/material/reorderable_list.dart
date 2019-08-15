@@ -147,6 +147,8 @@ class _ReorderableListViewState extends State<ReorderableListView> {
 
   @override
   Widget build(BuildContext context) {
+    // TODO(justinmc): The problem definitely has to do with Overlay, because if
+    // I just return _ReorderableListContent here, it works.
     return Overlay(
       key: _overlayKey,
       initialEntries: <OverlayEntry>[

@@ -408,8 +408,6 @@ class TextSelectionOverlay {
       OverlayEntry(builder: (BuildContext context) => _buildHandle(context, _TextSelectionHandlePosition.end)),
     ];
 
-
-
     Overlay.of(context, debugRequiredFor: debugRequiredFor).insertAll(_handles);
   }
 
@@ -426,6 +424,7 @@ class TextSelectionOverlay {
   void showToolbar() {
     assert(_toolbar == null);
     _toolbar = OverlayEntry(builder: _buildToolbar);
+    // TODO(justinmc): Commenting out this line stops the error.
     Overlay.of(context, debugRequiredFor: debugRequiredFor).insert(_toolbar);
     _toolbarController.forward(from: 0.0);
   }
