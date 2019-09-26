@@ -2744,10 +2744,15 @@ void main() {
     },
   );
 
+  // TODO(justinmc): It seems like this is the test that breaks it.
   testWidgets('text field respects keyboardAppearance from theme', (WidgetTester tester) async {
     final List<MethodCall> log = <MethodCall>[];
+    /*
+    */
     SystemChannels.textInput.setMockMethodCallHandler((MethodCall methodCall) async {
+      print('justin callback');
       log.add(methodCall);
+      return Future<String>.value('asdf');
     });
 
     await tester.pumpWidget(
@@ -2761,10 +2766,32 @@ void main() {
       ),
     );
 
+    /*
     await tester.showKeyboard(find.byType(EditableText));
     final MethodCall setClient = log.first;
     expect(setClient.method, 'TextInput.setClient');
     expect(setClient.arguments.last['keyboardAppearance'], 'Brightness.dark');
+    */
+
+    print('justin remove callback');
+    SystemChannels.textInput.setMockMethodCallHandler(null);
+  });
+
+  testWidgets('find the enterText thing', (WidgetTester tester) async {
+    const String testValue = 'abc def ghi';
+    final TextEditingController controller = TextEditingController();
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: Container(
+          padding: const EdgeInsets.all(30),
+          child: CupertinoTextField(
+            controller: controller,
+          ),
+        ),
+      ),
+    );
+
+    await tester.enterText(find.byType(CupertinoTextField), testValue);
   });
 
   testWidgets('text field can override keyboardAppearance from theme', (WidgetTester tester) async {
