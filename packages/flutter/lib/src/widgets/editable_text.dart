@@ -1184,6 +1184,7 @@ class EditableTextState extends State<EditableText> with AutomaticKeepAliveClien
 
   @override
   void updateEditingValue(TextEditingValue value) {
+    print('justin updateEditingValue |${value.text}|');
     // Since we still have to support keyboard select, this is the best place
     // to disable text updating.
     if (widget.readOnly) {
@@ -1324,8 +1325,10 @@ class EditableTextState extends State<EditableText> with AutomaticKeepAliveClien
     if (!_hasInputConnection)
       return;
     final TextEditingValue localValue = _value;
-    if (localValue == _lastKnownRemoteTextEditingValue)
+    if (localValue == _lastKnownRemoteTextEditingValue) {
       return;
+    }
+    print('justin updateRemoteEd is calling setEditingState bc theyre not equal: ${localValue} == ${_lastKnownRemoteTextEditingValue}');
     _lastKnownRemoteTextEditingValue = localValue;
     _textInputConnection.setEditingState(localValue);
   }
@@ -1461,6 +1464,7 @@ class EditableTextState extends State<EditableText> with AutomaticKeepAliveClien
   }
 
   void _handleSelectionChanged(TextSelection selection, RenderEditable renderObject, SelectionChangedCause cause) {
+    print('justin handleSelectionchange ${selection.baseOffset}');
     widget.controller.selection = selection;
 
     // This will show the keyboard for all selection changes on the

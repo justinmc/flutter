@@ -665,6 +665,12 @@ class TextInputConnection {
   /// Requests that the text input control change its internal state to match the given state.
   void setEditingState(TextEditingValue value) {
     assert(attached);
+    print('justin setEditingState');
+    try {
+      throw Error();
+    } catch(e, stacktrace) {
+      print(stacktrace);
+    }
     SystemChannels.textInput.invokeMethod<void>(
       'TextInput.setEditingState',
       value.toJSON(),
