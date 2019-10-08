@@ -12,6 +12,7 @@ import 'flat_button.dart';
 import 'material.dart';
 import 'material_localizations.dart';
 import 'theme.dart';
+import 'package:flutter/material.dart';
 
 const double _kHandleSize = 22.0;
 

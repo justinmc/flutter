@@ -628,6 +628,8 @@ class TextPainter {
     while (boxes.isEmpty && flattenedText != null) {
       final int prevRuneOffset = offset - graphemeClusterLength;
       boxes = _paragraph.getBoxesForRange(prevRuneOffset, offset);
+      List<TextBox> boxesDown = _paragraph.getBoxesForRange(prevRuneOffset + 1, offset + 1);
+      print('justin upstream getboxesfor $prevRuneOffset - $offset, ${boxes.first.end} vs. ${boxesDown.last.end}');
       // When the range does not include a full cluster, no boxes will be returned.
       if (boxes.isEmpty) {
         // When we are at the beginning of the line, a non-surrogate position will
@@ -655,7 +657,8 @@ class TextPainter {
 
       final double caretEnd = box.end;
       final double dx = box.direction == TextDirection.rtl ? caretEnd - caretPrototype.width : caretEnd;
-      return Rect.fromLTRB(min(dx, _paragraph.width), box.top, min(dx, _paragraph.width), box.bottom);
+      //print('justin get upstream $dx, $width');//, ${_paragraph.width}, $box');
+      return Rect.fromLTRB(min(dx, width), box.top, min(dx, width), box.bottom);
     }
     return null;
   }
@@ -673,10 +676,13 @@ class TextPainter {
     // Check for multi-code-unit glyphs such as emojis or zero width joiner
     final bool needsSearch = _isUtf16Surrogate(nextCodeUnit) || nextCodeUnit == _zwjUtf16;
     int graphemeClusterLength = needsSearch ? 2 : 1;
+    //print('justin offset etc $offset + $graphemeClusterLength');
     List<TextBox> boxes = <TextBox>[];
     while (boxes.isEmpty && flattenedText != null) {
       final int nextRuneOffset = offset + graphemeClusterLength;
       boxes = _paragraph.getBoxesForRange(offset, nextRuneOffset);
+      List<TextBox> boxesUp = _paragraph.getBoxesForRange(offset - 1, nextRuneOffset - 1);
+      print('justin downstream getboxesfor $offset - $nextRuneOffset, ${boxes.first.end} vs. ${boxesUp.first.end}');
       // When the range does not include a full cluster, no boxes will be returned.
       if (boxes.isEmpty) {
         // When we are at the end of the line, a non-surrogate position will
@@ -697,7 +703,8 @@ class TextPainter {
       final TextBox box = boxes.last;
       final double caretStart = box.start;
       final double dx = box.direction == TextDirection.rtl ? caretStart - caretPrototype.width : caretStart;
-      return Rect.fromLTRB(min(dx, _paragraph.width), box.top, min(dx, _paragraph.width), box.bottom);
+      //print('justin get downstream $dx, $width');//, ${_paragraph.width}, $box');
+      return Rect.fromLTRB(min(dx, width), box.top, min(dx, width), box.bottom);
     }
     return null;
   }
@@ -789,6 +796,15 @@ class TextPainter {
     // Cache the input parameters to prevent repeat work later.
     _previousCaretPosition = position;
     _previousCaretPrototype = caretPrototype;
+    // TODO(justinmc): The discrepancy comes from upstream vs. downstream.
+    // There should not be a discrepancy at the end of a line with spaces! I
+    // think _getRectFromUp(Down)Stream is wrong somewhere. It looks like
+    // downstream is the problematic one that ignores spaces, at least in my
+    // test case.
+    // Actually it seems that the passed in position is changing at the same
+    // time. No it's not...
+    //print('justin caret pos ${position.offset}, ${rect?.left}');
+    //print('justin affinity ${position.affinity} $offset ${rect?.left}');
   }
 
   /// Returns a list of rects that bound the given selection.

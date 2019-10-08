@@ -873,6 +873,7 @@ class RenderEditable extends RenderBox with RelayoutWhenSystemFontsChangeMixin {
     if (_selection == value)
       return;
     _selection = value;
+    print('justin selection changed to $_selection');
     _selectionRects = null;
     markNeedsPaint();
     markNeedsSemanticsUpdate();
