@@ -51,6 +51,19 @@ final Animatable<Offset> _kMiddleLeftTween = Tween<Offset>(
 final Animatable<Offset> _kBottomUpTween = Tween<Offset>(
   begin: const Offset(0.0, 1.0),
   end: Offset.zero,
+  // TODO(justinmc): Doing the below makes the page show slightly down, as it
+  // should. However, the page is down even before route transition. Also, the
+  // navbars pop back up to the top during the transition. Also, the system
+  // status bar is black on black. Also the navbars are too tall. That's all for
+  // now!
+  //end: const Offset(0.0, 0.05),
+);
+
+// Offset from fully onscreen to slightly down. Matches the iOS sheet
+// transition.
+final Animatable<Offset> _kTopDownPartialTween = Tween<Offset>(
+  begin: Offset.zero,
+  end: const Offset(0.0, 0.05),
 );
 
 // Custom decoration from no shadow to page shadow mimicking iOS page
@@ -308,6 +321,22 @@ class CupertinoPageRoute<T> extends PageRoute<T> {
         animation: animation,
         child: child,
       );
+    } else if (true) {
+      return CupertinoSheetTransition(
+        primaryRouteAnimation: animation,
+        secondaryRouteAnimation: secondaryAnimation,
+        linearTransition: isPopGestureInProgress(route),
+        child: child,
+        /*
+        // TODO(justinmc): This should be a pulldown gesture detector of some
+        // sort.
+        child: _CupertinoBackGestureDetector<T>(
+          enabledCallback: () => _isPopGestureEnabled<T>(route),
+          onStartPopGesture: () => _startPopGesture<T>(route),
+          child: child,
+        ),
+        */
+      );
     } else {
       return CupertinoPageTransition(
         primaryRouteAnimation: animation,
@@ -380,6 +409,86 @@ class CupertinoPageTransition extends StatelessWidget {
                  reverseCurve: Curves.easeInToLinear,
                )
            ).drive(_kMiddleLeftTween),
+       _primaryShadowAnimation =
+           (linearTransition
+             ? primaryRouteAnimation
+             : CurvedAnimation(
+                 parent: primaryRouteAnimation,
+                 curve: Curves.linearToEaseOut,
+               )
+           ).drive(_kGradientShadowTween),
+       super(key: key);
+
+  // When this page is coming in to cover another page.
+  final Animation<Offset> _primaryPositionAnimation;
+  // When this page is becoming covered by another page.
+  final Animation<Offset> _secondaryPositionAnimation;
+  final Animation<Decoration> _primaryShadowAnimation;
+
+  /// The widget below this widget in the tree.
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    assert(debugCheckHasDirectionality(context));
+    final TextDirection textDirection = Directionality.of(context);
+    return SlideTransition(
+      position: _secondaryPositionAnimation,
+      textDirection: textDirection,
+      transformHitTests: false,
+      child: SlideTransition(
+        position: _primaryPositionAnimation,
+        textDirection: textDirection,
+        child: DecoratedBoxTransition(
+          decoration: _primaryShadowAnimation,
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+/// A route transition similar to the sheet in iOS.
+class CupertinoSheetTransition extends StatelessWidget {
+  /// Creates a [CupertinoSheetTransition].
+  ///
+  ///  * `primaryRouteAnimation` is a linear route animation from 0.0 to 1.0
+  ///    when this screen is being pushed.
+  ///  * `secondaryRouteAnimation` is a linear route animation from 0.0 to 1.0
+  ///    when another screen is being pushed on top of this one.
+  ///  * `linearTransition` is whether to perform primary transition linearly.
+  ///    Used to precisely track back gesture drags.
+  CupertinoSheetTransition({
+    Key key,
+    @required Animation<double> primaryRouteAnimation,
+    @required Animation<double> secondaryRouteAnimation,
+    @required this.child,
+    @required bool linearTransition,
+  }) : assert(linearTransition != null),
+       _primaryPositionAnimation =
+           (linearTransition
+             ? primaryRouteAnimation
+             : CurvedAnimation(
+                 // The curves below have been rigorously derived from plots of native
+                 // iOS animation frames. Specifically, a video was taken of a page
+                 // transition animation and the distance in each frame that the page
+                 // moved was measured. A best fit bezier curve was the fitted to the
+                 // point set, which is linearToEaseIn. Conversely, easeInToLinear is the
+                 // reflection over the origin of linearToEaseIn.
+                 parent: primaryRouteAnimation,
+                 curve: Curves.linearToEaseOut,
+                 reverseCurve: Curves.easeInToLinear,
+               )
+           ).drive(_kBottomUpTween),
+       _secondaryPositionAnimation =
+           (linearTransition
+             ? secondaryRouteAnimation
+             : CurvedAnimation(
+                 parent: secondaryRouteAnimation,
+                 curve: Curves.linearToEaseOut,
+                 reverseCurve: Curves.easeInToLinear,
+               )
+           ).drive(_kTopDownPartialTween),
        _primaryShadowAnimation =
            (linearTransition
              ? primaryRouteAnimation
