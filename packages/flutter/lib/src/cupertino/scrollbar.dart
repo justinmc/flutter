@@ -60,6 +60,7 @@ class CupertinoScrollbar extends StatefulWidget {
   const CupertinoScrollbar({
     Key key,
     this.controller,
+    this.displayAlways = false,
     @required this.child,
   }) : super(key: key);
 
@@ -125,6 +126,11 @@ class CupertinoScrollbar extends StatefulWidget {
   /// {@endtemplate}
   final ScrollController controller;
 
+  /// The default value of displayAlways is false,
+  /// When displayAlways property is true, the [Scrollbar] will be always shown.
+  /// but to show the [Scrollbar] always, you need to pass the [Scrollable]'s controller. see [ScrollController]
+  final bool displayAlways;
+
   @override
   _CupertinoScrollbarState createState() => _CupertinoScrollbarState();
 }
@@ -183,6 +189,12 @@ class _CupertinoScrollbarState extends State<CupertinoScrollbar> with TickerProv
         ..color = CupertinoDynamicColor.resolve(_kScrollbarColor, context)
         ..padding = MediaQuery.of(context).padding;
     }
+    WidgetsBinding.instance.addPostFrameCallback((duration) {
+      if (widget.displayAlways) {
+        assert(widget.controller != null);
+        widget.controller.position.didUpdateScrollPositionBy(0);
+      }
+    });
   }
 
   /// Returns a [ScrollbarPainter] visually styled like the iOS scrollbar.
@@ -228,11 +240,13 @@ class _CupertinoScrollbarState extends State<CupertinoScrollbar> with TickerProv
   }
 
   void _startFadeoutTimer() {
-    _fadeoutTimer?.cancel();
-    _fadeoutTimer = Timer(_kScrollbarTimeToFade, () {
-      _fadeoutAnimationController.reverse();
-      _fadeoutTimer = null;
-    });
+    if (!widget.displayAlways) {
+      _fadeoutTimer?.cancel();
+      _fadeoutTimer = Timer(_kScrollbarTimeToFade, () {
+        _fadeoutAnimationController.reverse();
+        _fadeoutTimer = null;
+      });
+    }
   }
 
   bool _checkVertical() {
