@@ -116,6 +116,19 @@ class _ScrollbarState extends State<Scrollbar> with TickerProviderStateMixin {
     assert(_useCupertinoScrollbar != null);
   }
 
+  @override
+  void didUpdateWidget(Scrollbar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.displayAlways != oldWidget.displayAlways) {
+      assert(widget.controller != null);
+      if (widget.displayAlways == false) {
+        _fadeoutAnimationController.reverse();
+      } else {
+        widget.controller.position.didUpdateScrollPositionBy(0);
+      }
+    }
+  }
+
   ScrollbarPainter _buildMaterialScrollbarPainter() {
     return ScrollbarPainter(
       color: _themeColor,

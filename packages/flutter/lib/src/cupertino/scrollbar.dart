@@ -197,6 +197,19 @@ class _CupertinoScrollbarState extends State<CupertinoScrollbar> with TickerProv
     });
   }
 
+  @override
+  void didUpdateWidget(Scrollbar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.displayAlways != oldWidget.displayAlways) {
+      assert(widget.controller != null);
+      if (widget.displayAlways == false) {
+        _fadeoutAnimationController.reverse();
+      } else {
+        widget.controller.position.didUpdateScrollPositionBy(0);
+      }
+    }
+  }
+
   /// Returns a [ScrollbarPainter] visually styled like the iOS scrollbar.
   ScrollbarPainter _buildCupertinoScrollbarPainter(BuildContext context) {
     return ScrollbarPainter(
