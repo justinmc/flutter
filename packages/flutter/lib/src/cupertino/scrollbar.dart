@@ -198,7 +198,7 @@ class _CupertinoScrollbarState extends State<CupertinoScrollbar> with TickerProv
   }
 
   @override
-  void didUpdateWidget(Scrollbar oldWidget) {
+  void didUpdateWidget(CupertinoScrollbar oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.displayAlways != oldWidget.displayAlways) {
       assert(widget.controller != null);
