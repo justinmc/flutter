@@ -576,6 +576,9 @@ TextAffinity _toTextAffinity(String affinity) {
     case 'TextAffinity.upstream':
       return TextAffinity.upstream;
   }
+  // Null affinity indicates that the platform did not provide a valid
+  // affinity. Set it to null here to allow the framework to supply
+  // a fallback affinity.
   return null;
 }
 
