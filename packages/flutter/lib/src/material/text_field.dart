@@ -1017,6 +1017,11 @@ class _TextFieldState extends State<TextField> implements TextSelectionGestureDe
     );
 
     if (widget.decoration != null) {
+      // TODO(justinmc): isCollapsed becomes false here in _getEffectiveDecoration
+      // because copyWith always sets isCollapsed to false. Why does it do that?
+      // I need to know what isCollapsed is if I want to allow it to be smaller
+      // than the minimum interactive size.
+      print('justin geteffective ${widget.decoration.isCollapsed} ${_getEffectiveDecoration().isCollapsed}');
       child = AnimatedBuilder(
         animation: Listenable.merge(<Listenable>[ focusNode, controller ]),
         builder: (BuildContext context, Widget child) {

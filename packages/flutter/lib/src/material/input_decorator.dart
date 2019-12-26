@@ -1047,7 +1047,8 @@ class _RenderDecoration extends RenderBox {
       + fixBelowInput
       + contentPadding.bottom,
     );
-    final double minContainerHeight = decoration.isDense || expands
+    print('justin collapszed ${decoration.isDense} || $expands || ${decoration.isCollapsed}');
+    final double minContainerHeight = decoration.isDense || expands || decoration.isCollapsed
       ? 0.0
       : kMinInteractiveDimension;
     final double maxContainerHeight = boxConstraints.maxHeight - bottomHeight;
@@ -2267,6 +2268,7 @@ class _InputDecoratorState extends State<InputDecorator> with TickerProviderStat
         : const EdgeInsets.fromLTRB(12.0, 24.0, 12.0, 16.0));
     }
 
+    print('justin creating _decorator ${decoration.isCollapsed} from ${widget.decoration.isCollapsed}');
     return _Decorator(
       decoration: _Decoration(
         contentPadding: contentPadding,
@@ -2488,7 +2490,7 @@ class InputDecoration {
        errorText = null,
        errorStyle = null,
        errorMaxLines = null,
-       isDense = false,
+       isDense = true,
        contentPadding = EdgeInsets.zero,
        isCollapsed = true,
        prefixIcon = null,
