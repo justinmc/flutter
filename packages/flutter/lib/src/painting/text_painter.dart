@@ -470,9 +470,19 @@ class TextPainter {
   /// Valid only after [layout] has been called.
   double get width {
     assert(!_needsLayout);
-    return _applyFloatingPointHack(
+    final double foo = _applyFloatingPointHack(
       textWidthBasis == TextWidthBasis.longestLine ? _paragraph.longestLine : _paragraph.width,
     );
+    print('justin width for $text is $foo. Chosen from ${_paragraph.longestLine} or ${_paragraph.width}');
+    /*
+    try {
+      throw Error();
+    } catch (e, stacktrace) {
+      print(stacktrace);
+    }
+    */
+    //return _paragraph.width;
+    return foo;
   }
 
   /// The vertical space required to paint this text.
@@ -551,7 +561,9 @@ class TextPainter {
     _paragraph.layout(ui.ParagraphConstraints(width: maxWidth));
     if (minWidth != maxWidth) {
       final double newWidth = maxIntrinsicWidth.clamp(minWidth, maxWidth) as double;
+      print('justin $newWidth != $width, $maxIntrinsicWidth clamped($minWidth, $maxWidth)');
       if (newWidth != width) {
+        print('justin layout paragraph');
         _paragraph.layout(ui.ParagraphConstraints(width: newWidth));
       }
     }
