@@ -15,6 +15,7 @@ import 'icons.dart';
 import 'material.dart';
 import 'material_localizations.dart';
 import 'theme.dart';
+import 'colors.dart';
 
 const double _kHandleSize = 22.0;
 
@@ -80,7 +81,7 @@ class _TextSelectionToolbarState extends State<_TextSelectionToolbar> {
 
   @override
   void initState() {
-    _measureItemsNextFrame();
+    //_measureItemsNextFrame();
     super.initState();
   }
 
@@ -91,7 +92,7 @@ class _TextSelectionToolbarState extends State<_TextSelectionToolbar> {
     // re-measure.
     if (widget.menuWidthChanged(oldWidget)) {
       _menuContentWidth = null;
-      _measureItemsNextFrame();
+      //_measureItemsNextFrame();
     }
     super.didUpdateWidget(oldWidget);
   }
@@ -182,7 +183,7 @@ class _TextSelectionToolbarState extends State<_TextSelectionToolbar> {
       _itemKeys.add(GlobalKey());
       items.add(FlatButton(
         key: _itemKeys[_itemKeys.length - 1],
-        child: Text(localizations.selectAllButtonLabel),
+        child: Text('Select absolutely everything'),//localizations.selectAllButtonLabel),
         onPressed: () {
           setState(() {
             _overflowOpen = false;
@@ -199,7 +200,7 @@ class _TextSelectionToolbarState extends State<_TextSelectionToolbar> {
 
     // If _itemsInFirstMenu hasn't been calculated yet, render offstage for one
     // frame for measurement.
-    if (_menuContentWidth == null) {
+    if (_menuContentWidth == null && false) {
       return Offstage(
         child: _TextSelectionToolbarContainer(
           key: _containerKey,
@@ -216,12 +217,12 @@ class _TextSelectionToolbarState extends State<_TextSelectionToolbar> {
       ? _itemKeys.length
       : _indexWhereOverflows;
 
-    if (_overflowOpen) {
+    if (_overflowOpen || true) {
       return _TextSelectionToolbarContainer(
         key: _containerKey,
-        width: _menuContentWidth,
+        width: 300,//_menuContentWidth,
         child: _TextSelectionToolbarContentOverflow(
-          items: items.sublist(itemsInFirstMenu, items.length),
+          items: items.sublist(0, items.length),//itemsInFirstMenu, items.length),
           onBackPressed: () {
             setState(() {
               _overflowOpen = false;
@@ -267,8 +268,12 @@ class _TextSelectionToolbarContainerState extends State<_TextSelectionToolbarCon
   Widget build(BuildContext context) {
     return Container(
       width: widget.width,
+      height: _kToolbarHeight,
+      color: Colors.red,
+      //child: widget.child,
+      /*
       child: Align(
-        alignment: Alignment.topRight,
+        alignment: Alignment.bottomRight,
         heightFactor: 1.0,
         widthFactor: 1.0,
         child: Material(
@@ -281,7 +286,8 @@ class _TextSelectionToolbarContainerState extends State<_TextSelectionToolbarCon
             child: widget.child,
           ),
         ),
-      ),
+      //),
+        */
     );
   }
 }
@@ -338,18 +344,23 @@ class _TextSelectionToolbarContentOverflow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final IconButton moreButton = IconButton(
+      icon: Icon(Icons.arrow_back),
+      tooltip: 'Back',
+      onPressed: onBackPressed,
+    );
+    final List<Widget> children = <Widget>[...items];
+    if ((materialTextSelectionControls as _MaterialTextSelectionControls).fitsAbove) {
+      children.insert(children.length, moreButton);
+    } else {
+      children.insert(0, moreButton);
+    }
+
     return Container(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          ...items,
-          IconButton(
-            icon: Icon(Icons.arrow_back),
-            tooltip: 'Back',
-            onPressed: onBackPressed,
-          ),
-        ],
+        children: children,
       ),
     );
   }
@@ -423,6 +434,13 @@ class _TextSelectionHandlePainter extends CustomPainter {
 }
 
 class _MaterialTextSelectionControls extends TextSelectionControls {
+  final GlobalKey _key = GlobalKey();
+
+  /// Indicates that the controls fit above the text on the screen.
+  ///
+  /// If null, then buildToolbar has not yet been called.
+  bool fitsAbove;
+
   /// Returns the size of the Material handle.
   @override
   Size getHandleSize(double textLineHeight) => const Size(_kHandleSize, _kHandleSize);
@@ -440,6 +458,8 @@ class _MaterialTextSelectionControls extends TextSelectionControls {
     assert(debugCheckHasMediaQuery(context));
     assert(debugCheckHasMaterialLocalizations(context));
 
+    final double toolbarHeight = 
+
     // The toolbar should appear below the TextField
     // when there is not enough space above the TextField to show it.
     final TextSelectionPoint startTextSelectionPoint = endpoints[0];
@@ -448,13 +468,19 @@ class _MaterialTextSelectionControls extends TextSelectionControls {
       + _kToolbarHeight
       + _kToolbarContentDistance;
     final double availableHeight = globalEditableRegion.top + endpoints.first.point.dy - textLineHeight;
-    final bool fitsAbove = toolbarHeightNeeded <= availableHeight;
+    fitsAbove = toolbarHeightNeeded <= availableHeight;
     final double y = fitsAbove
         ? startTextSelectionPoint.point.dy - _kToolbarContentDistance - textLineHeight
+        // TODO(justinmc): The main problem is that the toolbar is being layed
+        // out assuming it is always height _kToolbarHeight. I need to come up
+        // with a way that works with any height that is as close as possible to
+        // the original implementation, if possible. Notice that fitsAbove can
+        // also be wrong because of this.
         : startTextSelectionPoint.point.dy + _kToolbarHeight + _kToolbarContentDistanceBelow;
     final Offset preciseMidpoint = Offset(position.dx, y);
 
     return ConstrainedBox(
+      key: _key,
       constraints: BoxConstraints.tight(globalEditableRegion.size),
       child: CustomSingleChildLayout(
         delegate: _TextSelectionToolbarLayout(
