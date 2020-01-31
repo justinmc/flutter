@@ -189,11 +189,12 @@ class _CupertinoScrollbarState extends State<CupertinoScrollbar> with TickerProv
         ..color = CupertinoDynamicColor.resolve(_kScrollbarColor, context)
         ..padding = MediaQuery.of(context).padding;
     }
+    // TODO(justinmc): Document this hack.
     WidgetsBinding.instance.addPostFrameCallback((duration) {
-      if (widget.displayAlways) {
-        assert(widget.controller != null);
-        widget.controller.position.didUpdateScrollPositionBy(0);
-      }
+      // TODO(justinmc): This needs to happen so that we can toggle to
+      // displayAlways before any scrolling has happened.
+      assert(widget.controller != null);
+      widget.controller.position.didUpdateScrollPositionBy(0);
     });
   }
 
@@ -202,10 +203,13 @@ class _CupertinoScrollbarState extends State<CupertinoScrollbar> with TickerProv
     super.didUpdateWidget(oldWidget);
     if (widget.displayAlways != oldWidget.displayAlways) {
       assert(widget.controller != null);
-      if (widget.displayAlways == false) {
-        _fadeoutAnimationController.reverse();
-      } else {
-        widget.controller.position.didUpdateScrollPositionBy(0);
+      // If not currently scrolling, animate the thumb to the indicated opacity.
+      if (widget.controller.hasClients && !widget.controller.position.activity.isScrolling) {
+        if (!widget.displayAlways && _fadeoutAnimationController.value != 0.0) {
+          _fadeoutAnimationController.animateTo(0.0);
+        } else if (widget.displayAlways && _fadeoutAnimationController.value != 1.0) {
+          _fadeoutAnimationController.animateTo(1.0);
+        }
       }
     }
   }
@@ -343,7 +347,8 @@ class _CupertinoScrollbarState extends State<CupertinoScrollbar> with TickerProv
     if (notification is ScrollUpdateNotification ||
         notification is OverscrollNotification) {
       // Any movements always makes the scrollbar start showing up.
-      if (_fadeoutAnimationController.status != AnimationStatus.forward) {
+      final bool emptyScroll = notification is ScrollUpdateNotification && notification.scrollDelta == 0.0;
+      if (!(emptyScroll && !widget.displayAlways) && _fadeoutAnimationController.status != AnimationStatus.forward) {
         _fadeoutAnimationController.forward();
       }
 
