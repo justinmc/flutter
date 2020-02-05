@@ -189,7 +189,7 @@ class _TextSelectionToolbarState extends State<_TextSelectionToolbar> {
       _itemKeys.add(GlobalKey());
       items.add(FlatButton(
         key: _itemKeys[_itemKeys.length - 1],
-        child: Text(localizations.selectAllButtonLabel),
+        child: Text('Select absolutely everything'),//localizations.selectAllButtonLabel),
         onPressed: () {
           setState(() {
             _overflowOpen = false;
@@ -254,6 +254,42 @@ class _TextSelectionToolbarState extends State<_TextSelectionToolbar> {
         },
       ),
     );
+
+    /*
+    // TODO(justinmc): I don't think there are any shortcuts here. I think you'd
+    // need to set up a very fancy animation to get one icon to transform into
+    // the other (including position).
+    return AnimatedCrossFade(
+      key: _containerKey,
+      duration: const Duration(milliseconds: 340),
+      firstChild: _TextSelectionToolbarContainer(
+        width: _menuContentWidth,
+        child: _TextSelectionToolbarContentOverflow(
+          isAbove: widget.isAbove,
+          items: items.sublist(itemsInFirstMenu, items.length),
+          onBackPressed: () {
+            setState(() {
+              _overflowOpen = false;
+            });
+          },
+        ),
+      ),
+      secondChild: _TextSelectionToolbarContainer(
+        width: _menuContentWidth,
+        child: _TextSelectionToolbarContent(
+          items: items.sublist(0, itemsInFirstMenu),
+          showMoreButton: itemsInFirstMenu < items.length,
+          moreButtonKey: _moreButtonKey,
+          onMorePressed: () {
+            setState(() {
+              _overflowOpen = true;
+            });
+          },
+        ),
+      ),
+      crossFadeState: _overflowOpen ? CrossFadeState.showFirst : CrossFadeState.showSecond,
+    );
+    */
   }
 }
 
