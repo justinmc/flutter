@@ -369,6 +369,10 @@ class RenderEditable extends RenderBox with RelayoutWhenSystemFontsChangeMixin {
   void _updateSelectionExtentsVisibility(Offset effectiveOffset) {
     final Rect visibleRegion = Offset.zero & size;
 
+    //print('justin _updateSelectionExtentsVisibility affinity ${_selection.affinity}');
+    // TODO(justinmc): Why is affinity downstream here? If it were upstream, it
+    // would work right? Going deeper to determine why we receive a certain position
+    // from Skia when given downstream leads nowhere. No Skia documentation.
     final Offset startOffset = _textPainter.getOffsetForCaret(
       TextPosition(offset: _selection.start, affinity: _selection.affinity),
       _caretPrototype,
@@ -1001,6 +1005,14 @@ class RenderEditable extends RenderBox with RelayoutWhenSystemFontsChangeMixin {
     // affinity. This happens when the platform does not supply affinity,
     // in which case using the fallback affinity computed from dart:ui will
     // be superior to simply defaulting to TextAffinity.downstream.
+    // TODO(justinmc): Seems to already have an affinity, so Gary's thing isn't
+    // what's giving it the wrong affinity.
+    try {
+      throw Error();
+    } catch (e, stacktrace) {
+      print(stacktrace);
+    }
+    print('justin set selection to affinity ${value.affinity}');
     if (value.affinity == null) {
       _selection = value.copyWith(affinity: _fallbackAffinity);
     } else {

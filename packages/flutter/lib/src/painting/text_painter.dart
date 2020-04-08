@@ -807,6 +807,7 @@ class TextPainter {
         break;
       }
     }
+    print('justin affinity: ${position.affinity}, rect up vs down: ${_getRectFromUpstream(offset, caretPrototype)} ${_getRectFromDownstream(offset, caretPrototype)}');
     _caretMetrics = _CaretMetrics(
       offset: rect != null ? Offset(rect.left, rect.top) : _emptyOffset,
       fullHeight: rect != null ? rect.bottom - rect.top : null,

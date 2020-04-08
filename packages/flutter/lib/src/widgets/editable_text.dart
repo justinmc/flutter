@@ -1658,6 +1658,10 @@ class EditableTextState extends State<EditableText> with AutomaticKeepAliveClien
   _WhitespaceDirectionalityFormatter _whitespaceFormatter;
 
   void _formatAndSetValue(TextEditingValue value) {
+    // TODO(justinmc): This is the latest comment. This value is coming from
+    // updateEditingState in the engine. Track that down and see why it sends
+    // downstream?
+    print('justin format and set value ${value.selection.affinity}');
     _whitespaceFormatter ??= _WhitespaceDirectionalityFormatter(textDirection: _textDirection);
 
     // Check if the new value is the same as the current local value, or is the same
