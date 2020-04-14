@@ -238,7 +238,20 @@ class _CupertinoScrollbarState extends State<CupertinoScrollbar> with TickerProv
         ..color = CupertinoDynamicColor.resolve(_kScrollbarColor, context)
         ..padding = MediaQuery.of(context).padding;
     }
+    print('justin ru called cupertionz');
     WidgetsBinding.instance.addPostFrameCallback((Duration duration) {
+      assert(!(widget.isAlwaysShown && widget.controller == null));
+      print('justin cupertion yes? ${widget.controller != null}');
+      if (widget.controller != null) {
+        // Wait one frame and cause an empty scroll event.  This allows the
+        // thumb to show immediately when isAlwaysShown is true.  A scroll
+        // event is required in order to paint the thumb.
+        widget.controller.position.didUpdateScrollPositionBy(0);
+      }
+    });
+    /*
+    WidgetsBinding.instance.addPostFrameCallback((Duration duration) {
+      print('justin cupertion old yes? ${widget.isAlwaysShown}');
       if (widget.isAlwaysShown) {
         assert(widget.controller != null);
         // Wait one frame and cause an empty scroll event.  This allows the
@@ -247,6 +260,7 @@ class _CupertinoScrollbarState extends State<CupertinoScrollbar> with TickerProv
         widget.controller.position.didUpdateScrollPositionBy(0);
       }
     });
+    */
   }
 
   @override
@@ -255,8 +269,10 @@ class _CupertinoScrollbarState extends State<CupertinoScrollbar> with TickerProv
     if (widget.isAlwaysShown != oldWidget.isAlwaysShown) {
       if (widget.isAlwaysShown == true) {
         assert(widget.controller != null);
+        print('justin didupdate forward');
         _fadeoutAnimationController.animateTo(1.0);
       } else {
+        print('justin didupdate reverse');
         _fadeoutAnimationController.reverse();
       }
     }
@@ -308,6 +324,7 @@ class _CupertinoScrollbarState extends State<CupertinoScrollbar> with TickerProv
     if (!widget.isAlwaysShown) {
       _fadeoutTimer?.cancel();
       _fadeoutTimer = Timer(_kScrollbarTimeToFade, () {
+        print('justin start reverse');
         _fadeoutAnimationController.reverse();
         _fadeoutTimer = null;
       });
@@ -392,15 +409,24 @@ class _CupertinoScrollbarState extends State<CupertinoScrollbar> with TickerProv
       return false;
     }
 
+    print('justin handlescrollnotification ${notification is ScrollUpdateNotification || notification is OverscrollNotification}, ${_fadeoutAnimationController.status}');
     if (notification is ScrollUpdateNotification ||
         notification is OverscrollNotification) {
       // Any movements always makes the scrollbar start showing up.
       if (_fadeoutAnimationController.status != AnimationStatus.forward) {
+        print('justin notification forward');
         _fadeoutAnimationController.forward();
       }
 
-      _fadeoutTimer?.cancel();
       _painter.update(notification.metrics, notification.metrics.axisDirection);
+      if (!widget.isAlwaysShown) {
+        _fadeoutTimer?.cancel();
+        _fadeoutTimer = Timer(_kScrollbarTimeToFade, () {
+          print('justin fadeout reverse from notification');
+          _fadeoutAnimationController.reverse();
+          _fadeoutTimer = null;
+        });
+      }
     } else if (notification is ScrollEndNotification) {
       // On iOS, the scrollbar can only go away once the user lifted the finger.
       if (_dragScrollbarPositionY == null) {

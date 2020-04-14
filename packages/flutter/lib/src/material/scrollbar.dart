@@ -107,6 +107,16 @@ class _ScrollbarState extends State<Scrollbar> with TickerProviderStateMixin {
         _materialPainter = _buildMaterialScrollbarPainter();
         _useCupertinoScrollbar = false;
         WidgetsBinding.instance.addPostFrameCallback((Duration duration) {
+          assert(!(widget.isAlwaysShown && widget.controller == null));
+          if (widget.controller != null) {
+            // Wait one frame and cause an empty scroll event.  This allows the
+            // thumb to show immediately when isAlwaysShown is true.  A scroll
+            // event is required in order to paint the thumb.
+            widget.controller.position.didUpdateScrollPositionBy(0);
+          }
+        });
+        /*
+        WidgetsBinding.instance.addPostFrameCallback((Duration duration) {
           if (widget.isAlwaysShown) {
             assert(widget.controller != null);
             // Wait one frame and cause an empty scroll event.  This allows the
@@ -115,6 +125,7 @@ class _ScrollbarState extends State<Scrollbar> with TickerProviderStateMixin {
             widget.controller.position.didUpdateScrollPositionBy(0);
           }
         });
+        */
         break;
     }
     assert(_useCupertinoScrollbar != null);
