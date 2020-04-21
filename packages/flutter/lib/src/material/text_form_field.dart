@@ -163,6 +163,9 @@ class TextFormField extends FormField<String> {
     ValueChanged<String> onFieldSubmitted,
     FormFieldSetter<String> onSaved,
     FormFieldValidator<String> validator,
+    // TODO(justinmc): Do dropdownbuttonformfield as well.
+    // Deprecate .validate(), can you? Deprecate autovalidate, always true?
+    bool hideError = false,
     List<TextInputFormatter> inputFormatters,
     bool enabled = true,
     double cursorWidth = 2.0,
@@ -202,6 +205,7 @@ class TextFormField extends FormField<String> {
     initialValue: controller != null ? controller.text : (initialValue ?? ''),
     onSaved: onSaved,
     validator: validator,
+    hideError: hideError,
     autovalidate: autovalidate,
     enabled: enabled,
     builder: (FormFieldState<String> field) {
@@ -217,7 +221,9 @@ class TextFormField extends FormField<String> {
       return TextField(
         controller: state._effectiveController,
         focusNode: focusNode,
-        decoration: effectiveDecoration.copyWith(errorText: field.errorText),
+        decoration: field.hideError == true
+            ? effectiveDecoration
+            : effectiveDecoration.copyWith(errorText: field.errorText),
         keyboardType: keyboardType,
         textInputAction: textInputAction,
         style: style,

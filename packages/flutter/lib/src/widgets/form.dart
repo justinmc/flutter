@@ -280,6 +280,7 @@ class FormField<T> extends StatefulWidget {
   const FormField({
     Key key,
     @required this.builder,
+    this.hideError = false,
     this.onSaved,
     this.validator,
     this.initialValue,
@@ -287,6 +288,10 @@ class FormField<T> extends StatefulWidget {
     this.enabled = true,
   }) : assert(builder != null),
        super(key: key);
+
+  // TODO(justinmc): docs
+  /// Yes.
+  final bool hideError;
 
   /// An optional method to call with the final value when the form is saved via
   /// [FormState.save].
@@ -337,6 +342,8 @@ class FormField<T> extends StatefulWidget {
 class FormFieldState<T> extends State<FormField<T>> {
   T _value;
   String _errorText;
+  bool _touched;
+  bool _saved;
 
   /// The current value of the form field.
   T get value => _value;
@@ -349,6 +356,18 @@ class FormFieldState<T> extends State<FormField<T>> {
   /// True if this field has any validation errors.
   bool get hasError => _errorText != null;
 
+  // TODO(justinmc): Are there any downsides to storing this state for the
+  // user? Are these the values we want to save? Rename to changed?
+  /// True if this field has been touched by the user so [didChange] has been
+  /// called since the field's initialization or reset.
+  ///
+  /// Manually setting the [value] does not trigger an update on [touched].
+  bool get touched => _touched;
+
+  /// True if [FormField.save] has ever been called since its initialization or
+  /// reset.
+  bool get saved => _saved;
+
   /// True if the current value is valid.
   ///
   /// This will not set [errorText] or [hasError] and it will not update
@@ -359,8 +378,13 @@ class FormFieldState<T> extends State<FormField<T>> {
   ///  * [validate], which may update [errorText] and [hasError].
   bool get isValid => widget.validator?.call(_value) == null;
 
+  bool get hideError => widget.hideError;
+
   /// Calls the [FormField]'s onSaved method with the current value.
   void save() {
+    setState(() {
+      _saved = true;
+    });
     if (widget.onSaved != null)
       widget.onSaved(value);
   }
@@ -370,6 +394,8 @@ class FormFieldState<T> extends State<FormField<T>> {
     setState(() {
       _value = widget.initialValue;
       _errorText = null;
+      _touched = false;
+      _saved = false;
     });
   }
 
@@ -399,6 +425,7 @@ class FormFieldState<T> extends State<FormField<T>> {
   /// field is set, revalidates all the fields of the form.
   void didChange(T value) {
     setState(() {
+      _touched = true;
       _value = value;
     });
     Form.of(context)?._fieldDidChange();
@@ -419,6 +446,8 @@ class FormFieldState<T> extends State<FormField<T>> {
   @override
   void initState() {
     super.initState();
+    _saved = false;
+    _touched = false;
     _value = widget.initialValue;
   }
 
