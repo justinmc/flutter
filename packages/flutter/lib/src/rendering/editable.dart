@@ -1831,6 +1831,7 @@ class RenderEditable extends RenderBox with RelayoutWhenSystemFontsChangeMixin {
   }
   @override
   void performLayout() {
+    final BoxConstraints denseConstraints = BoxConstraints(minWidth: 414.0, maxWidth: 414.0, minHeight: 0.0, maxHeight: 18.0);
     final BoxConstraints constraints = this.constraints;
     _layoutText(minWidth: constraints.minWidth, maxWidth: constraints.maxWidth);
     _caretPrototype = _getCaretPrototype;
@@ -1849,6 +1850,7 @@ class RenderEditable extends RenderBox with RelayoutWhenSystemFontsChangeMixin {
     size = Size(width, constraints.constrainHeight(_preferredHeight(constraints.maxWidth)));
     final Size contentSize = Size(textPainterSize.width + _caretMargin, textPainterSize.height);
     _maxScrollExtent = _getMaxScrollExtent(contentSize);
+    print('justin textPainter constraints $constraints vs dense $denseConstraints w size $size and scroll $_maxScrollExtent and viewportextent $_viewportExtent');
     offset.applyViewportDimension(_viewportExtent);
     offset.applyContentDimensions(0.0, _maxScrollExtent);
   }

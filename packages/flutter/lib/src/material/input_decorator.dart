@@ -960,6 +960,13 @@ class _RenderDecoration extends RenderBox {
       'TextField that contains it.',
     );
 
+    // TODO(justinmc): Ok the contentpadding helps fix it (plus changing minHeight
+    // below), but what is different about when the text surpasses the length?
+    // Note that interactiveAdjustment is also different with/without isDense.
+    // I think that accounts for the misalignment (but not the cutoff).
+    //print('justin contentpadding $contentPadding');
+    final EdgeInsets contentPaddingDense = const EdgeInsets.fromLTRB(0.0, 8.0, 0.0, 8.0);
+
     // Margin on each side of subtext (counter and helperError)
     final Map<RenderBox, double> boxToBaseline = <RenderBox, double>{};
     final BoxConstraints boxConstraints = layoutConstraints.loosen();
@@ -1022,6 +1029,9 @@ class _RenderDecoration extends RenderBox {
       counterHeight,
       helperErrorHeight,
     );
+    // TODO(justinmc): What causes the whiteout is actually laying this input
+    // out with narrow constraints. But doesn't explain why only when the line
+    // overflows does it whiteout.
     boxToBaseline[input] = _layoutLineBox(
       input,
       boxConstraints.deflate(EdgeInsets.only(
