@@ -949,15 +949,27 @@ class _InteractiveViewerState extends State<InteractiveViewer> with TickerProvid
 
   @override
   Widget build(BuildContext context) {
+    // TODO(justinmc): Some permutation of FittedBox etc. should make this work.
     Widget child = Transform(
       transform: _transformationController.value,
-      child: KeyedSubtree(
-        key: _childKey,
-        child: widget.child,
+      child: ClipRect(
+        child: FittedBox(
+          key: _childKey,
+          alignment: Alignment.topLeft,
+          fit: BoxFit.fitWidth,
+          child: widget.child,
+        ),
       ),
     );
 
+    /*
     if (!widget.constrained) {
+      child = FittedBox(
+        alignment: Alignment.topLeft,
+        fit: BoxFit.fitWidth,
+        child: child,
+      );
+      /*
       child = ClipRect(
         child: OverflowBox(
           alignment: Alignment.topLeft,
@@ -968,7 +980,9 @@ class _InteractiveViewerState extends State<InteractiveViewer> with TickerProvid
           child: child,
         ),
       );
+      */
     }
+    */
 
     // A GestureDetector allows the detection of panning and zooming gestures on
     // the child.
