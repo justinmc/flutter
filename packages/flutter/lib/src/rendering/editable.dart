@@ -542,6 +542,45 @@ class RenderEditable extends RenderBox with RelayoutWhenSystemFontsChangeMixin {
     }
   }
 
+  // Wikipedia https://en.wikipedia.org/wiki/UTF-16#Code_points_from_U+010000_to_U+10FFFF
+  static bool _isHighUtf16Surrogate(int value) {
+    // 0xD800–0xDBFF
+    return value >= 0xD800 && value <= 0xDBFF;
+  }
+  static bool _isUtf16Surrogate(int value) {
+    return value & 0xF800 == 0xD800;
+  }
+
+  static int nextCharacter(int index, String string, [bool includeWhitespace = true]) {
+    assert(index >= 0 && index <= string.length);
+    if (index == string.length) {
+      return string.length;
+    }
+
+    for (final int i = index; i < string.length - 1; i += 1) {
+      String character = string[i];
+
+      if (_isUtf16Surrogate(string.codeUnitAt(i))) {
+      }
+    }
+
+    while (!isBoundary) {
+    }
+
+    int count = 0;
+    final Characters remaining = string.characters.skipWhile((String currentString) {
+      if (count <= index) {
+        count += currentString.length;
+        return true;
+      }
+      if (includeWhitespace) {
+        return false;
+      }
+      return _isWhitespace(currentString.characters.first.toString().codeUnitAt(0));
+    });
+    return string.length - remaining.toString().length;
+  }
+
   /// Returns the index into the string of the next character boundary after the
   /// given index.
   ///
@@ -554,7 +593,7 @@ class RenderEditable extends RenderBox with RelayoutWhenSystemFontsChangeMixin {
   /// Setting includeWhitespace to false will only return the index of non-space
   /// characters.
   @visibleForTesting
-  static int nextCharacter(int index, String string, [bool includeWhitespace = true]) {
+  static int nextCharacterOld(int index, String string, [bool includeWhitespace = true]) {
     assert(index >= 0 && index <= string.length);
     if (index == string.length) {
       return string.length;
