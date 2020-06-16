@@ -945,7 +945,9 @@ void main() {
     });
 
     test('handles surrogate pairs correctly', () {
+      print('justin go');
       expect(RenderEditable.nextCharacter(3, '0123👨👩👦0123'), 4);
+      print('justin went');
       expect(RenderEditable.nextCharacter(4, '0123👨👩👦0123'), 6);
       expect(RenderEditable.nextCharacter(5, '0123👨👩👦0123'), 6);
       expect(RenderEditable.nextCharacter(6, '0123👨👩👦0123'), 8);

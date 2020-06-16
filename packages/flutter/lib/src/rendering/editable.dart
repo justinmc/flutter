@@ -543,13 +543,13 @@ class RenderEditable extends RenderBox with RelayoutWhenSystemFontsChangeMixin {
   }
 
   // Wikipedia https://en.wikipedia.org/wiki/UTF-16#Code_points_from_U+010000_to_U+10FFFF
-  static bool _isHighUtf16Surrogate(int value) {
-    // 0xD800–0xDBFF
-    return value >= 0xD800 && value <= 0xDBFF;
+  // Low is first character in surrogate pair.
+  // TODO(justinmc): Clean up docs.
+  static bool _isLowUtf16Surrogate(int value) {
+    // 0xDC00–0xDFFF
+    return value >= 0xDC00 && value <= 0xDFFF;
   }
-  static bool _isUtf16Surrogate(int value) {
-    return value & 0xF800 == 0xD800;
-  }
+  static const int _zwjUtf16 = 0x200d;
 
   static int nextCharacter(int index, String string, [bool includeWhitespace = true]) {
     assert(index >= 0 && index <= string.length);
@@ -557,28 +557,24 @@ class RenderEditable extends RenderBox with RelayoutWhenSystemFontsChangeMixin {
       return string.length;
     }
 
-    for (final int i = index; i < string.length - 1; i += 1) {
-      String character = string[i];
+    for (int i = index + 1; i < string.length - 1; i += 1) {
+      final int codeUnit = string.codeUnitAt(i);
 
-      if (_isUtf16Surrogate(string.codeUnitAt(i))) {
+      // TODO(justinmc): This works except that after I find a zwj, I should
+      // skip the following character as well. Also the code is weird with the
+      // continues. Probably use a while?
+      if (_isLowUtf16Surrogate(codeUnit)) {
+        continue;
       }
+      if (codeUnit == _zwjUtf16) {
+        continue;
+      }
+      if (!includeWhitespace && _isWhitespace(codeUnit)) {
+        continue;
+      }
+      return i;
     }
-
-    while (!isBoundary) {
-    }
-
-    int count = 0;
-    final Characters remaining = string.characters.skipWhile((String currentString) {
-      if (count <= index) {
-        count += currentString.length;
-        return true;
-      }
-      if (includeWhitespace) {
-        return false;
-      }
-      return _isWhitespace(currentString.characters.first.toString().codeUnitAt(0));
-    });
-    return string.length - remaining.toString().length;
+    return string.length;
   }
 
   /// Returns the index into the string of the next character boundary after the
