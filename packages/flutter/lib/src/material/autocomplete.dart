@@ -53,11 +53,21 @@ typedef Future<List<T>> ItemsGetter<T>(String query);
 /// A widget that allows the selection of an item based on an optional typed
 /// query.
 class Autocomplete<T> extends StatefulWidget {
-  Autocomplete({
+  /// Create an instance of Autocomplete.
+  const Autocomplete({
+    // TODO(justinmc): Do I really want this parameter? What about throttling?
+    // What if the user wants to do this themselves?
+    this.debounceDuration = Duration.zero,
     this.getItems,
-  });
+    this.items,
+  }) : assert(debounceDuration != null);
+
+  final Duration debounceDuration;
 
   final ItemsGetter<T> getItems;
+
+  /// A static list of options.
+  final List<T> items;
 
   @override
   _AutocompleteState<T> createState() => _AutocompleteState<T>();
@@ -67,6 +77,13 @@ class _AutocompleteState<T> extends State<Autocomplete<T>> {
   final TextEditingController _controller = TextEditingController();
   List<T> _items = <T>[];
   bool _loading = false;
+
+  // TODO(justinmc): Dynamic, or not static and use T?
+  static List<dynamic> search(List<dynamic> items, String query) {
+    return items.where((dynamic item) {
+      return item.toString().contains(query);
+    }).toList();
+  }
 
   @override
   void dispose() {
@@ -84,16 +101,21 @@ class _AutocompleteState<T> extends State<Autocomplete<T>> {
             hintText: 'Search here!',
           ),
           onChanged: (String value) {
-            setState(() {
-              _loading = true;
-            });
-            // TODO(justinmc): For example, debouncing should be done by
-            // default, but the user should be able to disable it, do their own
-            // debouncing, etc.  Ideally this wouldn't be done with lots of
-            // different config parameters.
+            if (widget.items == null) {
+              setState(() {
+                _loading = true;
+              });
+            }
             Debounce(
-              duration: const Duration(seconds: 1),
+              duration: widget.debounceDuration,
               callback: () async {
+                if (widget.items != null) {
+                  setState(() {
+                    _items = search(widget.items, value) as List<T>;
+                  });
+                  return;
+                }
+
                 // TODO(justinmc): Error handling.
                 final List<T> items = await widget.getItems(value);
                 if (mounted) {
@@ -120,7 +142,6 @@ class _AutocompleteState<T> extends State<Autocomplete<T>> {
                   },
                   child: ListTile(
                     title: Text(item.toString()),
-                    subtitle: Text('\$${item.toString()}'),
                   ),
                 )).toList(),
           ),
