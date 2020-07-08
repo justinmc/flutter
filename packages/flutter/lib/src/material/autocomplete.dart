@@ -58,13 +58,13 @@ class Autocomplete<T> extends StatefulWidget {
     // TODO(justinmc): Do I really want this parameter? What about throttling?
     // What if the user wants to do this themselves?
     this.debounceDuration = Duration.zero,
-    this.getItems,
+    this.onSearch,
     this.items,
   }) : assert(debounceDuration != null);
 
   final Duration debounceDuration;
 
-  final ItemsGetter<T> getItems;
+  final ItemsGetter<T> onSearch;
 
   /// A static list of options.
   final List<T> items;
@@ -97,7 +97,7 @@ class _AutocompleteState<T> extends State<Autocomplete<T>> {
       children: <Widget>[
         TextFormField(
           controller: _controller,
-          decoration: InputDecoration(
+          decoration: const InputDecoration(
             hintText: 'Search here!',
           ),
           onChanged: (String value) {
@@ -106,6 +106,7 @@ class _AutocompleteState<T> extends State<Autocomplete<T>> {
                 _loading = true;
               });
             }
+            // TODO(justinmc): Could this speed up by calling at leading edge?
             Debounce(
               duration: widget.debounceDuration,
               callback: () async {
@@ -117,7 +118,10 @@ class _AutocompleteState<T> extends State<Autocomplete<T>> {
                 }
 
                 // TODO(justinmc): Error handling.
-                final List<T> items = await widget.getItems(value);
+                // TODO(justinmc): It shouldn't be possible to have multiple
+                // searches happening at the same time. Autocomplete's
+                // responsibility or not?
+                final List<T> items = await widget.onSearch(value);
                 if (mounted) {
                   setState(() {
                     _loading = false;
