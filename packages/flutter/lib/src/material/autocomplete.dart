@@ -154,3 +154,24 @@ class _AutocompleteState<T> extends State<Autocomplete<T>> {
     );
   }
 }
+
+/*
+   What if it's actually a class with several notifiers?
+class AutocompleteController extends ValueNotifier<String> {
+  /// Create an instance of AutocompleteController whose initial value is the
+  /// given String.
+  AutocompleteController([String value]) : super(value);
+}
+*/
+
+class AutocompleteController<T> {
+  /// Create an instance of AutocompleteController.
+  AutocompleteController({
+    TextEditingController textEditingController,
+    List<T> results,
+  }) : this.textEditingController = textEditingController ?? TextEditingController(),
+       this.results = <T>[];
+
+  final TextEditingController textEditingController;
+  final List<T> results;
+}
