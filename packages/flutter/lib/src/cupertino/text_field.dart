@@ -108,7 +108,20 @@ class _CupertinoTextFieldSelectionGestureDetectorBuilder extends TextSelectionGe
         return;
       }
     }
+
+    bool toolbarWasShown = false;
+    if (_state._effectiveFocusNode.hasFocus) {
+      toolbarWasShown = !editableText.showToolbar();
+    }
+
     super.onSingleTapUp(details);
+
+    
+    // TODO(justinmc): This works but is sketchy. Can cupertino text_selection handle this?
+    if (_state._effectiveFocusNode.hasFocus && !toolbarWasShown) {
+      editableText.showToolbar();
+    }
+
     _state._requestKeyboard();
     if (_state.widget.onTap != null)
       _state.widget.onTap();

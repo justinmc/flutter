@@ -1829,6 +1829,7 @@ class RenderEditable extends RenderBox with RelayoutWhenSystemFontsChangeMixin {
            _textLayoutLastMinWidth == constraints.minWidth,
       'Last width ($_textLayoutLastMinWidth, $_textLayoutLastMaxWidth) not the same as max width constraint (${constraints.minWidth}, ${constraints.maxWidth}).');
     final TextRange word = _textPainter.getWordBoundary(position);
+    print('justin selected word $word |${word.textInside(text.text)}|');
     // When long-pressing past the end of the text, we want a collapsed cursor.
     if (position.offset >= word.end)
       return TextSelection.fromPosition(position);

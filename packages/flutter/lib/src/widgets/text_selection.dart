@@ -520,6 +520,7 @@ class TextSelectionOverlay {
   ///
   /// To hide the whole overlay, see [hide].
   void hideToolbar() {
+    print('justin hide toolbar');
     assert(_toolbar != null);
     _toolbarController.stop();
     _toolbar.remove();
@@ -995,6 +996,7 @@ class TextSelectionGestureDetectorBuilder {
   ///    this callback.
   @protected
   void onSingleTapUp(TapUpDetails details) {
+    print('justin ontapup for both text selection');
     if (delegate.selectionEnabled) {
       renderEditable.selectWordEdge(cause: SelectionChangedCause.tap);
     }
@@ -1076,6 +1078,13 @@ class TextSelectionGestureDetectorBuilder {
   void onDoubleTapDown(TapDownDetails details) {
     if (delegate.selectionEnabled) {
       renderEditable.selectWord(cause: SelectionChangedCause.tap);
+      // TODO(justinmc): This solution causes a flash. I must prevent the call to
+      // selectWord (or do something inside of selectWord). However, this must
+      // only happen for Android text selection. Can I override onDoubleTapDown
+      // in the material text selection?
+      if (editableText.widget.controller.selection.textInside(editableText.widget.controller.text) == '\n') {
+        renderEditable.selectWordEdge(cause: SelectionChangedCause.tap);
+      }
       if (shouldShowSelectionToolbar)
         editableText.showToolbar();
     }
