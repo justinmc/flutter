@@ -60,7 +60,10 @@ class Autocomplete<T> extends StatefulWidget {
     this.debounceDuration = Duration.zero,
     this.onSearch,
     this.items,
+    this.autocompleteController,
   }) : assert(debounceDuration != null);
+
+  final AutocompleteController autocompleteController;
 
   final Duration debounceDuration;
 
@@ -96,7 +99,7 @@ class _AutocompleteState<T> extends State<Autocomplete<T>> {
     return Column(
       children: <Widget>[
         TextFormField(
-          controller: _controller,
+          controller: widget.autocompleteController.textEditingController,
           decoration: const InputDecoration(
             hintText: 'Search here!',
           ),
@@ -164,14 +167,66 @@ class AutocompleteController extends ValueNotifier<String> {
 }
 */
 
+class SimplestAutocomplete extends StatelessWidget {
+  SimplestAutocomplete({
+    /*
+    this.debounceDuration = Duration.zero,
+    this.onSearch,
+    this.items,
+    */
+    this.autocompleteController,
+  });
+
+  final AutocompleteController autocompleteController;
+
+  @override
+  Widget build(BuildContext context) {
+  }
+}
+
+// 1. Take a TextEditingController.
+// 2. When textEditingController changes value, search.
+// 3. User can provide their own search method, sync or async.
+typedef List<T> SearchFunction<T>(String query);
+typedef void OnChangeResults<T>(List<T> results);
+
 class AutocompleteController<T> {
   /// Create an instance of AutocompleteController.
   AutocompleteController({
-    TextEditingController textEditingController,
-    List<T> results,
-  }) : this.textEditingController = textEditingController ?? TextEditingController(),
-       this.results = <T>[];
+    @required this.onChangeResults,
+    this.options,
+    this.search,
+    // TODO(justinmc): Is it possible to make this a string valuenotifier?
+    @required this.textEditingController,
+  }) : assert(onChangeResults != null),
+       assert(search != null || options != null, "If a search function isn't specified, Autocomplete will search by string on the given options."),
+       assert(textEditingController != null) {
+    textEditingController.addListener(_onQueryChanged);
+  }
 
+  final List<T> options;
   final TextEditingController textEditingController;
-  final List<T> results;
+  final OnChangeResults<T> onChangeResults; 
+  final SearchFunction<T> search;
+
+  // Called when textEditingController reports a change in its value.
+  void _onQueryChanged() {
+    final List<T> results = search == null
+        ? _searchByString(textEditingController.value.text)
+        : search(textEditingController.value.text);
+    assert(results != null);
+    onChangeResults(results);
+  }
+
+  // The default search function, if one wasn't supplied.
+  List<T> _searchByString(String query) {
+    return options
+        .where((T option) => option.toString().contains(query))
+        .toList();
+  }
+
+  void dispose() {
+    textEditingController.removeListener(_onQueryChanged);
+    textEditingController.dispose();
+  }
 }
