@@ -155,7 +155,7 @@ class Form extends StatefulWidget {
 /// Typically obtained via [Form.of].
 class FormState extends State<Form> {
   int _generation = 0;
-  bool _hasInteractedByUser = false;
+  bool get _hasInteractedByUser => _fields.any((FormFieldState<dynamic> field) => field.hasInteractedByUser);
   final Set<FormFieldState<dynamic>> _fields = <FormFieldState<dynamic>>{};
 
   // Called when a form field has changed. This will cause all form fields
@@ -163,10 +163,6 @@ class FormState extends State<Form> {
   void _fieldDidChange({FormFieldState<dynamic> changedFieldState}) {
     if (widget.onChanged != null)
       widget.onChanged();
-
-    if (changedFieldState != null) {
-      _hasInteractedByUser = changedFieldState._hasInteractedByUser;
-    }
     _forceRebuild();
   }
 
@@ -225,7 +221,6 @@ class FormState extends State<Form> {
   void reset() {
     for (final FormFieldState<dynamic> field in _fields)
       field.reset();
-    _hasInteractedByUser = false;
     _fieldDidChange();
   }
 
@@ -234,7 +229,6 @@ class FormState extends State<Form> {
   ///
   /// The form will rebuild to report the results.
   bool validate() {
-    _hasInteractedByUser = true;
     _forceRebuild();
     return _validate();
   }
@@ -397,7 +391,7 @@ class FormField<T> extends StatefulWidget {
 class FormFieldState<T> extends State<FormField<T>> {
   T _value;
   String _errorText;
-  bool _hasInteractedByUser = false;
+  bool hasInteractedByUser = false;
 
   /// The current value of the form field.
   T get value => _value;
@@ -430,7 +424,7 @@ class FormFieldState<T> extends State<FormField<T>> {
   void reset() {
     setState(() {
       _value = widget.initialValue;
-      _hasInteractedByUser = false;
+      hasInteractedByUser = false;
       _errorText = null;
     });
     Form.of(context)?._fieldDidChange(changedFieldState: this);
@@ -464,7 +458,7 @@ class FormFieldState<T> extends State<FormField<T>> {
   void didChange(T value) {
     setState(() {
       _value = value;
-      _hasInteractedByUser = true;
+      hasInteractedByUser = true;
     });
     Form.of(context)?._fieldDidChange(changedFieldState: this);
   }
@@ -501,7 +495,7 @@ class FormFieldState<T> extends State<FormField<T>> {
           _validate();
           break;
         case AutovalidateMode.onUserInteraction:
-          if (_hasInteractedByUser) {
+          if (hasInteractedByUser) {
             _validate();
           }
           break;
