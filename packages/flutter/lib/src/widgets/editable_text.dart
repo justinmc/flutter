@@ -1673,8 +1673,11 @@ class EditableTextState extends State<EditableText> with AutomaticKeepAliveClien
     if (!_hasInputConnection)
       return;
     final TextEditingValue localValue = _value;
+    print('justin _updateRemoteEditingValueIfNeeded ${localValue.text} == ${_receivedRemoteTextEditingValue.text} ${localValue == _receivedRemoteTextEditingValue}');
     if (localValue == _receivedRemoteTextEditingValue)
       return;
+    // TODO(justinmc): iOS calls back from this setEditingState in the engine.
+    // Android does not.
     _textInputConnection.setEditingState(localValue);
   }
 
@@ -1952,6 +1955,14 @@ class EditableTextState extends State<EditableText> with AutomaticKeepAliveClien
   _WhitespaceDirectionalityFormatter _whitespaceFormatter;
 
   void _formatAndSetValue(TextEditingValue value) {
+    print('justin _formatAndSetValue ${value.text}');
+    /*
+    try {
+      throw FlutterError('oh no');
+    } catch(e, stacktrace) {
+      print(stacktrace);
+    }
+    */
     _whitespaceFormatter ??= _WhitespaceDirectionalityFormatter(textDirection: _textDirection);
 
     // Check if the new value is the same as the current local value, or is the same

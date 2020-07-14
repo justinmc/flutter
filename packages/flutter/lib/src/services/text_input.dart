@@ -1154,6 +1154,8 @@ class TextInput {
       return;
     switch (method) {
       case 'TextInputClient.updateEditingState':
+        final TextEditingValue value = TextEditingValue.fromJSON(args[1] as Map<String, dynamic>);
+        print('justin updateEditingState, meaning the engine is sending a value to the framework. ${value.text}');
         _currentConnection._client.updateEditingValue(TextEditingValue.fromJSON(args[1] as Map<String, dynamic>));
         break;
       case 'TextInputClient.performAction':
