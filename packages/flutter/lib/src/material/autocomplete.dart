@@ -252,6 +252,11 @@ typedef Widget _ResultsBuilder<T>(
   _OnSelected _onSelected,
 );
 
+typedef Widget _FieldBuilder(
+  BuildContext context,
+  TextEditingController textEditingController,
+);
+
 // TODO(justinmc): Need Cupertino version!
 class AutocompleteFullyCustomizable<T> extends StatefulWidget {
   AutocompleteFullyCustomizable({
@@ -266,8 +271,14 @@ class AutocompleteFullyCustomizable<T> extends StatefulWidget {
   }) : assert(autocompleteController != null),
        buildResults = _buildFloatingResults;
 
+  AutocompleteFullyCustomizable.cupertino({
+    @required this.autocompleteController,
+    this.buildResults,
+  }) : assert(autocompleteController != null),
+       buildField = _buildCupertinoField;
+
   final AutocompleteController<T> autocompleteController;
-  final WidgetBuilder buildField;
+  final _FieldBuilder buildField;
   final _ResultsBuilder<T> buildResults;
 
   static Widget _buildFloatingResults<T>(
@@ -280,7 +291,15 @@ class AutocompleteFullyCustomizable<T> extends StatefulWidget {
       results: results,
     );
   }
-}
+
+  static Widget _buildCupertinoField<T>(BuildContext context, TextEditingController controller) {
+    return TextFormField(
+      controller: controller,
+      decoration: const InputDecoration(
+        hintText: 'Pretend this is Cupertino',
+      ),
+    );
+  }
 
   @override
   AutocompleteFullyCustomizableState<T> createState() =>
@@ -351,7 +370,7 @@ class AutocompleteFullyCustomizableState<T> extends State<AutocompleteFullyCusto
             controller: widget.autocompleteController.textEditingController,
           ),
         if (widget.buildField != null)
-          widget.buildField(context),
+          widget.buildField(context, widget.autocompleteController.textEditingController),
         // Results list.
         if (_selection == null)
           Expanded(
