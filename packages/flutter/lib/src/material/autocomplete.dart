@@ -246,10 +246,13 @@ class AutocompleteBasicOwnControllerState<T> extends State<AutocompleteBasicOwnC
   }
 }
 
-// TODO(justinmc): This should accept builders and controller.
-// AutocompleteBasicOwnController should build this widget with AutocompleteFormField
-// etc. passed into builders.
-// Need Cupertino version!
+typedef Widget _ResultsBuilder<T>(
+  BuildContext context,
+  List<T> results,
+  _OnSelected _onSelected,
+);
+
+// TODO(justinmc): Need Cupertino version!
 class AutocompleteFullyCustomizable<T> extends StatefulWidget {
   AutocompleteFullyCustomizable({
     @required this.autocompleteController,
@@ -257,9 +260,27 @@ class AutocompleteFullyCustomizable<T> extends StatefulWidget {
     this.buildResults,
   }) : assert(autocompleteController != null);
 
+  AutocompleteFullyCustomizable.floatingResults({
+    @required this.autocompleteController,
+    this.buildField,
+  }) : assert(autocompleteController != null),
+       buildResults = _buildFloatingResults;
+
   final AutocompleteController<T> autocompleteController;
   final WidgetBuilder buildField;
-  final WidgetBuilder buildResults;
+  final _ResultsBuilder<T> buildResults;
+
+  static Widget _buildFloatingResults<T>(
+    BuildContext context,
+    List<T> results,
+    _OnSelected onSelected,
+  ) {
+    return _AutocompleteResultsFloating<T>(
+      onSelected: onSelected,
+      results: results,
+    );
+  }
+}
 
   @override
   AutocompleteFullyCustomizableState<T> createState() =>
@@ -282,27 +303,41 @@ class AutocompleteFullyCustomizableState<T> extends State<AutocompleteFullyCusto
     });
   }
 
+  void _onSelected (T result) {
+    setState(() {
+      _selection = result;
+      widget.autocompleteController.textEditingController.text = result.toString();
+    });
+  }
+
+  void _listenToController(AutocompleteController<T> autocompleteController) {
+    autocompleteController.results.addListener(_onChangeResults);
+    autocompleteController.textEditingController.addListener(_onChangeQuery);
+  }
+
+  void _unlistenToController(AutocompleteController<T> autocompleteController) {
+    autocompleteController.results.removeListener(_onChangeResults);
+    autocompleteController.textEditingController.removeListener(_onChangeQuery);
+  }
+
   @override
   void initState() {
     super.initState();
-    widget.autocompleteController.results.addListener(_onChangeResults);
-    widget.autocompleteController.textEditingController.addListener(_onChangeQuery);
+    _listenToController(widget.autocompleteController);
   }
 
   @override
   void didUpdateWidget(AutocompleteFullyCustomizable<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.autocompleteController != oldWidget.autocompleteController) {
-      oldWidget.autocompleteController.results.removeListener(_onChangeResults);
-      oldWidget.autocompleteController.textEditingController.removeListener(_onChangeQuery);
+      _unlistenToController(oldWidget.autocompleteController);
+      _listenToController(widget.autocompleteController);
     }
   }
 
   @override
   void dispose() {
-    // TODO(justinmc): Abstract setup and teardown of controller to methods.
-    widget.autocompleteController.results.removeListener(_onChangeResults);
-    widget.autocompleteController.textEditingController.removeListener(_onChangeQuery);
+    _unlistenToController(widget.autocompleteController);
     super.dispose();
   }
 
@@ -322,15 +357,14 @@ class AutocompleteFullyCustomizableState<T> extends State<AutocompleteFullyCusto
           Expanded(
             child: widget.buildResults == null
               ? _AutocompleteResults<T>(
-                onSelected: (T result) {
-                  setState(() {
-                    _selection = result;
-                    widget.autocompleteController.textEditingController.text = result.toString();
-                  });
-                },
+                onSelected: _onSelected,
                 results: widget.autocompleteController.results.value,
               )
-            : widget.buildResults(context),
+            : widget.buildResults(
+                context,
+                widget.autocompleteController.results.value,
+                _onSelected,
+              ),
           ),
       ],
     );
@@ -355,6 +389,7 @@ class _AutocompleteField extends StatelessWidget {
   }
 }
 
+// TODO(justinmc): This should be public if we use it.
 typedef void _OnSelected<T>(T result);
 
 // The list of results to choose from.
@@ -382,6 +417,31 @@ class _AutocompleteResults<T> extends StatelessWidget {
   }
 }
 
+class _AutocompleteResultsFloating<T> extends StatelessWidget {
+  _AutocompleteResultsFloating({
+    this.onSelected,
+    this.results,
+  });
+
+  final List<T> results;
+  final _OnSelected<T> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      children: results.map((T result) => GestureDetector(
+        onTap: () {
+          onSelected(result);
+        },
+        child: ListTile(
+          title: Text(result.toString()),
+          subtitle: const Text('We should be floating!'),
+        ),
+      )).toList(),
+    );
+  }
+}
+
 // 1. Take a TextEditingController.
 // 2. When textEditingController changes value, search.
 // 3. User can provide their own search method, sync or async.
@@ -392,7 +452,9 @@ class AutocompleteController<T> {
   AutocompleteController({
     this.options,
     this.search,
-    // TODO(justinmc): Is it possible to make this a string valuenotifier?
+    // TODO(justinmc): Is it possible to make this a string valuenotifier? That
+    // would enable the support of querying using something other than a text
+    // field. Maybe that's not a common scenario though.
     TextEditingController textEditingController,
   }) : assert(search != null || options != null, "If a search function isn't specified, Autocomplete will search by string on the given options."),
        textEditingController = textEditingController ?? TextEditingController() {
