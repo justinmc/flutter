@@ -1527,6 +1527,7 @@ class EditableTextState extends State<EditableText> with AutomaticKeepAliveClien
   @override
   TextEditingValue get currentTextEditingValue => _value;
 
+  // TODO(justinmc): This is where we receive values from engine.
   @override
   void updateEditingValue(TextEditingValue value) {
     // Since we still have to support keyboard select, this is the best place
@@ -1534,6 +1535,13 @@ class EditableTextState extends State<EditableText> with AutomaticKeepAliveClien
     if (widget.readOnly) {
       return;
     }
+
+    if (_sentTextEditingValue != null && value.text != _sentTextEditingValue.text) {
+      print('justin framework received a value that didnt match what was sent. Received ${value.text} vs. sent ${_sentTextEditingValue.text}');
+      return;
+    }
+    _sentTextEditingValue = null;
+
     _receivedRemoteTextEditingValue = value;
     if (value.text != _value.text) {
       hideToolbar();
@@ -1669,15 +1677,17 @@ class EditableTextState extends State<EditableText> with AutomaticKeepAliveClien
       widget.onSubmitted(_value.text);
   }
 
+  // TODO(justinmc): Is this where the framework sends a value to the engine?
+  TextEditingValue _sentTextEditingValue;
   void _updateRemoteEditingValueIfNeeded() {
     if (!_hasInputConnection)
       return;
     final TextEditingValue localValue = _value;
-    print('justin _updateRemoteEditingValueIfNeeded ${localValue.text} == ${_receivedRemoteTextEditingValue.text} ${localValue == _receivedRemoteTextEditingValue}');
+    //print('justin _updateRemoteEditingValueIfNeeded ${localValue.text} == ${_receivedRemoteTextEditingValue.text} ${localValue == _receivedRemoteTextEditingValue}');
     if (localValue == _receivedRemoteTextEditingValue)
       return;
-    // TODO(justinmc): iOS calls back from this setEditingState in the engine.
-    // Android does not.
+    print('justin framework wants to send this to engine: ${localValue.text}');
+    _sentTextEditingValue = localValue;
     _textInputConnection.setEditingState(localValue);
   }
 
@@ -1955,7 +1965,7 @@ class EditableTextState extends State<EditableText> with AutomaticKeepAliveClien
   _WhitespaceDirectionalityFormatter _whitespaceFormatter;
 
   void _formatAndSetValue(TextEditingValue value) {
-    print('justin _formatAndSetValue ${value.text}');
+    //print('justin _formatAndSetValue ${value.text}');
     /*
     try {
       throw FlutterError('oh no');
