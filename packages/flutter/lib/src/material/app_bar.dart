@@ -208,6 +208,7 @@ class AppBar extends StatefulWidget implements PreferredSizeWidget {
     this.toolbarOpacity = 1.0,
     this.bottomOpacity = 1.0,
     this.toolbarHeight,
+    this.leadingWidth,
   }) : assert(automaticallyImplyLeading != null),
        assert(elevation == null || elevation >= 0.0),
        assert(primary != null),
@@ -221,9 +222,9 @@ class AppBar extends StatefulWidget implements PreferredSizeWidget {
   ///
   /// Typically the [leading] widget is an [Icon] or an [IconButton].
   ///
-  /// Becomes the leading component of the [NavigationToolBar] built
+  /// Becomes the leading component of the [NavigationToolbar] built
   /// by this widget. The [leading] widget's width and height are constrained to
-  /// be no bigger than [kToolbarHeight] and [toolbarHeight] respectively.
+  /// be no bigger than [leadingWidth] and [toolbarHeight] respectively.
   ///
   /// If this is null and [automaticallyImplyLeading] is set to true, the
   /// [AppBar] will imply an appropriate widget. For example, if the [AppBar] is
@@ -276,7 +277,7 @@ class AppBar extends StatefulWidget implements PreferredSizeWidget {
   /// Typically a [Text] widget that contains a description of the current
   /// contents of the app.
   ///
-  /// Becomes the middle component of the [NavigationToolBar] built by this widget.
+  /// Becomes the middle component of the [NavigationToolbar] built by this widget.
   /// The [title]'s width is constrained to fit within the remaining space
   /// between the toolbar's [leading] and [actions] widgets. Its height is
   /// _not_ constrained. The [title] is vertically centered and clipped to fit
@@ -309,7 +310,7 @@ class AppBar extends StatefulWidget implements PreferredSizeWidget {
   /// For less common operations, consider using a [PopupMenuButton] as the
   /// last action.
   ///
-  /// The [actions] become the trailing component of the [NavigationToolBar] built
+  /// The [actions] become the trailing component of the [NavigationToolbar] built
   /// by this widget. The height of each action is constrained to be no bigger
   /// than the [toolbarHeight].
   final List<Widget> actions;
@@ -340,16 +341,16 @@ class AppBar extends StatefulWidget implements PreferredSizeWidget {
   ///
   /// The value is non-negative.
   ///
-  /// If this property is null, then [ThemeData.appBarTheme.elevation] is used,
-  /// if that is also null, the default value is 4, the appropriate elevation
-  /// for app bars.
+  /// If this property is null, then [AppBarTheme.elevation] of
+  /// [ThemeData.appBarTheme] is used. If that is also null, the default value
+  /// is 4.
   final double elevation;
 
   /// The color to paint the shadow below the app bar.
   ///
-  /// If this property is null, then [ThemeData.appBarTheme.shadowColor] is used,
-  /// if that is also null, the default value is fully opaque black, the appropriate
-  /// color for shadows.
+  /// If this property is null, then [AppBarTheme.shadowColor] of
+  /// [ThemeData.appBarTheme] is used. If that is also null, the default value
+  /// is fully opaque black.
   final Color shadowColor;
 
   /// The material's shape as well its shadow.
@@ -361,22 +362,25 @@ class AppBar extends StatefulWidget implements PreferredSizeWidget {
   /// The color to use for the app bar's material. Typically this should be set
   /// along with [brightness], [iconTheme], [textTheme].
   ///
-  /// If this property is null, then [ThemeData.appBarTheme.color] is used,
-  /// if that is also null, then [ThemeData.primaryColor] is used.
+  /// If this property is null, then [AppBarTheme.color] of
+  /// [ThemeData.appBarTheme] is used. If that is also null, then
+  /// [ThemeData.primaryColor] is used.
   final Color backgroundColor;
 
   /// The brightness of the app bar's material. Typically this is set along
   /// with [backgroundColor], [iconTheme], [textTheme].
   ///
-  /// If this property is null, then [ThemeData.appBarTheme.brightness] is used,
-  /// if that is also null, then [ThemeData.primaryColorBrightness] is used.
+  /// If this property is null, then [AppBarTheme.brightness] of
+  /// [ThemeData.appBarTheme] is used. If that is also null, then
+  /// [ThemeData.primaryColorBrightness] is used.
   final Brightness brightness;
 
   /// The color, opacity, and size to use for app bar icons. Typically this
   /// is set along with [backgroundColor], [brightness], [textTheme].
   ///
-  /// If this property is null, then [ThemeData.appBarTheme.iconTheme] is used,
-  /// if that is also null, then [ThemeData.primaryIconTheme] is used.
+  /// If this property is null, then [AppBarTheme.iconTheme] of
+  /// [ThemeData.appBarTheme] is used. If that is also null, then
+  /// [ThemeData.primaryIconTheme] is used.
   final IconThemeData iconTheme;
 
   /// The color, opacity, and size to use for the icons that appear in the app
@@ -384,15 +388,17 @@ class AppBar extends StatefulWidget implements PreferredSizeWidget {
   /// themed differently than the icon that appears in the app bar's [leading]
   /// widget.
   ///
-  /// If this property is null, then [ThemeData.appBarTheme.actionsIconTheme] is
-  /// used, if that is also null, then this falls back to [iconTheme].
+  /// If this property is null, then [AppBarTheme.actionsIconTheme] of
+  /// [ThemeData.appBarTheme] is used. If that is also null, then this falls
+  /// back to [iconTheme].
   final IconThemeData actionsIconTheme;
 
   /// The typographic styles to use for text in the app bar. Typically this is
   /// set along with [brightness] [backgroundColor], [iconTheme].
   ///
-  /// If this property is null, then [ThemeData.appBarTheme.textTheme] is used,
-  /// if that is also null, then [ThemeData.primaryTextTheme] is used.
+  /// If this property is null, then [AppBarTheme.textTheme] of
+  /// [ThemeData.appBarTheme] is used. If that is also null, then
+  /// [ThemeData.primaryTextTheme] is used.
   final TextTheme textTheme;
 
   /// Whether this app bar is being displayed at the top of the screen.
@@ -404,8 +410,9 @@ class AppBar extends StatefulWidget implements PreferredSizeWidget {
 
   /// Whether the title should be centered.
   ///
-  /// If this property is null, then [ThemeData.appBarTheme.centerTitle] is used,
-  /// if that is also null, then value is adapted to the current [TargetPlatform].
+  /// If this property is null, then [AppBarTheme.centerTitle] of
+  /// [ThemeData.appBarTheme] is used. If that is also null, then value is
+  /// adapted to the current [TargetPlatform].
   final bool centerTitle;
 
   /// Whether the title should be wrapped with header [Semantics].
@@ -449,6 +456,11 @@ class AppBar extends StatefulWidget implements PreferredSizeWidget {
   ///
   /// By default, the value of `toolbarHeight` is [kToolbarHeight].
   final double toolbarHeight;
+
+  /// Defines the width of [leading] widget.
+  ///
+  /// By default, the value of `leadingWidth` is 56.0.
+  final double leadingWidth;
 
   bool _getEffectiveCenterTitle(ThemeData theme) {
     if (centerTitle != null)
@@ -543,7 +555,7 @@ class _AppBarState extends State<AppBar> {
     }
     if (leading != null) {
       leading = ConstrainedBox(
-        constraints: const BoxConstraints.tightFor(width: _kLeadingWidth),
+        constraints: BoxConstraints.tightFor(width: widget.leadingWidth ?? _kLeadingWidth),
         child: leading,
       );
     }
@@ -584,19 +596,16 @@ class _AppBarState extends State<AppBar> {
       // sizes. To opt out, wrap the [title] widget in a [MediaQuery] widget
       // with [MediaQueryData.textScaleFactor] set to
       // `MediaQuery.textScaleFactorOf(context)`.
-      // ignore: deprecated_member_use_from_same_package
-      if (appBarTheme?.shouldCapTextScaleForTitle == true) {
-        final MediaQueryData mediaQueryData = MediaQuery.of(context);
-        title = MediaQuery(
-          data: mediaQueryData.copyWith(
-            textScaleFactor: math.min(
-              mediaQueryData.textScaleFactor,
-              _kMaxTitleTextScaleFactor,
-            ),
+      final MediaQueryData mediaQueryData = MediaQuery.of(context);
+      title = MediaQuery(
+        data: mediaQueryData.copyWith(
+          textScaleFactor: math.min(
+            mediaQueryData.textScaleFactor,
+            _kMaxTitleTextScaleFactor,
           ),
-          child: title,
-        );
-      }
+        ),
+        child: title,
+      );
     }
 
     Widget actions;
@@ -684,7 +693,12 @@ class _AppBarState extends State<AppBar> {
         fit: StackFit.passthrough,
         children: <Widget>[
           widget.flexibleSpace,
-          appBar,
+          // Creates a material widget to prevent the flexibleSpace from
+          // obscuring the ink splashes produced by appBar children.
+          Material(
+            type: MaterialType.transparency,
+            child: appBar,
+          ),
         ],
       );
     }
@@ -801,6 +815,7 @@ class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
     @required this.stretchConfiguration,
     @required this.shape,
     @required this.toolbarHeight,
+    @required this.leadingWidth,
   }) : assert(primary || topPadding == 0.0),
        _bottomHeight = bottom?.preferredSize?.height ?? 0.0;
 
@@ -829,6 +844,7 @@ class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
   final bool pinned;
   final ShapeBorder shape;
   final double toolbarHeight;
+  final double leadingWidth;
 
   final double _bottomHeight;
 
@@ -884,6 +900,7 @@ class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
         toolbarOpacity: toolbarOpacity,
         bottomOpacity: pinned ? 1.0 : ((visibleMainHeight / _bottomHeight).clamp(0.0, 1.0) as double),
         toolbarHeight: toolbarHeight,
+        leadingWidth: leadingWidth,
       ),
     );
     return floating ? _FloatingAppBar(child: appBar) : appBar;
@@ -915,7 +932,8 @@ class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
         || snapConfiguration != oldDelegate.snapConfiguration
         || stretchConfiguration != oldDelegate.stretchConfiguration
         || forceElevated != oldDelegate.forceElevated
-        || toolbarHeight != oldDelegate.toolbarHeight;
+        || toolbarHeight != oldDelegate.toolbarHeight
+        || leadingWidth != leadingWidth;
   }
 
   @override
@@ -1037,6 +1055,7 @@ class SliverAppBar extends StatefulWidget {
     this.onStretchTrigger,
     this.shape,
     this.toolbarHeight = kToolbarHeight,
+    this.leadingWidth,
   }) : assert(automaticallyImplyLeading != null),
        assert(forceElevated != null),
        assert(primary != null),
@@ -1110,6 +1129,9 @@ class SliverAppBar extends StatefulWidget {
   /// This widget is stacked behind the toolbar and the tab bar. It's height will
   /// be the same as the app bar's overall height.
   ///
+  /// When using [SliverAppBar.flexibleSpace], the [SliverAppBar.expandedHeight]
+  /// must be large enough to accommodate the [SliverAppBar.flexibleSpace] widget.
+  ///
   /// Typically a [FlexibleSpaceBar]. See [FlexibleSpaceBar] for details.
   final Widget flexibleSpace;
 
@@ -1126,9 +1148,9 @@ class SliverAppBar extends StatefulWidget {
   /// The z-coordinate at which to place this app bar when it is above other
   /// content. This controls the size of the shadow below the app bar.
   ///
-  /// If this property is null, then [ThemeData.appBarTheme.elevation] is used,
-  /// if that is also null, the default value is 4, the appropriate elevation
-  /// for app bars.
+  /// If this property is null, then [AppBarTheme.elevation] of
+  /// [ThemeData.appBarTheme] is used, if that is also null, the default value
+  /// is 4.
   ///
   /// If [forceElevated] is false, the elevation is ignored when the app bar has
   /// no content underneath it. For example, if the app bar is [pinned] but no
@@ -1139,9 +1161,9 @@ class SliverAppBar extends StatefulWidget {
   /// The color to paint the shadow below the app bar. Typically this should be set
   /// along with [elevation].
   ///
-  /// If this property is null, then [ThemeData.appBarTheme.shadowColor] is used,
-  /// if that is also null, the default value is fully opaque black, the appropriate
-  /// color for shadows.
+  /// If this property is null, then [AppBarTheme.shadowColor] of
+  /// [ThemeData.appBarTheme] is used, if that is also null, the default value
+  /// is fully opaque black.
   final Color shadowColor;
 
   /// Whether to show the shadow appropriate for the [elevation] even if the
@@ -1158,37 +1180,42 @@ class SliverAppBar extends StatefulWidget {
   /// The color to use for the app bar's material. Typically this should be set
   /// along with [brightness], [iconTheme], [textTheme].
   ///
-  /// If this property is null, then [ThemeData.appBarTheme.color] is used,
-  /// if that is also null, then [ThemeData.primaryColor] is used.
+  /// If this property is null, then [AppBarTheme.color] of
+  /// [ThemeData.appBarTheme] is used. If that is also null, then
+  /// [ThemeData.primaryColor] is used.
   final Color backgroundColor;
 
   /// The brightness of the app bar's material. Typically this is set along
   /// with [backgroundColor], [iconTheme], [textTheme].
   ///
-  /// If this property is null, then [ThemeData.appBarTheme.brightness] is used,
-  /// if that is also null, then [ThemeData.primaryColorBrightness] is used.
+  /// If this property is null, then [AppBarTheme.brightness] of
+  /// [ThemeData.appBarTheme] is used. If that is also null, then
+  /// [ThemeData.primaryColorBrightness] is used.
   final Brightness brightness;
 
   /// The color, opacity, and size to use for app bar icons. Typically this
   /// is set along with [backgroundColor], [brightness], [textTheme].
   ///
-  /// If this property is null, then [ThemeData.appBarTheme.iconTheme] is used,
-  /// if that is also null, then [ThemeData.primaryIconTheme] is used.
+  /// If this property is null, then [AppBarTheme.iconTheme] of
+  /// [ThemeData.appBarTheme] is used, if that is also null, then
+  /// [ThemeData.primaryIconTheme] is used.
   final IconThemeData iconTheme;
 
   /// The color, opacity, and size to use for trailing app bar icons. This
   /// should only be used when the trailing icons should be themed differently
   /// than the leading icons.
   ///
-  /// If this property is null, then [ThemeData.appBarTheme.actionsIconTheme] is
-  /// used, if that is also null, then this falls back to [iconTheme].
+  /// If this property is null, then [AppBarTheme.actionsIconTheme] of
+  /// [ThemeData.appBarTheme] is used, if that is also null, then this falls
+  /// back to [iconTheme].
   final IconThemeData actionsIconTheme;
 
   /// The typographic styles to use for text in the app bar. Typically this is
   /// set along with [brightness] [backgroundColor], [iconTheme].
   ///
-  /// If this property is null, then [ThemeData.appBarTheme.textTheme] is used,
-  /// if that is also null, then [ThemeData.primaryTextTheme] is used.
+  /// If this property is null, then [AppBarTheme.textTheme] of
+  /// [ThemeData.appBarTheme] is used, if that is also null, then
+  /// [ThemeData.primaryTextTheme] is used.
   final TextTheme textTheme;
 
   /// Whether this app bar is being displayed at the top of the screen.
@@ -1216,14 +1243,14 @@ class SliverAppBar extends StatefulWidget {
 
   /// Defines the height of the app bar when it is collapsed.
   ///
-  /// By default, the collapsed height is [toolbarHeight]. If [bottom] widget
-  /// is specified, then its [bottom.preferredSize.height] is added to the
-  /// height. If [primary] is true, then the [MediaQuery] top padding,
-  /// [MediaQueryData.padding.top], is added as well.
+  /// By default, the collapsed height is [toolbarHeight]. If [bottom] widget is
+  /// specified, then its height from [PreferredSizeWidget.preferredSize] is
+  /// added to the height. If [primary] is true, then the [MediaQuery] top
+  /// padding, [EdgeInsets.top] of [MediaQueryData.padding], is added as well.
   ///
   /// If [pinned] and [floating] are true, with [bottom] set, the default
-  /// collapsed height is only [bottom.preferredSize.height] with the
-  /// [MediaQuery] top padding.
+  /// collapsed height is only the height of [PreferredSizeWidget.preferredSize]
+  /// with the [MediaQuery] top padding.
   final double collapsedHeight;
 
   /// The size of the app bar when it is fully expanded.
@@ -1335,6 +1362,11 @@ class SliverAppBar extends StatefulWidget {
   /// By default, the value of `toolbarHeight` is [kToolbarHeight].
   final double toolbarHeight;
 
+  /// Defines the width of [leading] widget.
+  ///
+  /// By default, the value of `leadingWidth` is 56.0.
+  final double leadingWidth;
+
   @override
   _SliverAppBarState createState() => _SliverAppBarState();
 }
@@ -1427,6 +1459,7 @@ class _SliverAppBarState extends State<SliverAppBar> with TickerProviderStateMix
           snapConfiguration: _snapConfiguration,
           stretchConfiguration: _stretchConfiguration,
           toolbarHeight: widget.toolbarHeight,
+          leadingWidth: widget.leadingWidth,
         ),
       ),
     );

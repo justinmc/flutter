@@ -55,7 +55,7 @@ void main() {
       expect(tester.hitTestOnBinding(const Offset(100.0, 300.0)), hits(renderPhysicalShape));
       expect(tester.hitTestOnBinding(const Offset(100.0, 299.0)), doesNotHit(renderPhysicalShape));
       expect(tester.hitTestOnBinding(const Offset(100.0, 301.0)), doesNotHit(renderPhysicalShape));
-    }, skip: isBrowser);
+    });
 
   });
 
@@ -269,7 +269,61 @@ void main() {
         tester.getTopLeft(find.byKey(key2)).dy,
         closeTo(aboveBaseline1 - aboveBaseline2, .001),
       );
-    }, skip: isBrowser);
+    });
+
+    testWidgets('baseline aligned children account for a larger, no-baseline child size', (WidgetTester tester) async {
+      // Regression test for https://github.com/flutter/flutter/issues/58898
+      final UniqueKey key1 = UniqueKey();
+      final UniqueKey key2 = UniqueKey();
+      const double fontSize1 = 54;
+      const double fontSize2 = 14;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Container(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: <Widget>[
+                  Text('big text',
+                    key: key1,
+                    style: const TextStyle(fontSize: fontSize1),
+                  ),
+                  Text('one\ntwo\nthree\nfour\nfive\nsix\nseven',
+                    key: key2,
+                    style: const TextStyle(fontSize: fontSize2),
+                  ),
+                  const FlutterLogo(size: 250),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final RenderBox textBox1 = tester.renderObject(find.byKey(key1));
+      final RenderBox textBox2 = tester.renderObject(find.byKey(key2));
+      final RenderBox rowBox = tester.renderObject(find.byType(Row));
+
+      // The two Texts are baseline aligned, so some portion of them extends
+      // both above and below the baseline. The first has a huge font size, so
+      // it extends higher above the baseline than usual. The second has many
+      // lines, but being aligned by the first line's baseline, they hang far
+      // below the baseline. The FlutterLogo extends further than both Texts,
+      // so the size of the parent row should contain the FlutterLogo as well.
+      const double ahemBaselineLocation = 0.8; // https://web-platform-tests.org/writing-tests/ahem.html
+      const double aboveBaseline1 = fontSize1 * ahemBaselineLocation;
+      const double aboveBaseline2 = fontSize2 * ahemBaselineLocation;
+      expect(rowBox.size.height, greaterThan(textBox1.size.height));
+      expect(rowBox.size.height, greaterThan(textBox2.size.height));
+      expect(rowBox.size.height, 250);
+      expect(tester.getTopLeft(find.byKey(key1)).dy, 0);
+      expect(
+        tester.getTopLeft(find.byKey(key2)).dy,
+        closeTo(aboveBaseline1 - aboveBaseline2, .001),
+      );
+    });
   });
 
   test('UnconstrainedBox toString', () {
@@ -397,8 +451,7 @@ void main() {
       find.byType(RepaintBoundary),
       matchesGoldenFile('inconsequential_golden_file.png'),
     );
-    // TODO(Piinks): Remove skip once web goldens are supported, https://github.com/flutter/flutter/issues/40297
-  }, skip: isBrowser);
+  });
 
   testWidgets('IgnorePointer ignores pointers', (WidgetTester tester) async {
     final List<String> logs = <String>[];

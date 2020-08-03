@@ -11,8 +11,6 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
-import 'button_bar.dart';
-import 'button_theme.dart';
 import 'color_scheme.dart';
 import 'colors.dart';
 import 'constants.dart';
@@ -20,7 +18,6 @@ import 'curves.dart';
 import 'debug.dart';
 import 'dialog.dart';
 import 'feedback.dart';
-import 'flat_button.dart';
 import 'icon_button.dart';
 import 'icons.dart';
 import 'ink_well.dart';
@@ -29,6 +26,7 @@ import 'input_decorator.dart';
 import 'material.dart';
 import 'material_localizations.dart';
 import 'material_state.dart';
+import 'text_button.dart';
 import 'text_form_field.dart';
 import 'text_theme.dart';
 import 'theme.dart';
@@ -1430,8 +1428,9 @@ class _TimePickerInputState extends State<_TimePickerInput> {
                     ),
                 ],
               )),
-              Padding(
-                padding: const EdgeInsets.only(top: 20.0),
+              Container(
+                margin: const EdgeInsets.only(top: 8.0),
+                height: _kTimePickerHeaderControlHeight,
                 child: _StringFragment(timeOfDayFormat: timeOfDayFormat),
               ),
               Expanded(child: Column(
@@ -1532,17 +1531,19 @@ class _HourMinuteTextFieldState extends State<_HourMinuteTextField> {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
+    final TimePickerThemeData timePickerTheme = TimePickerTheme.of(context);
     final ColorScheme colorScheme = theme.colorScheme;
 
-    final InputDecorationTheme inputDecorationTheme = TimePickerTheme.of(context).inputDecorationTheme;
+    final InputDecorationTheme inputDecorationTheme = timePickerTheme.inputDecorationTheme;
     InputDecoration inputDecoration;
     if (inputDecorationTheme != null) {
       inputDecoration = const InputDecoration().applyDefaults(inputDecorationTheme);
     } else {
+      final Color unfocusedFillColor = timePickerTheme.hourMinuteColor ?? colorScheme.onSurface.withOpacity(0.12);
       inputDecoration = InputDecoration(
-        contentPadding: const EdgeInsetsDirectional.only(bottom: 16.0, start: 3.0),
+        contentPadding: EdgeInsets.zero,
         filled: true,
-        fillColor: focusNode.hasFocus ? colorScheme.surface : colorScheme.onSurface.withOpacity(0.12),
+        fillColor: focusNode.hasFocus ? Colors.transparent : unfocusedFillColor,
         enabledBorder: const OutlineInputBorder(
           borderSide: BorderSide(color: Colors.transparent),
         ),
@@ -1566,28 +1567,26 @@ class _HourMinuteTextFieldState extends State<_HourMinuteTextField> {
       hintText: focusNode.hasFocus ? null : _formattedValue,
     );
 
-    return Column(
-      children: <Widget>[
-        SizedBox(
-          height: _kTimePickerHeaderControlHeight,
-          child: MediaQuery(
-            data: MediaQuery.of(context).copyWith(textScaleFactor: 1.0),
-            child: TextFormField(
-              focusNode: focusNode,
-              textAlign: TextAlign.center,
-              keyboardType: TextInputType.number,
-              style: widget.style.copyWith(color: colorScheme.onSurface),
-              controller: controller,
-              decoration: inputDecoration,
-              validator: widget.validator,
-              onEditingComplete: () => widget.onSavedSubmitted(controller.text),
-              onSaved: widget.onSavedSubmitted,
-              onFieldSubmitted: widget.onSavedSubmitted,
-              onChanged: widget.onChanged,
-            ),
-          ),
+    return SizedBox(
+      height: _kTimePickerHeaderControlHeight,
+      child: MediaQuery(
+        data: MediaQuery.of(context).copyWith(textScaleFactor: 1.0),
+        child: TextFormField(
+          expands: true,
+          maxLines: null,
+          focusNode: focusNode,
+          textAlign: TextAlign.center,
+          keyboardType: TextInputType.number,
+          style: widget.style.copyWith(color: colorScheme.onSurface),
+          controller: controller,
+          decoration: inputDecoration,
+          validator: widget.validator,
+          onEditingComplete: () => widget.onSavedSubmitted(controller.text),
+          onSaved: widget.onSavedSubmitted,
+          onFieldSubmitted: widget.onSavedSubmitted,
+          onChanged: widget.onChanged,
         ),
-      ],
+      ),
     );
   }
 }
@@ -1826,19 +1825,24 @@ class _TimePickerDialogState extends State<_TimePickerDialog> {
               : MaterialLocalizations.of(context).dialModeButtonLabel,
         ),
         Expanded(
-          // TODO(rami-a): Move away from ButtonBar to avoid https://github.com/flutter/flutter/issues/53378.
-          child: ButtonBar(
-            layoutBehavior: ButtonBarLayoutBehavior.constrained,
-            children: <Widget>[
-              FlatButton(
-                onPressed: _handleCancel,
-                child: Text(widget.cancelText ?? localizations.cancelButtonLabel),
-              ),
-              FlatButton(
-                onPressed: _handleOk,
-                child: Text(widget.confirmText ?? localizations.okButtonLabel),
-              ),
-            ],
+          child: Container(
+            alignment: AlignmentDirectional.centerEnd,
+            constraints: const BoxConstraints(minHeight: 52.0),
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: OverflowBar(
+              spacing: 8,
+              overflowAlignment: OverflowBarAlignment.end,
+              children: <Widget>[
+                TextButton(
+                  onPressed: _handleCancel,
+                  child: Text(widget.cancelText ?? localizations.cancelButtonLabel),
+                ),
+                TextButton(
+                  onPressed: _handleOk,
+                  child: Text(widget.confirmText ?? localizations.okButtonLabel),
+                ),
+              ],
+            ),
           ),
         ),
       ],
@@ -1980,7 +1984,7 @@ class _TimePickerDialogState extends State<_TimePickerDialog> {
 /// to add inherited widgets like [Localizations.override],
 /// [Directionality], or [MediaQuery].
 ///
-/// The [entryMode] parameter can be used to
+/// The `initialEntryMode` parameter can be used to
 /// determine the initial time entry selection of the picker (either a clock
 /// dial or text input).
 ///
