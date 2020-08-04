@@ -15,18 +15,25 @@ class AutocompleteDividedCupertino<T> extends StatelessWidget {
     this.buildResults,
   }) : assert(autocompleteController != null);
 
+  AutocompleteDividedCupertino.floatingResults({
+    @required this.autocompleteController,
+    this.buildField,
+    ResultsBuilder<T> buildResults,
+  }) : assert(autocompleteController != null),
+       buildResults = AutocompleteDivided.floatBuildResults<T>(buildResults ?? _buildResults);
+
   final AutocompleteController<T> autocompleteController;
   final ResultsBuilder<T> buildResults;
   final FieldBuilder buildField;
 
   static Widget _buildField<T>(BuildContext context, TextEditingController controller) {
-    return AutocompleteDividedCupertinoField<T>(
+    return _AutocompleteDividedCupertinoField<T>(
       controller: controller,
     );
   }
 
   static Widget _buildResults<T>(BuildContext context, List<T> results, OnSelected<T> onSelected) {
-    return AutocompleteDividedCupertinoResults<T>(
+    return _AutocompleteDividedCupertinoResults<T>(
       onSelected: onSelected,
       results: results,
     );
@@ -42,8 +49,8 @@ class AutocompleteDividedCupertino<T> extends StatelessWidget {
   }
 }
 
-class AutocompleteDividedCupertinoField<T> extends StatelessWidget {
-  AutocompleteDividedCupertinoField({
+class _AutocompleteDividedCupertinoField<T> extends StatelessWidget {
+  _AutocompleteDividedCupertinoField({
     Key key,
     this.controller,
   }) : super(key: key);
@@ -58,8 +65,8 @@ class AutocompleteDividedCupertinoField<T> extends StatelessWidget {
   }
 }
 
-class AutocompleteDividedCupertinoResults<T> extends StatelessWidget {
-  AutocompleteDividedCupertinoResults({
+class _AutocompleteDividedCupertinoResults<T> extends StatelessWidget {
+  _AutocompleteDividedCupertinoResults({
     Key key,
     @required this.onSelected,
     @required this.results,
@@ -72,18 +79,16 @@ class AutocompleteDividedCupertinoResults<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: ListView(
-        children: results.map((T result) => GestureDetector(
-          onTap: () {
-            onSelected(result);
-          },
-          // TODO(justinmc): This is really ugly.
-          child: Container(
-            child: Text(result.toString()),
-          ),
-        )).toList(),
-      ),
+    return ListView(
+      children: results.map((T result) => GestureDetector(
+        onTap: () {
+          onSelected(result);
+        },
+        // TODO(justinmc): This is really visually ugly.
+        child: Container(
+          child: Text(result.toString()),
+        ),
+      )).toList(),
     );
   }
 }

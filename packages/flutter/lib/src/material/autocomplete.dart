@@ -52,6 +52,7 @@ typedef Future<List<T>> ItemsGetter<T>(String query);
 // in a larger form.
 /// A widget that allows the selection of an item based on an optional typed
 /// query.
+/*
 class Autocomplete<T> extends StatefulWidget {
   /// Create an instance of Autocomplete.
   const Autocomplete({
@@ -157,6 +158,7 @@ class _AutocompleteState<T> extends State<Autocomplete<T>> {
     );
   }
 }
+*/
 
 /*
    What if it's actually a class with several notifiers?
@@ -168,6 +170,7 @@ class AutocompleteController extends ValueNotifier<String> {
 */
 
 // The simplest Autocomplete.
+/*
 class AutocompleteBasicOwnController<T> extends StatefulWidget {
   AutocompleteBasicOwnController({
     Key key,
@@ -245,6 +248,7 @@ class AutocompleteBasicOwnControllerState<T> extends State<AutocompleteBasicOwnC
     );
   }
 }
+*/
 
 /*
 class AutocompleteFullyCustomizable<T> extends StatefulWidget {
@@ -373,7 +377,7 @@ class AutocompleteFullyCustomizableState<T> extends State<AutocompleteFullyCusto
 }
 */
 
-class AutocompleteDividedMaterial<T> extends StatefulWidget {
+class AutocompleteDividedMaterial<T> extends StatelessWidget {
   AutocompleteDividedMaterial({
     @required this.autocompleteController,
     this.buildField,
@@ -383,124 +387,33 @@ class AutocompleteDividedMaterial<T> extends StatefulWidget {
   AutocompleteDividedMaterial.floatingResults({
     @required this.autocompleteController,
     this.buildField,
+    ResultsBuilder<T> buildResults,
   }) : assert(autocompleteController != null),
-       buildResults = _buildFloatingResults;
-
-  AutocompleteDividedMaterial.cupertino({
-    @required this.autocompleteController,
-    this.buildResults,
-  }) : assert(autocompleteController != null),
-       buildField = _buildCupertinoField;
+       buildResults = AutocompleteDivided.floatBuildResults<T>(buildResults ?? _buildResults);
 
   final AutocompleteController<T> autocompleteController;
   final FieldBuilder buildField;
   final ResultsBuilder<T> buildResults;
 
-  static Widget _buildFloatingResults<T>(
-    BuildContext context,
-    List<T> results,
-    OnSelected<T> onSelected,
-  ) {
-    return _AutocompleteResultsFloating<T>(
+  static Widget _buildField<T>(BuildContext context, TextEditingController textEditingController) {
+    return _AutocompleteField(
+      controller: textEditingController,
+    );
+  }
+
+  static Widget _buildResults<T>(BuildContext context, List<T> results, OnSelected<T> onSelected) {
+    return _AutocompleteResults<T>(
       onSelected: onSelected,
       results: results,
     );
   }
 
-  static Widget _buildCupertinoField<T>(BuildContext context, TextEditingController controller) {
-    return TextFormField(
-      controller: controller,
-      decoration: const InputDecoration(
-        hintText: 'Pretend this is Cupertino',
-      ),
-    );
-  }
-
-  @override
-  AutocompleteDividedMaterialState<T> createState() =>
-      AutocompleteDividedMaterialState<T>();
-}
-
-class AutocompleteDividedMaterialState<T> extends State<AutocompleteDividedMaterial<T>> {
-  T _selection;
-
-  void _onChangeResults() {
-    setState(() {});
-  }
-
-  void _onChangeQuery() {
-    if (widget.autocompleteController.textEditingController.value.text == _selection) {
-      return;
-    }
-    setState(() {
-      _selection = null;
-    });
-  }
-
-  void _listenToController(AutocompleteController<T> autocompleteController) {
-    autocompleteController.results.addListener(_onChangeResults);
-    autocompleteController.textEditingController.addListener(_onChangeQuery);
-  }
-
-  void _unlistenToController(AutocompleteController<T> autocompleteController) {
-    autocompleteController.results.removeListener(_onChangeResults);
-    autocompleteController.textEditingController.removeListener(_onChangeQuery);
-  }
-
-  void onSelected (T result) {
-    setState(() {
-      _selection = result;
-      widget.autocompleteController.textEditingController.text = result.toString();
-    });
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _listenToController(widget.autocompleteController);
-  }
-
-  @override
-  void didUpdateWidget(AutocompleteDividedMaterial<T> oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.autocompleteController != oldWidget.autocompleteController) {
-      _unlistenToController(oldWidget.autocompleteController);
-      _listenToController(widget.autocompleteController);
-    }
-  }
-
-  @override
-  void dispose() {
-    _unlistenToController(widget.autocompleteController);
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: <Widget>[
-        // Query field.
-        if (widget.buildField == null)
-          _AutocompleteField(
-            controller: widget.autocompleteController.textEditingController,
-          ),
-        if (widget.buildField != null)
-          widget.buildField(context, widget.autocompleteController.textEditingController),
-        // Results list.
-        if (_selection == null)
-          Expanded(
-            child: widget.buildResults == null
-              ? _AutocompleteResults<T>(
-                onSelected: onSelected,
-                results: widget.autocompleteController.results.value,
-              )
-            : widget.buildResults(
-                context,
-                widget.autocompleteController.results.value,
-                onSelected,
-              ),
-          ),
-      ],
+    return AutocompleteDivided<T>(
+      autocompleteController: autocompleteController,
+      buildField: buildField ?? _buildField,
+      buildResults: buildResults ?? _buildResults,
     );
   }
 }
@@ -539,34 +452,9 @@ class _AutocompleteResults<T> extends StatelessWidget {
       children: results.map((T result) => GestureDetector(
         onTap: () {
           onSelected(result);
-        },
+       },
         child: ListTile(
           title: Text(result.toString()),
-        ),
-      )).toList(),
-    );
-  }
-}
-
-class _AutocompleteResultsFloating<T> extends StatelessWidget {
-  _AutocompleteResultsFloating({
-    this.onSelected,
-    this.results,
-  });
-
-  final List<T> results;
-  final OnSelected<T> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      children: results.map((T result) => GestureDetector(
-        onTap: () {
-          onSelected(result);
-        },
-        child: ListTile(
-          title: Text(result.toString()),
-          subtitle: const Text('We should be floating!'),
         ),
       )).toList(),
     );

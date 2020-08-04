@@ -4,16 +4,16 @@
 
 // @dart = 2.8
 
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import 'basic.dart';
+import 'container.dart';
 import 'editable_text.dart';
 import 'framework.dart';
 
-// 1. Take a TextEditingController.
-// 2. When textEditingController changes value, search.
-// 3. User can provide their own search method, sync or async.
-typedef List<T> SearchFunction<T>(String query);
+typedef FutureOr<List<T>> SearchFunction<T>(String query);
 
 // TODO(justinmc): Rename if we keep this?
 typedef void OnSelected<T>(T result);
@@ -42,17 +42,18 @@ class AutocompleteController<T> {
        textEditingController = textEditingController ?? TextEditingController() {
     this.textEditingController.addListener(_onQueryChanged);
   }
-
   final List<T> options;
   final TextEditingController textEditingController;
   final SearchFunction<T> search;
   final ValueNotifier<List<T>> results = ValueNotifier<List<T>>(<T>[]);
 
   // Called when textEditingController reports a change in its value.
-  void _onQueryChanged() {
+  void _onQueryChanged() async {
+    // TODO(justinmc): Probably also need a value to indicate that we're loading
+    // when search is async. Maybe a value notifier.
     final List<T> resultsValue = search == null
         ? _searchByString(textEditingController.value.text)
-        : search(textEditingController.value.text);
+        : await search(textEditingController.value.text);
     assert(resultsValue != null);
     results.value = resultsValue;
   }
@@ -79,9 +80,27 @@ class AutocompleteDivided<T> extends StatefulWidget {
        assert(buildField != null),
        assert(buildResults != null);
 
+  // TODO(justinmc): Should be in core.
+  AutocompleteDivided.floatingResults({
+    @required this.autocompleteController,
+    @required this.buildField,
+    @required ResultsBuilder<T> buildResults,
+  }) : assert(autocompleteController != null),
+       assert(buildField != null),
+       assert(buildResults != null),
+       buildResults = floatBuildResults<T>(buildResults);
+
   final AutocompleteController<T> autocompleteController;
   final FieldBuilder buildField;
   final ResultsBuilder<T> buildResults;
+
+  // TODO(justinmc): Is this the best way of doing this?
+  static ResultsBuilder<T> floatBuildResults<T>(ResultsBuilder<T> buildResults) {
+    return (BuildContext context, List<T> results, OnSelected<T> onSelected) =>
+      _AutocompleteResultsFloatingWrapper<T>(
+        child: buildResults(context, results, onSelected),
+      );
+  }
 
   @override
   AutocompleteDividedState<T> createState() =>
@@ -150,12 +169,36 @@ class AutocompleteDividedState<T> extends State<AutocompleteDivided<T>> {
           context,
           widget.autocompleteController.textEditingController,
         ),
-        widget.buildResults(
-          context,
-          widget.autocompleteController.results.value,
-          onSelected,
-        ),
+        if (_selection == null)
+          // TODO(justinmc): should this expanded be here?
+          Expanded(
+            child: widget.buildResults(
+              context,
+              widget.autocompleteController.results.value,
+              onSelected,
+            ),
+          ),
       ],
+    );
+  }
+}
+
+class _AutocompleteResultsFloatingWrapper<T> extends StatelessWidget {
+  const _AutocompleteResultsFloatingWrapper({
+    Key key,
+    this.child,
+  }) : super(key: key);
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    // TODO(justinmc): Not really floating.
+    return Container(
+      color: Color(0xffabcdef),
+      width: 200.0,
+      padding: EdgeInsets.all(12.0),
+      child: child,
     );
   }
 }
