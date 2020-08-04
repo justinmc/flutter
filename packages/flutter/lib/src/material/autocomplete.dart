@@ -246,18 +246,7 @@ class AutocompleteBasicOwnControllerState<T> extends State<AutocompleteBasicOwnC
   }
 }
 
-typedef Widget _ResultsBuilder<T>(
-  BuildContext context,
-  List<T> results,
-  _OnSelected _onSelected,
-);
-
-typedef Widget _FieldBuilder(
-  BuildContext context,
-  TextEditingController textEditingController,
-);
-
-// TODO(justinmc): Need Cupertino version!
+/*
 class AutocompleteFullyCustomizable<T> extends StatefulWidget {
   AutocompleteFullyCustomizable({
     @required this.autocompleteController,
@@ -284,7 +273,7 @@ class AutocompleteFullyCustomizable<T> extends StatefulWidget {
   static Widget _buildFloatingResults<T>(
     BuildContext context,
     List<T> results,
-    _OnSelected onSelected,
+    OnSelected onSelected,
   ) {
     return _AutocompleteResultsFloating<T>(
       onSelected: onSelected,
@@ -319,13 +308,6 @@ class AutocompleteFullyCustomizableState<T> extends State<AutocompleteFullyCusto
     }
     setState(() {
       _selection = null;
-    });
-  }
-
-  void _onSelected (T result) {
-    setState(() {
-      _selection = result;
-      widget.autocompleteController.textEditingController.text = result.toString();
     });
   }
 
@@ -376,13 +358,146 @@ class AutocompleteFullyCustomizableState<T> extends State<AutocompleteFullyCusto
           Expanded(
             child: widget.buildResults == null
               ? _AutocompleteResults<T>(
-                onSelected: _onSelected,
+                onSelected: onSelected,
                 results: widget.autocompleteController.results.value,
               )
             : widget.buildResults(
                 context,
                 widget.autocompleteController.results.value,
-                _onSelected,
+                onSelected,
+              ),
+          ),
+      ],
+    );
+  }
+}
+*/
+
+class AutocompleteDividedMaterial<T> extends StatefulWidget {
+  AutocompleteDividedMaterial({
+    @required this.autocompleteController,
+    this.buildField,
+    this.buildResults,
+  }) : assert(autocompleteController != null);
+
+  AutocompleteDividedMaterial.floatingResults({
+    @required this.autocompleteController,
+    this.buildField,
+  }) : assert(autocompleteController != null),
+       buildResults = _buildFloatingResults;
+
+  AutocompleteDividedMaterial.cupertino({
+    @required this.autocompleteController,
+    this.buildResults,
+  }) : assert(autocompleteController != null),
+       buildField = _buildCupertinoField;
+
+  final AutocompleteController<T> autocompleteController;
+  final FieldBuilder buildField;
+  final ResultsBuilder<T> buildResults;
+
+  static Widget _buildFloatingResults<T>(
+    BuildContext context,
+    List<T> results,
+    OnSelected<T> onSelected,
+  ) {
+    return _AutocompleteResultsFloating<T>(
+      onSelected: onSelected,
+      results: results,
+    );
+  }
+
+  static Widget _buildCupertinoField<T>(BuildContext context, TextEditingController controller) {
+    return TextFormField(
+      controller: controller,
+      decoration: const InputDecoration(
+        hintText: 'Pretend this is Cupertino',
+      ),
+    );
+  }
+
+  @override
+  AutocompleteDividedMaterialState<T> createState() =>
+      AutocompleteDividedMaterialState<T>();
+}
+
+class AutocompleteDividedMaterialState<T> extends State<AutocompleteDividedMaterial<T>> {
+  T _selection;
+
+  void _onChangeResults() {
+    setState(() {});
+  }
+
+  void _onChangeQuery() {
+    if (widget.autocompleteController.textEditingController.value.text == _selection) {
+      return;
+    }
+    setState(() {
+      _selection = null;
+    });
+  }
+
+  void _listenToController(AutocompleteController<T> autocompleteController) {
+    autocompleteController.results.addListener(_onChangeResults);
+    autocompleteController.textEditingController.addListener(_onChangeQuery);
+  }
+
+  void _unlistenToController(AutocompleteController<T> autocompleteController) {
+    autocompleteController.results.removeListener(_onChangeResults);
+    autocompleteController.textEditingController.removeListener(_onChangeQuery);
+  }
+
+  void onSelected (T result) {
+    setState(() {
+      _selection = result;
+      widget.autocompleteController.textEditingController.text = result.toString();
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _listenToController(widget.autocompleteController);
+  }
+
+  @override
+  void didUpdateWidget(AutocompleteDividedMaterial<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.autocompleteController != oldWidget.autocompleteController) {
+      _unlistenToController(oldWidget.autocompleteController);
+      _listenToController(widget.autocompleteController);
+    }
+  }
+
+  @override
+  void dispose() {
+    _unlistenToController(widget.autocompleteController);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: <Widget>[
+        // Query field.
+        if (widget.buildField == null)
+          _AutocompleteField(
+            controller: widget.autocompleteController.textEditingController,
+          ),
+        if (widget.buildField != null)
+          widget.buildField(context, widget.autocompleteController.textEditingController),
+        // Results list.
+        if (_selection == null)
+          Expanded(
+            child: widget.buildResults == null
+              ? _AutocompleteResults<T>(
+                onSelected: onSelected,
+                results: widget.autocompleteController.results.value,
+              )
+            : widget.buildResults(
+                context,
+                widget.autocompleteController.results.value,
+                onSelected,
               ),
           ),
       ],
@@ -408,9 +523,6 @@ class _AutocompleteField extends StatelessWidget {
   }
 }
 
-// TODO(justinmc): This should be public if we use it.
-typedef void _OnSelected<T>(T result);
-
 // The list of results to choose from.
 class _AutocompleteResults<T> extends StatelessWidget {
   _AutocompleteResults({
@@ -419,7 +531,7 @@ class _AutocompleteResults<T> extends StatelessWidget {
   });
 
   final List<T> results;
-  final _OnSelected<T> onSelected;
+  final OnSelected<T> onSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -443,7 +555,7 @@ class _AutocompleteResultsFloating<T> extends StatelessWidget {
   });
 
   final List<T> results;
-  final _OnSelected<T> onSelected;
+  final OnSelected<T> onSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -458,51 +570,5 @@ class _AutocompleteResultsFloating<T> extends StatelessWidget {
         ),
       )).toList(),
     );
-  }
-}
-
-// 1. Take a TextEditingController.
-// 2. When textEditingController changes value, search.
-// 3. User can provide their own search method, sync or async.
-typedef List<T> SearchFunction<T>(String query);
-
-class AutocompleteController<T> {
-  /// Create an instance of AutocompleteController.
-  AutocompleteController({
-    this.options,
-    this.search,
-    // TODO(justinmc): Is it possible to make this a string valuenotifier? That
-    // would enable the support of querying using something other than a text
-    // field. Maybe that's not a common scenario though.
-    TextEditingController textEditingController,
-  }) : assert(search != null || options != null, "If a search function isn't specified, Autocomplete will search by string on the given options."),
-       textEditingController = textEditingController ?? TextEditingController() {
-    this.textEditingController.addListener(_onQueryChanged);
-  }
-
-  final List<T> options;
-  final TextEditingController textEditingController;
-  final SearchFunction<T> search;
-  final ValueNotifier<List<T>> results = ValueNotifier<List<T>>(<T>[]);
-
-  // Called when textEditingController reports a change in its value.
-  void _onQueryChanged() {
-    final List<T> resultsValue = search == null
-        ? _searchByString(textEditingController.value.text)
-        : search(textEditingController.value.text);
-    assert(resultsValue != null);
-    results.value = resultsValue;
-  }
-
-  // The default search function, if one wasn't supplied.
-  List<T> _searchByString(String query) {
-    return options
-        .where((T option) => option.toString().contains(query))
-        .toList();
-  }
-
-  void dispose() {
-    textEditingController.removeListener(_onQueryChanged);
-    textEditingController.dispose();
   }
 }
