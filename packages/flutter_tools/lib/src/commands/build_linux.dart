@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// @dart = 2.8
+
 import '../base/analyze_size.dart';
 import '../base/common.dart';
 import '../build_info.dart';
@@ -35,7 +37,7 @@ class BuildLinuxCommand extends BuildSubCommand {
 
   @override
   Future<FlutterCommandResult> runCommand() async {
-    final BuildInfo buildInfo = getBuildInfo();
+    final BuildInfo buildInfo = await getBuildInfo();
     final FlutterProject flutterProject = FlutterProject.current();
     if (!featureFlags.isLinuxEnabled) {
       throwToolExit('"build linux" is not currently supported.');
@@ -43,6 +45,7 @@ class BuildLinuxCommand extends BuildSubCommand {
     if (!globals.platform.isLinux) {
       throwToolExit('"build linux" only supported on Linux hosts.');
     }
+    displayNullSafetyMode(buildInfo);
     await buildLinux(
       flutterProject.linux,
       buildInfo,

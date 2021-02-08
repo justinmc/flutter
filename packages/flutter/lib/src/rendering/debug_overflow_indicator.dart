@@ -5,7 +5,6 @@
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
-import 'package:flutter/painting.dart';
 import 'package:flutter/foundation.dart';
 
 import 'object.dart';
@@ -54,20 +53,20 @@ class _OverflowRegionData {
 /// ```dart
 /// class MyRenderObject extends RenderAligningShiftedBox with DebugOverflowIndicatorMixin {
 ///   MyRenderObject({
-///     AlignmentGeometry alignment,
-///     TextDirection textDirection,
-///     RenderBox child,
+///     AlignmentGeometry alignment = Alignment.center,
+///     TextDirection? textDirection,
+///     RenderBox? child,
 ///   }) : super.mixin(alignment, textDirection, child);
 ///
-///   Rect _containerRect;
-///   Rect _childRect;
+///   late Rect _containerRect;
+///   late Rect _childRect;
 ///
 ///   @override
 ///   void performLayout() {
 ///     // ...
-///     final BoxParentData childParentData = child.parentData;
+///     final BoxParentData childParentData = child!.parentData! as BoxParentData;
 ///     _containerRect = Offset.zero & size;
-///     _childRect = childParentData.offset & child.size;
+///     _childRect = childParentData.offset & child!.size;
 ///   }
 ///
 ///   @override
@@ -101,7 +100,7 @@ mixin DebugOverflowIndicatorMixin on RenderObject {
   );
   static final Paint _indicatorPaint = Paint()
     ..shader = ui.Gradient.linear(
-      const Offset(0.0, 0.0),
+      Offset.zero,
       const Offset(10.0, 10.0),
       <Color>[_black, _yellow, _yellow, _black],
       <double>[0.25, 0.25, 0.75, 0.75],
@@ -120,7 +119,7 @@ mixin DebugOverflowIndicatorMixin on RenderObject {
 
   String _formatPixels(double value) {
     assert(value > 0.0);
-    String pixels;
+    final String pixels;
     if (value > 10.0) {
       pixels = value.toStringAsFixed(0);
     } else if (value > 1.0) {

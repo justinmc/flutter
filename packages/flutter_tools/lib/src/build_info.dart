@@ -2,7 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// @dart = 2.8
+
 import 'package:meta/meta.dart';
+import 'package:package_config/package_config_types.dart';
 
 import 'base/config.dart';
 import 'base/context.dart';
@@ -10,6 +13,7 @@ import 'base/file_system.dart';
 import 'base/logger.dart';
 import 'base/utils.dart';
 import 'build_system/targets/icon_tree_shaker.dart';
+import 'convert.dart';
 import 'globals.dart' as globals;
 
 /// Information about a build to be performed or used.
@@ -31,9 +35,11 @@ class BuildInfo {
     this.dartExperiments = const <String>[],
     @required this.treeShakeIcons,
     this.performanceMeasurementFile,
-    this.packagesPath = '.packages',
-    this.nullSafetyMode = NullSafetyMode.autodetect,
+    this.packagesPath = '.packages', // TODO(jonahwilliams): make this required and remove the default.
+    this.nullSafetyMode = NullSafetyMode.sound,
     this.codeSizeDirectory,
+    this.androidGradleDaemon = true,
+    this.packageConfig = PackageConfig.empty,
   });
 
   final BuildMode mode;
@@ -43,7 +49,7 @@ class BuildInfo {
   /// If not provided, defaults to [NullSafetyMode.autodetect].
   final NullSafetyMode nullSafetyMode;
 
-  /// Whether the build should subdset icon fonts.
+  /// Whether the build should subset icon fonts.
   final bool treeShakeIcons;
 
   /// Represents a custom Android product flavor or an Xcode scheme, null for
@@ -57,7 +63,7 @@ class BuildInfo {
   /// The path to the .packages file to use for compilation.
   ///
   /// This is used by package:package_config to locate the actual package_config.json
-  /// file. If not provded, defaults to `.packages`.
+  /// file. If not provided, defaults to `.packages`.
   final String packagesPath;
 
   final List<String> fileSystemRoots;
@@ -114,9 +120,29 @@ class BuildInfo {
   /// rerun tasks.
   final String performanceMeasurementFile;
 
-  /// If provided, an output directory where one or more v8-style heapsnapshots
+  /// If provided, an output directory where one or more v8-style heap snapshots
   /// will be written for code size profiling.
   final String codeSizeDirectory;
+
+  /// Whether to enable the Gradle daemon when performing an Android build.
+  ///
+  /// Starting the daemon is the default behavior of the gradle wrapper script created
+  /// in a Flutter project. Setting this value to false will cause the tool to pass
+  /// `--no-daemon` to the gradle wrapper script, preventing it from spawning a daemon
+  /// process.
+  ///
+  /// For one-off builds or CI systems, preventing the daemon from spawning will
+  /// reduce system resource usage, at the cost of any subsequent builds starting
+  /// up slightly slower.
+  ///
+  /// The Gradle daemon may also be disabled in the Android application's properties file.
+  final bool androidGradleDaemon;
+
+  /// The package configuration for the loaded application.
+  ///
+  /// This is captured once during startup, but the actual package configuration
+  /// may change during a 'flutter run` workflow.
+  final PackageConfig packageConfig;
 
   static const BuildInfo debug = BuildInfo(BuildMode.debug, null, treeShakeIcons: false);
   static const BuildInfo profile = BuildInfo(BuildMode.profile, null, treeShakeIcons: kIconTreeShakerEnabledDefault);
@@ -152,14 +178,14 @@ class BuildInfo {
   String get modeName => getModeName(mode);
   String get friendlyModeName => getFriendlyModeName(mode);
 
-  /// the flavor name in the output files is lowercased (see flutter.gradle),
+  /// the flavor name in the output files is lower-cased (see flutter.gradle),
   /// so the lower cased flavor name is used to compute the output file name
   String get lowerCasedFlavor => flavor?.toLowerCase();
 
-  /// Convert to a structued string encoded structure appropriate for usage as
+  /// Convert to a structured string encoded structure appropriate for usage as
   /// environment variables or to embed in other scripts.
   ///
-  /// Fields that are `null` are excluded from this configration.
+  /// Fields that are `null` are excluded from this configuration.
   Map<String, String> toEnvironmentConfig() {
     return <String, String>{
       if (dartDefines?.isNotEmpty ?? false)
@@ -167,9 +193,9 @@ class BuildInfo {
       if (dartObfuscation != null)
         'DART_OBFUSCATION': dartObfuscation.toString(),
       if (extraFrontEndOptions?.isNotEmpty ?? false)
-        'EXTRA_FRONT_END_OPTIONS': encodeDartDefines(extraFrontEndOptions),
+        'EXTRA_FRONT_END_OPTIONS': extraFrontEndOptions?.join(','),
       if (extraGenSnapshotOptions?.isNotEmpty ?? false)
-        'EXTRA_GEN_SNAPSHOT_OPTIONS': encodeDartDefines(extraGenSnapshotOptions),
+        'EXTRA_GEN_SNAPSHOT_OPTIONS': extraGenSnapshotOptions?.join(','),
       if (splitDebugInfoPath != null)
         'SPLIT_DEBUG_INFO': splitDebugInfoPath,
       if (trackWidgetCreation != null)
@@ -186,6 +212,34 @@ class BuildInfo {
         'CODE_SIZE_DIRECTORY': codeSizeDirectory,
     };
   }
+
+  /// Convert this config to a series of project level arguments to be passed
+  /// on the command line to gradle.
+  List<String> toGradleConfig() {
+    // PACKAGE_CONFIG not currently supported.
+    return <String>[
+      if (dartDefines?.isNotEmpty ?? false)
+        '-Pdart-defines=${encodeDartDefines(dartDefines)}',
+      if (dartObfuscation != null)
+        '-Pdart-obfuscation=$dartObfuscation',
+      if (extraFrontEndOptions?.isNotEmpty ?? false)
+        '-Pextra-front-end-options=${extraFrontEndOptions?.join(',')}',
+      if (extraGenSnapshotOptions?.isNotEmpty ?? false)
+        '-Pextra-gen-snapshot-options=${extraGenSnapshotOptions?.join(',')}',
+      if (splitDebugInfoPath != null)
+        '-Psplit-debug-info=$splitDebugInfoPath',
+      if (trackWidgetCreation != null)
+        '-Ptrack-widget-creation=$trackWidgetCreation',
+      if (treeShakeIcons != null)
+        '-Ptree-shake-icons=$treeShakeIcons',
+      if (performanceMeasurementFile != null)
+        '-Pperformance-measurement-file=$performanceMeasurementFile',
+      if (bundleSkSLPath != null)
+        '-Pbundle-sksl-path=$bundleSkSLPath',
+      if (codeSizeDirectory != null)
+        '-Pcode-size-directory=$codeSizeDirectory',
+    ];
+  }
 }
 
 /// Information about an Android build to be performed or used.
@@ -198,7 +252,6 @@ class AndroidBuildInfo {
       AndroidArch.x86_64,
     ],
     this.splitPerAbi = false,
-    this.shrink = false,
     this.fastStart = false,
   });
 
@@ -211,9 +264,6 @@ class AndroidBuildInfo {
   /// build artifact. When this is true, multiple build artifacts (one per ABI)
   /// will be produced.
   final bool splitPerAbi;
-
-  /// Whether to enable code shrinking on release mode.
-  final bool shrink;
 
   /// The target platforms for the build.
   final Iterable<AndroidArch> targetArchs;
@@ -294,6 +344,12 @@ String getNameForBuildMode(BuildMode buildMode) {
 /// Returns the [BuildMode] for a particular `name`.
 BuildMode getBuildModeForName(String name) {
   return BuildMode.fromName(name);
+}
+
+/// Environment type of the target device.
+enum EnvironmentType {
+  physical,
+  simulator,
 }
 
 String validatedBuildNumberForPlatform(TargetPlatform targetPlatform, String buildNumber, Logger logger) {
@@ -398,6 +454,7 @@ bool isEmulatorBuildMode(BuildMode mode) {
 
 enum HostPlatform {
   darwin_x64,
+  darwin_arm,
   linux_x64,
   windows_x64,
 }
@@ -406,6 +463,8 @@ String getNameForHostPlatform(HostPlatform platform) {
   switch (platform) {
     case HostPlatform.darwin_x64:
       return 'darwin-x64';
+    case HostPlatform.darwin_arm:
+      return 'darwin-arm';
     case HostPlatform.linux_x64:
       return 'linux-x64';
     case HostPlatform.windows_x64:
@@ -418,6 +477,7 @@ String getNameForHostPlatform(HostPlatform platform) {
 enum TargetPlatform {
   android,
   ios,
+  // darwin_arm64 not yet supported, macOS desktop targets run in Rosetta as x86.
   darwin_x64,
   linux_x64,
   windows_x64,
@@ -425,7 +485,7 @@ enum TargetPlatform {
   fuchsia_x64,
   tester,
   web_javascript,
-  // The arch specific android target platforms are soft-depreacted.
+  // The arch specific android target platforms are soft-deprecated.
   // Instead of using TargetPlatform as a combination arch + platform
   // the code will be updated to carry arch information in [DarwinArch]
   // and [AndroidArch].
@@ -453,9 +513,19 @@ enum AndroidArch {
 }
 
 /// The default set of iOS device architectures to build for.
-const List<DarwinArch> defaultIOSArchs = <DarwinArch>[
-  DarwinArch.arm64,
-];
+List<DarwinArch> defaultIOSArchsForEnvironment(
+    EnvironmentType environmentType) {
+  if (environmentType == EnvironmentType.simulator) {
+    return <DarwinArch>[
+      // Apple Silicon ARM simulators not yet supported.
+      DarwinArch.x86_64,
+    ];
+  }
+  return <DarwinArch>[
+    DarwinArch.armv7,
+    DarwinArch.arm64,
+  ];
+}
 
 String getNameForDarwinArch(DarwinArch arch) {
   switch (arch) {
@@ -696,9 +766,32 @@ String getFuchsiaBuildDirectory() {
 /// These values are URI-encoded and then combined into a comma-separated string.
 const String kDartDefines = 'DartDefines';
 
-/// Encode a List of dart defines in a URI string.
+final Converter<String, String> _defineEncoder = utf8.encoder.fuse(base64.encoder);
+final Converter<String, String> _defineDecoder = base64.decoder.fuse(utf8.decoder);
+
+/// Encode a List of dart defines in a base64 string.
+///
+/// This encoding does not include `,`, which is used to distinguish
+/// the individual entries, nor does it include `%` which is often a
+/// control character on windows command lines.
+///
+/// When decoding this string, it can be safely split on commas, since any
+/// user provided commans will still be encoded.
+///
+/// If the presence of the `/` character ends up being an issue, this can
+/// be changed to use base32 instead.
 String encodeDartDefines(List<String> defines) {
-  return defines.map(Uri.encodeComponent).join(',');
+  return defines.map(_defineEncoder.convert).join(',');
+}
+
+List<String> decodeCommaSeparated(Map<String, String> environmentDefines, String key) {
+  if (!environmentDefines.containsKey(key) || environmentDefines[key].isEmpty) {
+    return <String>[];
+  }
+  return environmentDefines[key]
+    .split(',')
+    .cast<String>()
+    .toList();
 }
 
 /// Dart defines are encoded inside [environmentDefines] as a comma-separated list.
@@ -708,7 +801,7 @@ List<String> decodeDartDefines(Map<String, String> environmentDefines, String ke
   }
   return environmentDefines[key]
     .split(',')
-    .map<Object>(Uri.decodeComponent)
+    .map<Object>(_defineDecoder.convert)
     .cast<String>()
     .toList();
 }
@@ -717,5 +810,6 @@ List<String> decodeDartDefines(Map<String, String> environmentDefines, String ke
 enum NullSafetyMode {
   sound,
   unsound,
+  /// The null safety mode was not detected. Only supported for 'flutter test'.
   autodetect,
 }

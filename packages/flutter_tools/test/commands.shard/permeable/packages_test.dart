@@ -2,10 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// @dart = 2.8
+
 import 'dart:convert';
 
 import 'package:args/command_runner.dart';
 import 'package:flutter_tools/src/base/bot_detector.dart';
+import 'package:flutter_tools/src/base/error_handling_io.dart';
 import 'package:flutter_tools/src/base/file_system.dart' hide IOSink;
 import 'package:flutter_tools/src/base/io.dart';
 import 'package:flutter_tools/src/cache.dart';
@@ -17,7 +20,8 @@ import 'package:flutter_tools/src/globals.dart' as globals;
 
 import '../../src/common.dart';
 import '../../src/context.dart';
-import '../../src/mocks.dart' show MockProcessManager, MockStdio, PromptingProcess, AlwaysTrueBotDetector, AlwaysFalseBotDetector;
+import '../../src/fakes.dart';
+import '../../src/mocks.dart' show MockProcessManager, AlwaysTrueBotDetector, AlwaysFalseBotDetector;
 import '../../src/testbed.dart';
 
 void main() {
@@ -123,13 +127,13 @@ void main() {
     ];
 
     const Map<String, String> pluginContentWitnesses = <String, String>{
-      'ios/Flutter/Debug.xcconfig': '#include "Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"',
-      'ios/Flutter/Release.xcconfig': '#include "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"',
+      'ios/Flutter/Debug.xcconfig': '#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"',
+      'ios/Flutter/Release.xcconfig': '#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"',
     };
 
     const Map<String, String> modulePluginContentWitnesses = <String, String>{
-      '.ios/Config/Debug.xcconfig': '#include "Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"',
-      '.ios/Config/Release.xcconfig': '#include "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"',
+      '.ios/Config/Debug.xcconfig': '#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"',
+      '.ios/Config/Release.xcconfig': '#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"',
     };
 
     void expectDependenciesResolved(String projectPath) {
@@ -182,9 +186,7 @@ void main() {
       ].expand<String>((List<String> list) => list);
       for (final String path in allFiles) {
         final File file = globals.fs.file(globals.fs.path.join(projectPath, path));
-        if (file.existsSync()) {
-          file.deleteSync();
-        }
+        ErrorHandlingFileSystem.deleteIfExists(file);
       }
     }
 
@@ -228,7 +230,7 @@ void main() {
       ),
     });
 
-    testUsingContext('set the number of plugins as usage value', () async {
+    testUsingContext('set no plugins as usage value', () async {
       final String projectPath = await createProject(tempDir,
         arguments: <String>['--no-pub', '--template=module']);
       removeGeneratedFiles(projectPath);
@@ -238,6 +240,29 @@ void main() {
 
       expect(await getCommand.usageValues,
              containsPair(CustomDimensions.commandPackagesNumberPlugins, '0'));
+    }, overrides: <Type, Generator>{
+      Pub: () => Pub(
+        fileSystem: globals.fs,
+        logger: globals.logger,
+        processManager: globals.processManager,
+        usage: globals.flutterUsage,
+        botDetector: globals.botDetector,
+        platform: globals.platform,
+      ),
+    });
+
+    testUsingContext('set the number of plugins as usage value', () async {
+      final String projectPath = await createProject(
+        tempDir,
+        arguments: <String>['--template=plugin', '--no-pub', '--platforms=ios,android,macos,windows'],
+      );
+      final String exampleProjectPath = globals.fs.path.join(projectPath, 'example');
+
+      final PackagesCommand command = await runCommandIn(exampleProjectPath, 'get');
+      final PackagesGetCommand getCommand = command.subcommands['get'] as PackagesGetCommand;
+
+      expect(await getCommand.usageValues,
+          containsPair(CustomDimensions.commandPackagesNumberPlugins, '1'));
     }, overrides: <Type, Generator>{
       Pub: () => Pub(
         fileSystem: globals.fs,
@@ -352,6 +377,7 @@ void main() {
       expectDependenciesResolved(projectPath);
       expectZeroPluginsInjected(projectPath);
     }, overrides: <Type, Generator>{
+      Stdio: () => FakeStdio()..stdout.terminalColumns = 80,
       Pub: () => Pub(
         fileSystem: globals.fs,
         logger: globals.logger,
@@ -413,11 +439,11 @@ void main() {
 
   group('packages test/pub', () {
     MockProcessManager mockProcessManager;
-    MockStdio mockStdio;
+    FakeStdio mockStdio;
 
     setUp(() {
       mockProcessManager = MockProcessManager();
-      mockStdio = MockStdio()..stdout.terminalColumns = 80;
+      mockStdio = FakeStdio()..stdout.terminalColumns = 80;
     });
 
     testUsingContext('test without bot', () async {

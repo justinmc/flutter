@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -26,8 +24,8 @@ void main() {
       ),
     );
 
-    final TextStyle actualSelectedTextStyle = tester.renderObject<RenderParagraph>(find.text('Abc')).text.style;
-    final TextStyle actualUnselectedTextStyle = tester.renderObject<RenderParagraph>(find.text('Def')).text.style;
+    final TextStyle actualSelectedTextStyle = tester.renderObject<RenderParagraph>(find.text('Abc')).text.style!;
+    final TextStyle actualUnselectedTextStyle = tester.renderObject<RenderParagraph>(find.text('Def')).text.style!;
     expect(actualSelectedTextStyle.fontSize, equals(selectedTextStyle.fontSize));
     expect(actualSelectedTextStyle.fontWeight, equals(selectedTextStyle.fontWeight));
     expect(actualUnselectedTextStyle.fontSize, equals(actualUnselectedTextStyle.fontSize));
@@ -1416,7 +1414,7 @@ void main() {
 
   testWidgets('Extended rail animates the width and labels appear - [textDirection]=LTR', (WidgetTester tester) async {
     bool extended = false;
-    StateSetter stateSetter;
+    late StateSetter stateSetter;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -1553,7 +1551,7 @@ void main() {
 
   testWidgets('Extended rail animates the width and labels appear - [textDirection]=RTL', (WidgetTester tester) async {
     bool extended = false;
-    StateSetter stateSetter;
+    late StateSetter stateSetter;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -1697,7 +1695,7 @@ void main() {
 
   testWidgets('Extended rail gets wider with longer labels are larger text scale', (WidgetTester tester) async {
     bool extended = false;
-    StateSetter stateSetter;
+    late StateSetter stateSetter;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -1755,7 +1753,7 @@ void main() {
 
   testWidgets('Extended rail final width can be changed', (WidgetTester tester) async {
     bool extended = false;
-    StateSetter stateSetter;
+    late StateSetter stateSetter;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -1797,7 +1795,7 @@ void main() {
   /// Regression test for https://github.com/flutter/flutter/issues/65657
   testWidgets('Extended rail transition does not jump from the beginning', (WidgetTester tester) async {
     bool extended = false;
-    StateSetter stateSetter;
+    late StateSetter stateSetter;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -1855,8 +1853,8 @@ void main() {
 
   testWidgets('Extended rail animation can be consumed', (WidgetTester tester) async {
     bool extended = false;
-    Animation<double> animation;
-    StateSetter stateSetter;
+    late Animation<double> animation;
+    late StateSetter stateSetter;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -1899,7 +1897,7 @@ void main() {
   });
 
   testWidgets('onDestinationSelected is called', (WidgetTester tester) async {
-    int selectedIndex;
+    late int selectedIndex;
 
     await _pumpNavigationRail(
       tester,
@@ -2024,6 +2022,129 @@ void main() {
 
     semantics.dispose();
   });
+
+  testWidgets('NavigationRailDestination padding properly applied - NavigationRailLabelType.all', (WidgetTester tester) async {
+    const EdgeInsets defaultPadding = EdgeInsets.symmetric(horizontal: 8.0);
+    const EdgeInsets secondItemPadding = EdgeInsets.symmetric(vertical: 30.0);
+    const EdgeInsets thirdItemPadding = EdgeInsets.symmetric(horizontal: 10.0);
+
+    await _pumpNavigationRail(
+      tester,
+      navigationRail: NavigationRail(
+        labelType: NavigationRailLabelType.all,
+        selectedIndex: 0,
+        destinations: const <NavigationRailDestination>[
+          NavigationRailDestination(
+            icon: Icon(Icons.favorite_border),
+            selectedIcon: Icon(Icons.favorite),
+            label: Text('Abc'),
+          ),
+          NavigationRailDestination(
+            icon: Icon(Icons.bookmark_border),
+            selectedIcon: Icon(Icons.bookmark),
+            label: Text('Def'),
+            padding: secondItemPadding,
+          ),
+          NavigationRailDestination(
+            icon: Icon(Icons.star_border),
+            selectedIcon: Icon(Icons.star),
+            label: Text('Ghi'),
+            padding: thirdItemPadding,
+          ),
+        ],
+      ),
+    );
+
+    final Padding firstItem = tester.widget<Padding>(find.widgetWithText(Padding, 'Abc'));
+    final Padding secondItem = tester.widget<Padding>(find.widgetWithText(Padding, 'Def'));
+    final Padding thirdItem = tester.widget<Padding>(find.widgetWithText(Padding, 'Ghi'));
+
+    expect(firstItem.padding, defaultPadding);
+    expect(secondItem.padding, secondItemPadding);
+    expect(thirdItem.padding, thirdItemPadding);
+  });
+
+  testWidgets('NavigationRailDestination padding properly applied - NavigationRailLabelType.selected', (WidgetTester tester) async {
+    const EdgeInsets defaultPadding = EdgeInsets.symmetric(horizontal: 8.0);
+    const EdgeInsets secondItemPadding = EdgeInsets.symmetric(vertical: 30.0);
+    const EdgeInsets thirdItemPadding = EdgeInsets.symmetric(horizontal: 10.0);
+
+    await _pumpNavigationRail(
+      tester,
+      navigationRail: NavigationRail(
+        labelType: NavigationRailLabelType.selected,
+        selectedIndex: 0,
+        destinations: const <NavigationRailDestination>[
+          NavigationRailDestination(
+            icon: Icon(Icons.favorite_border),
+            selectedIcon: Icon(Icons.favorite),
+            label: Text('Abc'),
+          ),
+          NavigationRailDestination(
+            icon: Icon(Icons.bookmark_border),
+            selectedIcon: Icon(Icons.bookmark),
+            label: Text('Def'),
+            padding: secondItemPadding,
+          ),
+          NavigationRailDestination(
+            icon: Icon(Icons.star_border),
+            selectedIcon: Icon(Icons.star),
+            label: Text('Ghi'),
+            padding: thirdItemPadding,
+          ),
+        ],
+      ),
+    );
+
+    final Padding firstItem = tester.widget<Padding>(find.widgetWithText(Padding, 'Abc'));
+    final Padding secondItem = tester.widget<Padding>(find.widgetWithText(Padding, 'Def'));
+    final Padding thirdItem = tester.widget<Padding>(find.widgetWithText(Padding, 'Ghi'));
+
+    expect(firstItem.padding, defaultPadding);
+    expect(secondItem.padding, secondItemPadding);
+    expect(thirdItem.padding, thirdItemPadding);
+  });
+
+  testWidgets('NavigationRailDestination padding properly applied - NavigationRailLabelType.none', (WidgetTester tester) async {
+    const EdgeInsets defaultPadding = EdgeInsets.zero;
+    const EdgeInsets secondItemPadding = EdgeInsets.symmetric(vertical: 30.0);
+    const EdgeInsets thirdItemPadding = EdgeInsets.symmetric(horizontal: 10.0);
+
+    await _pumpNavigationRail(
+      tester,
+      navigationRail: NavigationRail(
+        labelType: NavigationRailLabelType.none,
+        selectedIndex: 0,
+        destinations: const <NavigationRailDestination>[
+          NavigationRailDestination(
+            icon: Icon(Icons.favorite_border),
+            selectedIcon: Icon(Icons.favorite),
+            label: Text('Abc'),
+          ),
+          NavigationRailDestination(
+            icon: Icon(Icons.bookmark_border),
+            selectedIcon: Icon(Icons.bookmark),
+            label: Text('Def'),
+            padding: secondItemPadding,
+          ),
+          NavigationRailDestination(
+            icon: Icon(Icons.star_border),
+            selectedIcon: Icon(Icons.star),
+            label: Text('Ghi'),
+            padding: thirdItemPadding,
+          ),
+        ],
+      ),
+    );
+
+    final Padding firstItem = tester.widget<Padding>(find.widgetWithText(Padding, 'Abc'));
+    final Padding secondItem = tester.widget<Padding>(find.widgetWithText(Padding, 'Def'));
+    final Padding thirdItem = tester.widget<Padding>(find.widgetWithText(Padding, 'Ghi'));
+
+    expect(firstItem.padding, defaultPadding);
+    expect(secondItem.padding, secondItemPadding);
+    expect(thirdItem.padding, thirdItemPadding);
+  });
 }
 
 TestSemantics _expectedSemantics() {
@@ -2106,7 +2227,7 @@ List<NavigationRailDestination> _destinations() {
 Future<void> _pumpNavigationRail(
   WidgetTester tester, {
   double textScaleFactor = 1.0,
-  NavigationRail navigationRail,
+  required NavigationRail navigationRail,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -2131,7 +2252,7 @@ Future<void> _pumpNavigationRail(
   );
 }
 
-Future<void> _pumpLocalizedTestRail(WidgetTester tester, { NavigationRailLabelType labelType, bool extended = false }) async {
+Future<void> _pumpLocalizedTestRail(WidgetTester tester, { NavigationRailLabelType? labelType, bool extended = false }) async {
   await tester.pumpWidget(
     Localizations(
       locale: const Locale('en', 'US'),
@@ -2184,7 +2305,7 @@ TextStyle _iconStyle(WidgetTester tester, IconData icon) {
       of: find.byIcon(icon),
       matching: find.byType(RichText),
     ),
-  ).text.style;
+  ).text.style!;
 }
 
 Finder _opacityAboveLabel(String text) {

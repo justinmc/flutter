@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// @dart = 2.8
+
 import 'package:file/memory.dart';
 import 'package:flutter_tools/src/artifacts.dart';
 import 'package:flutter_tools/src/base/file_system.dart';
@@ -23,7 +25,7 @@ void main() {
     Platform platform;
 
     setUp(() {
-      fileSystem = MemoryFileSystem();
+      fileSystem = MemoryFileSystem.test();
       final Directory cacheRoot = fileSystem.directory('root')
         ..createSync();
       platform = FakePlatform(operatingSystem: 'linux');
@@ -42,9 +44,71 @@ void main() {
     });
 
     testWithoutContext('getArtifactPath', () {
+      final String xcframeworkPath = artifacts.getArtifactPath(
+        Artifact.flutterXcframework,
+        platform: TargetPlatform.ios,
+        mode: BuildMode.release,
+      );
       expect(
-        artifacts.getArtifactPath(Artifact.flutterFramework, platform: TargetPlatform.ios, mode: BuildMode.release),
-        fileSystem.path.join('root', 'bin', 'cache', 'artifacts', 'engine', 'ios-release', 'Flutter.framework'),
+        xcframeworkPath,
+        fileSystem.path.join(
+          'root',
+          'bin',
+          'cache',
+          'artifacts',
+          'engine',
+          'ios-release',
+          'Flutter.xcframework',
+        ),
+      );
+      expect(
+        () => artifacts.getArtifactPath(
+          Artifact.flutterFramework,
+          platform: TargetPlatform.ios,
+          mode: BuildMode.release,
+          environmentType: EnvironmentType.simulator,
+        ),
+        throwsToolExit(
+            message:
+                'No xcframework found at $xcframeworkPath.'),
+      );
+      fileSystem.directory(xcframeworkPath).createSync(recursive: true);
+      expect(
+        () => artifacts.getArtifactPath(
+          Artifact.flutterFramework,
+          platform: TargetPlatform.ios,
+          mode: BuildMode.release,
+          environmentType: EnvironmentType.simulator,
+        ),
+        throwsToolExit(message: 'No iOS frameworks found in $xcframeworkPath'),
+      );
+
+      fileSystem
+          .directory(xcframeworkPath)
+          .childDirectory('ios-x86_64-simulator')
+          .childDirectory('Flutter.framework')
+          .createSync(recursive: true);
+      fileSystem
+          .directory(xcframeworkPath)
+          .childDirectory('ios-armv7_arm64')
+          .childDirectory('Flutter.framework')
+          .createSync(recursive: true);
+      expect(
+        artifacts.getArtifactPath(Artifact.flutterFramework,
+            platform: TargetPlatform.ios,
+            mode: BuildMode.release,
+            environmentType: EnvironmentType.simulator),
+        fileSystem.path
+            .join(xcframeworkPath, 'ios-x86_64-simulator', 'Flutter.framework'),
+      );
+      expect(
+        artifacts.getArtifactPath(Artifact.flutterFramework,
+            platform: TargetPlatform.ios, mode: BuildMode.release, environmentType: EnvironmentType.physical),
+        fileSystem.path.join(xcframeworkPath, 'ios-armv7_arm64', 'Flutter.framework'),
+      );
+      expect(
+        artifacts.getArtifactPath(Artifact.flutterXcframework, platform: TargetPlatform.ios, mode: BuildMode.release),
+        fileSystem.path.join('root', 'bin', 'cache', 'artifacts', 'engine', 'ios-release', 'Flutter.xcframework'),
       );
       expect(
         artifacts.getArtifactPath(Artifact.flutterTester),
@@ -110,7 +174,7 @@ void main() {
     Platform platform;
 
     setUp(() {
-      fileSystem = MemoryFileSystem();
+      fileSystem = MemoryFileSystem.test();
       final Directory cacheRoot = fileSystem.directory('root')
         ..createSync();
       platform = FakePlatform(operatingSystem: 'linux');
@@ -132,9 +196,78 @@ void main() {
     });
 
     testWithoutContext('getArtifactPath', () {
+      final String xcframeworkPath = artifacts.getArtifactPath(
+        Artifact.flutterXcframework,
+        platform: TargetPlatform.ios,
+        mode: BuildMode.release,
+      );
       expect(
-        artifacts.getArtifactPath(Artifact.flutterFramework, platform: TargetPlatform.ios, mode: BuildMode.release),
-        fileSystem.path.join('/out', 'android_debug_unopt', 'Flutter.framework'),
+        xcframeworkPath,
+        fileSystem.path
+            .join('/out', 'android_debug_unopt', 'Flutter.xcframework'),
+      );
+      expect(
+        () => artifacts.getArtifactPath(
+          Artifact.flutterFramework,
+          platform: TargetPlatform.ios,
+          mode: BuildMode.release,
+          environmentType: EnvironmentType.simulator,
+        ),
+        throwsToolExit(
+            message:
+                'No xcframework found at /out/android_debug_unopt/Flutter.xcframework'),
+      );
+      fileSystem.directory(xcframeworkPath).createSync(recursive: true);
+      expect(
+        () => artifacts.getArtifactPath(
+          Artifact.flutterFramework,
+          platform: TargetPlatform.ios,
+          mode: BuildMode.release,
+          environmentType: EnvironmentType.simulator,
+        ),
+        throwsToolExit(
+            message:
+                'No iOS frameworks found in /out/android_debug_unopt/Flutter.xcframework'),
+      );
+
+      fileSystem
+          .directory(xcframeworkPath)
+          .childDirectory('ios-x86_64-simulator')
+          .childDirectory('Flutter.framework')
+          .createSync(recursive: true);
+      fileSystem
+          .directory(xcframeworkPath)
+          .childDirectory('ios-armv7_arm64')
+          .childDirectory('Flutter.framework')
+          .createSync(recursive: true);
+      expect(
+        artifacts.getArtifactPath(
+          Artifact.flutterFramework,
+          platform: TargetPlatform.ios,
+          mode: BuildMode.release,
+          environmentType: EnvironmentType.simulator,
+        ),
+        fileSystem.path
+            .join(xcframeworkPath, 'ios-x86_64-simulator', 'Flutter.framework'),
+      );
+      expect(
+        artifacts.getArtifactPath(
+          Artifact.flutterFramework,
+          platform: TargetPlatform.ios,
+          mode: BuildMode.release,
+          environmentType: EnvironmentType.physical,
+        ),
+        fileSystem.path
+            .join(xcframeworkPath, 'ios-armv7_arm64', 'Flutter.framework'),
+      );
+      expect(
+        artifacts.getArtifactPath(
+          Artifact.flutterXcframework,
+          platform: TargetPlatform.ios,
+          mode: BuildMode.release,
+        ),
+        fileSystem.path
+            .join('/out', 'android_debug_unopt', 'Flutter.xcframework'),
       );
       expect(
         artifacts.getArtifactPath(Artifact.flutterTester),

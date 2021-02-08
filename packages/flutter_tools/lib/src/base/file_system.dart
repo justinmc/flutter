@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// @dart = 2.8
+
 import 'package:file/file.dart';
 import 'package:file/local.dart' as local_fs;
 import 'package:meta/meta.dart';
@@ -103,6 +105,7 @@ class FileSystemUtils {
       final String name = '${baseName}_${i.toString().padLeft(2, '0')}.$ext';
       final File file = fs.file(_fileSystem.path.join(dir.path, name));
       if (!file.existsSync()) {
+        file.createSync(recursive: true);
         return file;
       }
       i += 1;
@@ -180,7 +183,7 @@ class LocalFileSystem extends local_fs.LocalFileSystem {
     List<ProcessSignal> fatalSignals = Signals.defaultExitSignals,
   }) : this._(signals, fatalSignals);
 
-  // Unless we're in a test of this class's signal hanlding features, we must
+  // Unless we're in a test of this class's signal handling features, we must
   // have only one instance created with the singleton LocalSignals instance
   // and the catchable signals it considers to be fatal.
   static LocalFileSystem _instance;

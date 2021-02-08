@@ -5,9 +5,9 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as path;
-import 'package:flutter_devicelab/framework/framework.dart';
-import 'package:flutter_devicelab/framework/utils.dart';
 
+import 'task_result.dart';
+import 'utils.dart';
 
 final String platformLineSep = Platform.isWindows ? '\r\n' : '\n';
 
@@ -115,13 +115,29 @@ String get _androidHome {
 /// Executes an APK analyzer subcommand.
 Future<String> _evalApkAnalyzer(
   List<String> args, {
-  bool printStdout = true,
+  bool printStdout = false,
   String workingDirectory,
 }) async {
   final String javaHome = await findJavaHome();
+  if (javaHome == null || javaHome.isEmpty) {
+    throw Exception('No JAVA_HOME set.');
+  }
+  final String apkAnalyzer = path
+     .join(_androidHome, 'cmdline-tools', 'latest', 'bin', Platform.isWindows ? 'apkanalyzer.bat' : 'apkanalyzer');
+   if (canRun(apkAnalyzer)) {
+     return eval(
+       apkAnalyzer,
+       args,
+       printStdout: printStdout,
+       workingDirectory: workingDirectory,
+       environment: <String, String>{
+         'JAVA_HOME': javaHome,
+       },
+     );
+   }
+
   final String javaBinary = path.join(javaHome, 'bin', 'java');
   assert(canRun(javaBinary));
-
   final String androidTools = path.join(_androidHome, 'tools');
   final String libs = path.join(androidTools, 'lib');
   assert(Directory(libs).existsSync());
@@ -151,6 +167,7 @@ class ApkExtractor {
   bool _extracted = false;
 
   Set<String> _classes = const <String>{};
+  Set<String> _methods = const <String>{};
 
   Future<void> _extractDex() async {
     if (_extracted) {
@@ -163,22 +180,17 @@ class ApkExtractor {
         apkFile.path,
       ],
     );
+    final List<String> lines = packages.split('\n');
     _classes = Set<String>.from(
-      packages
-        .split('\n')
-        .where((String line) => line.startsWith('C'))
-        .map<String>((String line) => line.split('\t').last),
+      lines.where((String line) => line.startsWith('C'))
+           .map<String>((String line) => line.split('\t').last),
     );
     assert(_classes.isNotEmpty);
-    _extracted = true;
-  }
-
-  // Removes any temporary directory.
-  void dispose() {
-    if (!_extracted) {
-      return;
-    }
-    _classes = const <String>{};
+    _methods = Set<String>.from(
+      lines.where((String line) => line.startsWith('M'))
+           .map<String>((String line) => line.split('\t').last)
+    );
+    assert(_methods.isNotEmpty);
     _extracted = true;
   }
 
@@ -186,6 +198,13 @@ class ApkExtractor {
   Future<bool> containsClass(String className) async {
     await _extractDex();
     return _classes.contains(className);
+  }
+
+  /// Returns true if the APK contains a given method.
+  /// For example: io.flutter.plugins.googlemaps.GoogleMapController void onFlutterViewAttached(android.view.View)
+  Future<bool> containsMethod(String methodName) async {
+    await _extractDex();
+    return _methods.contains(methodName);
   }
 }
 
@@ -209,7 +228,16 @@ Future<void> checkApkContainsClasses(File apk, List<String> classes) async {
       throw Exception("APK doesn't contain class `$className`.");
     }
   }
-  extractor.dispose();
+}
+
+/// Checks that the methods are defined in the APK, throws otherwise.
+Future<void> checkApkContainsMethods(File apk, List<String> methods) async {
+  final ApkExtractor extractor = ApkExtractor(apk);
+  for (final String method in methods) {
+    if (!(await extractor.containsMethod(method))) {
+      throw Exception("APK doesn't contain method `$method`.");
+    }
+  }
 }
 
 class FlutterProject {
@@ -266,12 +294,15 @@ subprojects {
     ''');
   }
 
-  Future<void> addPlugin(String plugin) async {
+  /// Adds a plugin to the pubspec.
+  /// In pubspec, each dependency is expressed as key, value pair joined by a colon `:`.
+  /// such as `plugin_a`:`^0.0.1` or `plugin_a`:`\npath: /some/path`.
+  Future<void> addPlugin(String plugin, { String value = '' }) async {
     final File pubspec = File(path.join(rootPath, 'pubspec.yaml'));
     String content = await pubspec.readAsString();
     content = content.replaceFirst(
       '${platformLineSep}dependencies:$platformLineSep',
-      '${platformLineSep}dependencies:$platformLineSep  $plugin:$platformLineSep',
+      '${platformLineSep}dependencies:$platformLineSep  $plugin: $value$platformLineSep',
     );
     await pubspec.writeAsString(content, flush: true);
   }
@@ -365,10 +396,6 @@ class FlutterPluginProject {
   String get releaseArmApkPath => path.join(examplePath, 'build', 'app', 'outputs', 'flutter-apk','app-armeabi-v7a-release.apk');
   String get releaseArm64ApkPath => path.join(examplePath, 'build', 'app', 'outputs', 'flutter-apk', 'app-arm64-v8a-release.apk');
   String get releaseBundlePath => path.join(examplePath, 'build', 'app', 'outputs', 'bundle', 'release', 'app.aab');
-
-  Future<void> runGradleTask(String task, {List<String> options}) async {
-    return _runGradleTask(workingDirectory: exampleAndroidPath, task: task, options: options);
-  }
 }
 
 class FlutterModuleProject {

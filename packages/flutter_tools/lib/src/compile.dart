@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// @dart = 2.8
+
 import 'dart:async';
 
 import 'package:meta/meta.dart';
@@ -17,7 +19,6 @@ import 'base/logger.dart';
 import 'base/platform.dart';
 import 'build_info.dart';
 import 'convert.dart';
-import 'globals.dart' as globals;
 
 /// The target model describes the set of core libraries that are available within
 /// the SDK.
@@ -147,26 +148,26 @@ class StdoutHandler {
 }
 
 /// List the preconfigured build options for a given build mode.
-List<String> buildModeOptions(BuildMode mode) {
+List<String> buildModeOptions(BuildMode mode, List<String> dartDefines) {
   switch (mode) {
     case BuildMode.debug:
       return <String>[
         '-Ddart.vm.profile=false',
-        '-Ddart.vm.product=false',
-        '--bytecode-options=source-positions,local-var-info,debugger-stops,instance-field-initializers,keep-unreachable-code,avoid-closure-call-instructions',
+        // This allows the CLI to override the value of this define for unit
+        // testing the framework.
+        if (!dartDefines.any((String define) => define.startsWith('dart.vm.product')))
+          '-Ddart.vm.product=false',
         '--enable-asserts',
       ];
     case BuildMode.profile:
       return <String>[
         '-Ddart.vm.profile=true',
         '-Ddart.vm.product=false',
-        '--bytecode-options=source-positions',
       ];
     case BuildMode.release:
       return <String>[
         '-Ddart.vm.profile=false',
         '-Ddart.vm.product=true',
-        '--bytecode-options=source-positions',
       ];
   }
   throw Exception('Unknown BuildMode: $mode');
@@ -241,10 +242,10 @@ class KernelCompiler {
       '--sdk-root',
       sdkRoot,
       '--target=$targetModel',
-      '-Ddart.developer.causal_async_stacks=${buildMode == BuildMode.debug}',
+      '--no-print-incremental-dependencies',
       for (final Object dartDefine in dartDefines)
         '-D$dartDefine',
-      ...buildModeOptions(buildMode),
+      ...buildModeOptions(buildMode, dartDefines),
       if (trackWidgetCreation) '--track-widget-creation',
       if (!linkPlatformKernelIn) '--no-link-platform',
       if (aot) ...<String>[
@@ -401,9 +402,11 @@ class _RejectRequest extends _CompilationRequest {
 abstract class ResidentCompiler {
   factory ResidentCompiler(String sdkRoot, {
     @required BuildMode buildMode,
-    Logger logger, // TODO(jonahwilliams): migrate to @required after google3
-    ProcessManager processManager, // TODO(jonahwilliams): migrate to @required after google3
-    Artifacts artifacts, // TODO(jonahwilliams): migrate to @required after google3
+    @required Logger logger,
+    @required ProcessManager processManager,
+    @required Artifacts artifacts,
+    @required Platform platform,
+    bool testCompilation,
     bool trackWidgetCreation,
     String packagesPath,
     List<String> fileSystemRoots,
@@ -415,9 +418,6 @@ abstract class ResidentCompiler {
     String platformDill,
     List<String> dartDefines,
     String librariesSpec,
-    @required Platform platform,
-    // Deprecated
-    List<String> experimentalFlags,
   }) = DefaultResidentCompiler;
 
   // TODO(jonahwilliams): find a better way to configure additional file system
@@ -502,10 +502,11 @@ class DefaultResidentCompiler implements ResidentCompiler {
   DefaultResidentCompiler(
     String sdkRoot, {
     @required this.buildMode,
+    @required Logger logger,
+    @required ProcessManager processManager,
+    @required Artifacts artifacts,
     @required Platform platform,
-    Logger logger, // TODO(jonahwilliams): migrate to @required after google3
-    ProcessManager processManager, // TODO(jonahwilliams): migrate to @required after google3
-    Artifacts artifacts, // TODO(jonahwilliams): migrate to @required after google3
+    this.testCompilation = false,
     this.trackWidgetCreation = true,
     this.packagesPath,
     this.fileSystemRoots,
@@ -517,12 +518,10 @@ class DefaultResidentCompiler implements ResidentCompiler {
     this.platformDill,
     List<String> dartDefines,
     this.librariesSpec,
-    // Deprecated
-    List<String> experimentalFlags, // ignore: avoid_unused_constructor_parameters
   }) : assert(sdkRoot != null),
-       _logger = logger ?? globals.logger,
-       _processManager = processManager ?? globals.processManager,
-       _artifacts = artifacts ?? globals.artifacts,
+       _logger = logger,
+       _processManager = processManager,
+       _artifacts = artifacts,
        _stdoutHandler = StdoutHandler(logger: logger),
        _platform = platform,
        dartDefines = dartDefines ?? const <String>[],
@@ -534,6 +533,7 @@ class DefaultResidentCompiler implements ResidentCompiler {
   final Artifacts _artifacts;
   final Platform _platform;
 
+  final bool testCompilation;
   final BuildMode buildMode;
   final bool trackWidgetCreation;
   final String packagesPath;
@@ -592,15 +592,13 @@ class DefaultResidentCompiler implements ResidentCompiler {
     _compileRequestNeedsConfirmation = true;
     _stdoutHandler._suppressCompilerMessages = request.suppressErrors;
 
-    if (_server == null) {
-      return _compile(
-        request.packageConfig.toPackageUri(request.mainUri)?.toString() ?? request.mainUri.toString(),
-        request.outputPath,
-      );
-    }
-    final String inputKey = Uuid().generateV4();
     final String mainUri = request.packageConfig.toPackageUri(request.mainUri)?.toString() ??
       toMultiRootPath(request.mainUri, fileSystemScheme, fileSystemRoots, _platform.isWindows);
+
+    if (_server == null) {
+      return _compile(mainUri, request.outputPath);
+    }
+    final String inputKey = Uuid().generateV4();
 
     _server.stdin.writeln('recompile $mainUri $inputKey');
     _logger.printTrace('<- recompile $mainUri $inputKey');
@@ -610,7 +608,7 @@ class DefaultResidentCompiler implements ResidentCompiler {
         message = fileUri.toString();
       } else {
         message = request.packageConfig.toPackageUri(fileUri)?.toString() ??
-          toMultiRootPath(request.mainUri, fileSystemScheme, fileSystemRoots, _platform.isWindows);
+          toMultiRootPath(fileUri, fileSystemScheme, fileSystemRoots, _platform.isWindows);
       }
       _server.stdin.writeln(message);
       _logger.printTrace(message.toString());
@@ -652,6 +650,8 @@ class DefaultResidentCompiler implements ResidentCompiler {
       '--sdk-root',
       sdkRoot,
       '--incremental',
+      if (testCompilation)
+        '--no-print-incremental-dependencies',
       '--target=$targetModel',
       // TODO(jonahwilliams): remove once this becomes the default behavior
       // in the frontend_server.
@@ -661,7 +661,6 @@ class DefaultResidentCompiler implements ResidentCompiler {
       // in the frontend_server.
       // https://github.com/flutter/flutter/issues/59902
       '--experimental-emit-debug-metadata',
-      '-Ddart.developer.causal_async_stacks=${buildMode == BuildMode.debug}',
       for (final Object dartDefine in dartDefines)
         '-D$dartDefine',
       if (outputPath != null) ...<String>[
@@ -676,7 +675,7 @@ class DefaultResidentCompiler implements ResidentCompiler {
         '--packages',
         packagesPath,
       ],
-      ...buildModeOptions(buildMode),
+      ...buildModeOptions(buildMode, dartDefines),
       if (trackWidgetCreation) '--track-widget-creation',
       if (fileSystemRoots != null)
         for (final String root in fileSystemRoots) ...<String>[
@@ -874,7 +873,7 @@ class DefaultResidentCompiler implements ResidentCompiler {
   }
 }
 
-/// Convert a file URI into a multiroot scheme URI if provided, otherwise
+/// Convert a file URI into a multi-root scheme URI if provided, otherwise
 /// return unmodified.
 @visibleForTesting
 String toMultiRootPath(Uri fileUri, String scheme, List<String> fileSystemRoots, bool windows) {

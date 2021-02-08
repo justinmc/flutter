@@ -2,18 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// @dart = 2.8
+
 import 'dart:math' as math;
 
 import '../asset.dart';
 import '../base/common.dart';
 import '../base/file_system.dart';
 import '../build_info.dart';
-import '../build_system/build_system.dart';
 import '../bundle.dart';
 import '../cache.dart';
-import '../dart/generate_synthetic_packages.dart';
-import '../dart/pub.dart';
 import '../devfs.dart';
+import '../device.dart';
 import '../globals.dart' as globals;
 import '../project.dart';
 import '../runner/flutter_command.dart';
@@ -34,6 +34,8 @@ class TestCommand extends FlutterCommand {
     addNullSafetyModeOptions(hide: !verboseHelp);
     usesTrackWidgetCreation(verboseHelp: verboseHelp);
     addEnableExperimentation(hide: !verboseHelp);
+    usesDartDefineOption();
+    usesWebRendererOption();
     argParser
       ..addMultiOption('name',
         help: 'A regular expression matching substrings of the names of tests to run.',
@@ -134,6 +136,17 @@ class TestCommand extends FlutterCommand {
               'interact with the vmservice at runtime.\n'
               'This flag is ignored if --start-paused or coverage are requested. '
               'The vmservice will be enabled no matter what in those cases.'
+      )
+      ..addOption('reporter',
+        abbr: 'r',
+        defaultsTo: 'compact',
+        help: 'Set how to print test results.\n'
+        '[compact] (default)         A single line, updated continuously.\n'
+        '[expanded]                  A separate line for each update.\n'
+        '[json]                      A machine-readable format (see https://dart.dev/go/test-docs/json_reporter.md).\n')
+      ..addOption('timeout',
+        help: 'The default test timeout. For example: 15s, 2x, none. Defaults to "30s"',
+        defaultsTo: '30s',
       );
       addDdsOptions(verboseHelp: verboseHelp);
   }
@@ -169,37 +182,24 @@ class TestCommand extends FlutterCommand {
         'directory (or one of its subdirectories).');
     }
     final FlutterProject flutterProject = FlutterProject.current();
-    if (shouldRunPub) {
-      if (flutterProject.manifest.generateSyntheticPackage) {
-        final Environment environment = Environment(
-          artifacts: globals.artifacts,
-          logger: globals.logger,
-          cacheDir: globals.cache.getRoot(),
-          engineVersion: globals.flutterVersion.engineRevision,
-          fileSystem: globals.fs,
-          flutterRootDir: globals.fs.directory(Cache.flutterRoot),
-          outputDir: globals.fs.directory(getBuildDirectory()),
-          processManager: globals.processManager,
-          projectDir: flutterProject.directory,
-        );
-
-        await generateLocalizationsSyntheticPackage(
-          environment: environment,
-          buildSystem: globals.buildSystem,
-        );
-      }
-
-      await pub.get(
-        context: PubContext.getVerifyContext(name),
-        skipPubspecYamlCheck: true,
-        generateSyntheticPackage: flutterProject.manifest.generateSyntheticPackage,
-      );
-    }
     final bool buildTestAssets = boolArg('test-assets');
     final List<String> names = stringsArg('name');
     final List<String> plainNames = stringsArg('plain-name');
     final String tags = stringArg('tags');
     final String excludeTags = stringArg('exclude-tags');
+    final BuildInfo buildInfo = await getBuildInfo(forcedBuildMode: BuildMode.debug);
+
+    if (buildInfo.packageConfig['test_api'] == null) {
+      globals.printError(
+        '\n'
+        'Error: cannot run without a dependency on either "package:flutter_test" or "package:test". '
+        'Ensure the following lines are present in your pubspec.yaml:'
+        '\n\n'
+        'dev_dependencies:\n'
+        '  flutter_test:\n'
+        '    sdk: flutter\n',
+      );
+    }
 
     if (buildTestAssets && flutterProject.manifest.assets.isNotEmpty) {
       await _buildTestAsset();
@@ -222,18 +222,17 @@ class TestCommand extends FlutterCommand {
       );
     }
 
-    Directory workDir;
     if (files.isEmpty) {
       // We don't scan the entire package, only the test/ subdirectory, so that
       // files with names like like "hit_test.dart" don't get run.
-      workDir = globals.fs.directory('test');
-      if (!workDir.existsSync()) {
-        throwToolExit('Test directory "${workDir.path}" not found.');
+      final Directory testDir = globals.fs.directory('test');
+      if (!testDir.existsSync()) {
+        throwToolExit('Test directory "${testDir.path}" not found.');
       }
-      files = _findTests(workDir).toList();
+      files = _findTests(testDir).toList();
       if (files.isEmpty) {
         throwToolExit(
-            'Test directory "${workDir.path}" does not appear to contain any test files.\n'
+            'Test directory "${testDir.path}" does not appear to contain any test files.\n'
             'Test files must be in that directory and end with the pattern "_test.dart".'
         );
       }
@@ -254,6 +253,9 @@ class TestCommand extends FlutterCommand {
       collector = CoverageCollector(
         verbose: !machine,
         libraryPredicate: (String libraryName) => libraryName.contains(projectName),
+        // TODO(jonahwilliams): file bug for incorrect URI handling on windows
+        packagesPath: globals.fs.file(buildInfo.packagesPath)
+          .parent.parent.childFile('.packages').path
       );
     }
 
@@ -264,34 +266,34 @@ class TestCommand extends FlutterCommand {
       watcher = collector;
     }
 
-    final bool disableServiceAuthCodes =
-      boolArg('disable-service-auth-codes');
+    final DebuggingOptions debuggingOptions = DebuggingOptions.enabled(
+      buildInfo,
+      startPaused: startPaused,
+      disableServiceAuthCodes: boolArg('disable-service-auth-codes'),
+      disableDds: disableDds,
+      nullAssertions: boolArg(FlutterOptions.kNullAssertions),
+    );
 
     final int result = await testRunner.runTests(
       testWrapper,
       files,
-      workDir: workDir,
+      debuggingOptions: debuggingOptions,
       names: names,
       plainNames: plainNames,
       tags: tags,
       excludeTags: excludeTags,
       watcher: watcher,
       enableObservatory: collector != null || startPaused || boolArg('enable-vmservice'),
-      startPaused: startPaused,
-      disableServiceAuthCodes: disableServiceAuthCodes,
-      disableDds: disableDds,
       ipv6: boolArg('ipv6'),
       machine: machine,
-      buildMode: BuildMode.debug,
-      trackWidgetCreation: boolArg('track-widget-creation'),
       updateGoldens: boolArg('update-goldens'),
       concurrency: jobs,
       buildTestAssets: buildTestAssets,
       flutterProject: flutterProject,
       web: stringArg('platform') == 'chrome',
       randomSeed: stringArg('test-randomize-ordering-seed'),
-      extraFrontEndOptions: getBuildInfo(forcedBuildMode: BuildMode.debug).extraFrontEndOptions,
-      nullAssertions: boolArg(FlutterOptions.kNullAssertions),
+      reporter: stringArg('reporter'),
+      timeout: stringArg('timeout'),
     );
 
     if (collector != null) {

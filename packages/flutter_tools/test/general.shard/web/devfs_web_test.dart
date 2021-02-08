@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// @dart = 2.8
+
 import 'dart:io';
 
 import 'package:dwds/dwds.dart';
@@ -10,10 +12,11 @@ import 'package:flutter_tools/src/base/file_system.dart';
 import 'package:flutter_tools/src/base/io.dart';
 import 'package:flutter_tools/src/base/platform.dart';
 import 'package:flutter_tools/src/build_info.dart';
-import 'package:flutter_tools/src/build_runner/devfs_web.dart';
+import 'package:flutter_tools/src/isolated/devfs_web.dart';
 import 'package:flutter_tools/src/compile.dart';
 import 'package:flutter_tools/src/convert.dart';
 import 'package:flutter_tools/src/globals.dart' as globals;
+import 'package:flutter_tools/src/web/compile.dart';
 import 'package:mockito/mockito.dart';
 import 'package:package_config/package_config.dart';
 import 'package:shelf/shelf.dart';
@@ -32,6 +35,7 @@ const List<int> kTransparentImage = <int>[
 void main() {
   Testbed testbed;
   WebAssetServer webAssetServer;
+  ReleaseAssetServer releaseAssetServer;
   Platform linux;
   PackageConfig packages;
   Platform windows;
@@ -55,7 +59,14 @@ void main() {
         null,
         null,
         null,
-
+      );
+      releaseAssetServer = ReleaseAssetServer(
+        globals.fs.file('main.dart').uri,
+        fileSystem: null,
+        flutterRoot: null,
+        platform: null,
+        webBuildDirectory: null,
+        basePath: null,
       );
     });
   });
@@ -215,6 +226,85 @@ void main() {
     expect(response.statusCode, HttpStatus.notFound);
   }));
 
+  test('parses base path from index.html', () => testbed.run(() async {
+    const String htmlContent = '<html><head><base href="/foo/bar/"></head><body id="test"></body></html>';
+    final Directory webDir = globals.fs.currentDirectory
+      .childDirectory('web')
+      ..createSync();
+    webDir.childFile('index.html').writeAsStringSync(htmlContent);
+
+    final WebAssetServer webAssetServer = WebAssetServer(
+      mockHttpServer,
+      packages,
+      InternetAddress.loopbackIPv4,
+      null,
+      null,
+      null,
+    );
+
+    expect(webAssetServer.basePath, 'foo/bar');
+  }));
+
+  test('handles lack of base path in index.html', () => testbed.run(() async {
+    const String htmlContent = '<html><head></head><body id="test"></body></html>';
+    final Directory webDir = globals.fs.currentDirectory
+      .childDirectory('web')
+      ..createSync();
+    webDir.childFile('index.html').writeAsStringSync(htmlContent);
+
+    final WebAssetServer webAssetServer = WebAssetServer(
+      mockHttpServer,
+      packages,
+      InternetAddress.loopbackIPv4,
+      null,
+      null,
+      null,
+    );
+
+    // Defaults to "/" when there's no base element.
+    expect(webAssetServer.basePath, '');
+  }));
+
+  test('throws if base path is relative', () => testbed.run(() async {
+    const String htmlContent = '<html><head><base href="foo/bar/"></head><body id="test"></body></html>';
+    final Directory webDir = globals.fs.currentDirectory
+      .childDirectory('web')
+      ..createSync();
+    webDir.childFile('index.html').writeAsStringSync(htmlContent);
+
+    expect(
+      () => WebAssetServer(
+        mockHttpServer,
+        packages,
+        InternetAddress.loopbackIPv4,
+        null,
+        null,
+        null,
+      ),
+      throwsToolExit(),
+    );
+  }));
+
+  test('throws if base path does not end with slash', () => testbed.run(() async {
+    const String htmlContent = '<html><head><base href="/foo/bar"></head><body id="test"></body></html>';
+    final Directory webDir = globals.fs.currentDirectory
+      .childDirectory('web')
+      ..createSync();
+    webDir.childFile('index.html').writeAsStringSync(htmlContent);
+
+    expect(
+      () => WebAssetServer(
+        mockHttpServer,
+        packages,
+        InternetAddress.loopbackIPv4,
+        null,
+        null,
+        null,
+      ),
+      throwsToolExit(),
+    );
+  }));
+
   test('serves JavaScript files from in memory cache not from manifest', () => testbed.run(() async {
     webAssetServer.writeFile('foo.js', 'main() {}');
 
@@ -258,6 +348,47 @@ void main() {
 
     expect(response.statusCode, HttpStatus.ok);
     expect(await response.readAsString(), htmlContent);
+  }));
+
+  test('does not serve outside the base path', () => testbed.run(() async {
+    webAssetServer.basePath = 'base/path';
+
+    const String htmlContent = '<html><head></head><body id="test"></body></html>';
+    final Directory webDir = globals.fs.currentDirectory
+      .childDirectory('web')
+      ..createSync();
+    webDir.childFile('index.html').writeAsStringSync(htmlContent);
+
+    final Response response = await webAssetServer
+      .handleRequest(Request('GET', Uri.parse('http://foobar/')));
+
+    expect(response.statusCode, HttpStatus.notFound);
+  }));
+
+  test('does not serve index.html when path is inside assets or packages', () => testbed.run(() async {
+    const String htmlContent = '<html><head></head><body id="test"></body></html>';
+    final Directory webDir = globals.fs.currentDirectory
+      .childDirectory('web')
+      ..createSync();
+    webDir.childFile('index.html').writeAsStringSync(htmlContent);
+
+    Response response = await webAssetServer
+      .handleRequest(Request('GET', Uri.parse('http://foobar/assets/foo/bar.png')));
+    expect(response.statusCode, HttpStatus.notFound);
+
+    response = await webAssetServer
+      .handleRequest(Request('GET', Uri.parse('http://foobar/packages/foo/bar.dart.js')));
+    expect(response.statusCode, HttpStatus.notFound);
+
+    webAssetServer.basePath = 'base/path';
+
+    response = await webAssetServer
+      .handleRequest(Request('GET', Uri.parse('http://foobar/base/path/assets/foo/bar.png')));
+    expect(response.statusCode, HttpStatus.notFound);
+
+    response = await webAssetServer
+      .handleRequest(Request('GET', Uri.parse('http://foobar/base/path/packages/foo/bar.dart.js')));
+    expect(response.statusCode, HttpStatus.notFound);
   }));
 
   test('serves default index.html', () => testbed.run(() async {
@@ -463,14 +594,12 @@ void main() {
   }));
 
   test('Can start web server with specified assets', () => testbed.run(() async {
-    globals.fs.file('.packages').writeAsStringSync('\n');
     final File outputFile = globals.fs.file(globals.fs.path.join('lib', 'main.dart'))
       ..createSync(recursive: true);
     outputFile.parent.childFile('a.sources').writeAsStringSync('');
     outputFile.parent.childFile('a.json').writeAsStringSync('{}');
     outputFile.parent.childFile('a.map').writeAsStringSync('{}');
     outputFile.parent.childFile('a.metadata').writeAsStringSync('{}');
-    outputFile.parent.childFile('.packages').writeAsStringSync('\n');
 
     final ResidentCompiler residentCompiler = MockResidentCompiler();
     when(residentCompiler.recompile(
@@ -490,6 +619,7 @@ void main() {
       useSseForDebugProxy: true,
       useSseForDebugBackend: true,
       nullAssertions: true,
+      nativeNullAssertions: true,
       buildInfo: const BuildInfo(
         BuildMode.debug,
         '',
@@ -501,6 +631,7 @@ void main() {
       testMode: true,
       expressionCompiler: null,
       chromiumLauncher: null,
+      nullSafetyMode: NullSafetyMode.unsound,
     );
     webDevFS.requireJS.createSync(recursive: true);
     webDevFS.stackTraceMapper.createSync(recursive: true);
@@ -541,6 +672,7 @@ void main() {
       invalidatedFiles: <Uri>[],
       packageConfig: PackageConfig.empty,
       pathToReload: '',
+      dillOutputPath: 'out.dill',
     );
 
     expect(webDevFS.webAssetServer.getFile('require.js'), isNotNull);
@@ -559,8 +691,8 @@ void main() {
     expect(await webDevFS.webAssetServer.dartSourceContents('dart_sdk.js'), 'BELLOW');
 
     // Toggle CanvasKit
-    expect(webDevFS.webAssetServer.canvasKitRendering, false);
-    webDevFS.webAssetServer.canvasKitRendering = true;
+    expect(webDevFS.webAssetServer.webRenderer, WebRendererMode.html);
+    webDevFS.webAssetServer.webRenderer = WebRendererMode.canvaskit;
 
     expect(await webDevFS.webAssetServer.dartSourceContents('dart_sdk.js'), 'OL');
     expect(await webDevFS.webAssetServer.dartSourceContents('dart_sdk.js.map'), 'CHUM');
@@ -570,7 +702,7 @@ void main() {
       contains('GENERATED'));
 
     // served on localhost
-    expect(uri, Uri.http('localhost:0', ''));
+    expect(uri.host, 'localhost');
 
     await webDevFS.destroy();
   }, overrides: <Type, Generator>{
@@ -578,14 +710,12 @@ void main() {
   }));
 
   test('Can start web server with specified assets in sound null safety mode', () => testbed.run(() async {
-    globals.fs.file('.packages').writeAsStringSync('\n');
     final File outputFile = globals.fs.file(globals.fs.path.join('lib', 'main.dart'))
       ..createSync(recursive: true);
     outputFile.parent.childFile('a.sources').writeAsStringSync('');
     outputFile.parent.childFile('a.json').writeAsStringSync('{}');
     outputFile.parent.childFile('a.map').writeAsStringSync('{}');
     outputFile.parent.childFile('a.metadata').writeAsStringSync('{}');
-    outputFile.parent.childFile('.packages').writeAsStringSync('\n');
 
     final ResidentCompiler residentCompiler = MockResidentCompiler();
     when(residentCompiler.recompile(
@@ -605,17 +735,19 @@ void main() {
       useSseForDebugProxy: true,
       useSseForDebugBackend: true,
       nullAssertions: true,
+      nativeNullAssertions: true,
       buildInfo: const BuildInfo(
         BuildMode.debug,
         '',
         treeShakeIcons: false,
-        nullSafetyMode: NullSafetyMode.autodetect,
+        nullSafetyMode: NullSafetyMode.sound,
       ),
       enableDwds: false,
       entrypoint: Uri.base,
       testMode: true,
       expressionCompiler: null,
       chromiumLauncher: null,
+      nullSafetyMode: NullSafetyMode.sound,
     );
     webDevFS.requireJS.createSync(recursive: true);
     webDevFS.stackTraceMapper.createSync(recursive: true);
@@ -627,24 +759,24 @@ void main() {
       .childFile('web_entrypoint.dart')
       ..createSync(recursive: true)
       ..writeAsStringSync('GENERATED');
-    final String webPrecompiledSoundSdk = globals.artifacts
+    final String webPrecompiledSdk = globals.artifacts
       .getArtifactPath(Artifact.webPrecompiledSoundSdk);
-    final String webPrecompiledSoundSdkSourcemaps = globals.artifacts
+    final String webPrecompiledSdkSourcemaps = globals.artifacts
       .getArtifactPath(Artifact.webPrecompiledSoundSdkSourcemaps);
-    final String webPrecompiledCanvaskitSoundSdk = globals.artifacts
+    final String webPrecompiledCanvaskitSdk = globals.artifacts
       .getArtifactPath(Artifact.webPrecompiledCanvaskitSoundSdk);
-    final String webPrecompiledCanvaskitSoundSdkSourcemaps = globals.artifacts
+    final String webPrecompiledCanvaskitSdkSourcemaps = globals.artifacts
       .getArtifactPath(Artifact.webPrecompiledCanvaskitSoundSdkSourcemaps);
-    globals.fs.file(webPrecompiledSoundSdk)
+    globals.fs.file(webPrecompiledSdk)
       ..createSync(recursive: true)
       ..writeAsStringSync('HELLO');
-    globals.fs.file(webPrecompiledSoundSdkSourcemaps)
+    globals.fs.file(webPrecompiledSdkSourcemaps)
       ..createSync(recursive: true)
       ..writeAsStringSync('THERE');
-    globals.fs.file(webPrecompiledCanvaskitSoundSdk)
+    globals.fs.file(webPrecompiledCanvaskitSdk)
       ..createSync(recursive: true)
       ..writeAsStringSync('OL');
-    globals.fs.file(webPrecompiledCanvaskitSoundSdkSourcemaps)
+    globals.fs.file(webPrecompiledCanvaskitSdkSourcemaps)
       ..createSync(recursive: true)
       ..writeAsStringSync('CHUM');
 
@@ -656,6 +788,7 @@ void main() {
       invalidatedFiles: <Uri>[],
       packageConfig: PackageConfig.empty,
       pathToReload: '',
+      dillOutputPath: '',
     );
 
     expect(webDevFS.webAssetServer.getFile('require.js'), isNotNull);
@@ -668,13 +801,13 @@ void main() {
     expect(await webDevFS.webAssetServer.dartSourceContents('dart_sdk.js.map'), 'THERE');
 
     // Update to the SDK.
-    globals.fs.file(webPrecompiledSoundSdk).writeAsStringSync('BELLOW');
+    globals.fs.file(webPrecompiledSdk).writeAsStringSync('BELLOW');
 
     // New SDK should be visible..
     expect(await webDevFS.webAssetServer.dartSourceContents('dart_sdk.js'), 'BELLOW');
 
     // Toggle CanvasKit
-    webDevFS.webAssetServer.canvasKitRendering = true;
+    webDevFS.webAssetServer.webRenderer = WebRendererMode.canvaskit;
     expect(await webDevFS.webAssetServer.dartSourceContents('dart_sdk.js'), 'OL');
     expect(await webDevFS.webAssetServer.dartSourceContents('dart_sdk.js.map'), 'CHUM');
 
@@ -683,7 +816,7 @@ void main() {
       contains('GENERATED'));
 
     // served on localhost
-    expect(uri, Uri.http('localhost:0', ''));
+    expect(uri.host, 'localhost');
 
     await webDevFS.destroy();
   }, overrides: <Type, Generator>{
@@ -691,13 +824,11 @@ void main() {
   }));
 
   test('Can start web server with hostname any', () => testbed.run(() async {
-    globals.fs.file('.packages').writeAsStringSync('\n');
     final File outputFile = globals.fs.file(globals.fs.path.join('lib', 'main.dart'))
       ..createSync(recursive: true);
     outputFile.parent.childFile('a.sources').writeAsStringSync('');
     outputFile.parent.childFile('a.json').writeAsStringSync('{}');
     outputFile.parent.childFile('a.map').writeAsStringSync('{}');
-    outputFile.parent.childFile('.packages').writeAsStringSync('\n');
 
     final ResidentCompiler residentCompiler = MockResidentCompiler();
     when(residentCompiler.recompile(
@@ -723,24 +854,24 @@ void main() {
       expressionCompiler: null,
       chromiumLauncher: null,
       nullAssertions: true,
+      nativeNullAssertions: true,
+      nullSafetyMode: NullSafetyMode.sound,
     );
     webDevFS.requireJS.createSync(recursive: true);
     webDevFS.stackTraceMapper.createSync(recursive: true);
 
     final Uri uri = await webDevFS.create();
 
-    expect(uri, Uri.http('localhost:0', ''));
+    expect(uri.host, 'localhost');
     await webDevFS.destroy();
   }));
 
   test('Can start web server with canvaskit enabled', () => testbed.run(() async {
-    globals.fs.file('.packages').writeAsStringSync('\n');
     final File outputFile = globals.fs.file(globals.fs.path.join('lib', 'main.dart'))
       ..createSync(recursive: true);
     outputFile.parent.childFile('a.sources').writeAsStringSync('');
     outputFile.parent.childFile('a.json').writeAsStringSync('{}');
     outputFile.parent.childFile('a.map').writeAsStringSync('{}');
-    outputFile.parent.childFile('.packages').writeAsStringSync('\n');
 
     final ResidentCompiler residentCompiler = MockResidentCompiler();
     when(residentCompiler.recompile(
@@ -760,6 +891,7 @@ void main() {
       useSseForDebugProxy: true,
       useSseForDebugBackend: true,
       nullAssertions: true,
+      nativeNullAssertions: true,
       buildInfo: const BuildInfo(
         BuildMode.debug,
         '',
@@ -773,13 +905,65 @@ void main() {
       testMode: true,
       expressionCompiler: null,
       chromiumLauncher: null,
+      nullSafetyMode: NullSafetyMode.sound,
     );
     webDevFS.requireJS.createSync(recursive: true);
     webDevFS.stackTraceMapper.createSync(recursive: true);
 
     await webDevFS.create();
 
-    expect(webDevFS.webAssetServer.canvasKitRendering, true);
+    expect(webDevFS.webAssetServer.webRenderer, WebRendererMode.canvaskit);
+
+    await webDevFS.destroy();
+  }));
+
+  test('Can start web server with auto detect enabled', () => testbed.run(() async {
+    final File outputFile = globals.fs.file(globals.fs.path.join('lib', 'main.dart'))
+      ..createSync(recursive: true);
+    outputFile.parent.childFile('a.sources').writeAsStringSync('');
+    outputFile.parent.childFile('a.json').writeAsStringSync('{}');
+    outputFile.parent.childFile('a.map').writeAsStringSync('{}');
+
+    final ResidentCompiler residentCompiler = MockResidentCompiler();
+    when(residentCompiler.recompile(
+      any,
+      any,
+      outputPath: anyNamed('outputPath'),
+      packageConfig: anyNamed('packageConfig'),
+    )).thenAnswer((Invocation invocation) async {
+      return const CompilerOutput('a', 0, <Uri>[]);
+    });
+
+    final WebDevFS webDevFS = WebDevFS(
+      hostname: 'localhost',
+      port: 0,
+      packagesFilePath: '.packages',
+      urlTunneller: null,
+      useSseForDebugProxy: true,
+      useSseForDebugBackend: true,
+      nullAssertions: true,
+      nativeNullAssertions: true,
+      buildInfo: const BuildInfo(
+        BuildMode.debug,
+        '',
+        treeShakeIcons: false,
+        dartDefines: <String>[
+          'FLUTTER_WEB_AUTO_DETECT=true',
+        ]
+      ),
+      enableDwds: false,
+      entrypoint: Uri.base,
+      testMode: true,
+      expressionCompiler: null,
+      chromiumLauncher: null,
+      nullSafetyMode: NullSafetyMode.sound,
+    );
+    webDevFS.requireJS.createSync(recursive: true);
+    webDevFS.stackTraceMapper.createSync(recursive: true);
+
+    await webDevFS.create();
+
+    expect(webDevFS.webAssetServer.webRenderer, WebRendererMode.autoDetect);
 
     await webDevFS.destroy();
   }));
@@ -800,11 +984,103 @@ void main() {
       false,
       Uri.base,
       null,
+      null,
       testMode: true);
 
     expect(webAssetServer.defaultResponseHeaders['x-frame-options'], null);
     await webAssetServer.dispose();
   });
+
+  test('WebAssetServer responds to POST requests with 404 not found', () => testbed.run(() async {
+    final Response response = await webAssetServer.handleRequest(
+      Request('POST', Uri.parse('http://foobar/something')),
+    );
+    expect(response.statusCode, 404);
+  }));
+
+  test('ReleaseAssetServer responds to POST requests with 404 not found', () => testbed.run(() async {
+    final Response response = await releaseAssetServer.handle(
+      Request('POST', Uri.parse('http://foobar/something')),
+    );
+    expect(response.statusCode, 404);
+  }));
+
+  test('WebAssetServer strips leading base href off off asset requests', () => testbed.run(() async {
+    const String htmlContent = '<html><head><base href="/foo/"></head><body id="test"></body></html>';
+    globals.fs.currentDirectory
+      .childDirectory('web')
+      .childFile('index.html')
+      ..createSync(recursive: true)
+      ..writeAsStringSync(htmlContent);
+    final WebAssetServer webAssetServer = WebAssetServer(
+      MockHttpServer(),
+      PackageConfig.empty,
+      InternetAddress.anyIPv4,
+      <String, String>{},
+      <String, String>{},
+      NullSafetyMode.sound,
+    );
+
+    expect(await webAssetServer.metadataContents('foo/main_module.ddc_merged_metadata'), null);
+    // Not base href.
+    expect(() async  => await webAssetServer.metadataContents('bar/main_module.ddc_merged_metadata'), throwsException);
+  }));
+
+  test('DevFS URI includes any specified base path.', () => testbed.run(() async {
+    final File outputFile = globals.fs.file(globals.fs.path.join('lib', 'main.dart'))
+      ..createSync(recursive: true);
+    const String htmlContent = '<html><head><base href="/foo/"></head><body id="test"></body></html>';
+    globals.fs.currentDirectory
+      .childDirectory('web')
+      .childFile('index.html')
+      ..createSync(recursive: true)
+      ..writeAsStringSync(htmlContent);
+    outputFile.parent.childFile('a.sources').writeAsStringSync('');
+    outputFile.parent.childFile('a.json').writeAsStringSync('{}');
+    outputFile.parent.childFile('a.map').writeAsStringSync('{}');
+    outputFile.parent.childFile('a.metadata').writeAsStringSync('{}');
+
+    final ResidentCompiler residentCompiler = MockResidentCompiler();
+    when(residentCompiler.recompile(
+      any,
+      any,
+      outputPath: anyNamed('outputPath'),
+      packageConfig: anyNamed('packageConfig'),
+    )).thenAnswer((Invocation invocation) async {
+      return const CompilerOutput('a', 0, <Uri>[]);
+    });
+
+    final WebDevFS webDevFS = WebDevFS(
+      hostname: 'localhost',
+      port: 0,
+      packagesFilePath: '.packages',
+      urlTunneller: null,
+      useSseForDebugProxy: true,
+      useSseForDebugBackend: true,
+      nullAssertions: true,
+      nativeNullAssertions: true,
+      buildInfo: BuildInfo.debug,
+      enableDwds: false,
+      entrypoint: Uri.base,
+      testMode: true,
+      expressionCompiler: null,
+      chromiumLauncher: null,
+      nullSafetyMode: NullSafetyMode.unsound,
+    );
+    webDevFS.requireJS.createSync(recursive: true);
+    webDevFS.stackTraceMapper.createSync(recursive: true);
+
+    final Uri uri = await webDevFS.create();
+
+    // served on localhost
+    expect(uri.host, 'localhost');
+    // Matches base URI specified in html.
+    expect(uri.path, '/foo');
+
+    await webDevFS.destroy();
+  }, overrides: <Type, Generator>{
+    Artifacts: () => Artifacts.test(),
+  }));
 }
 
 class MockHttpServer extends Mock implements HttpServer {}

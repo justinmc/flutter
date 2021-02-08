@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// @dart = 2.8
+
 import 'package:meta/meta.dart';
 
 import '../base/common.dart';
@@ -49,7 +51,6 @@ const List<Target> _kDefaultTargets = <Target>[
   CopyFlutterBundle(),
   // Android targets,
   DebugAndroidApplication(),
-  FastStartAndroidApplication(),
   ProfileAndroidApplication(),
   // Android ABI specific AOT rules.
   androidArmProfileBundle,
@@ -121,15 +122,15 @@ class AssembleCommand extends FlutterCommand {
 
   @override
   Future<Map<CustomDimensions, String>> get usageValues async {
-    final FlutterProject futterProject = FlutterProject.current();
-    if (futterProject == null) {
+    final FlutterProject flutterProject = FlutterProject.current();
+    if (flutterProject == null) {
       return const <CustomDimensions, String>{};
     }
     try {
       final Environment localEnvironment = createEnvironment();
       return <CustomDimensions, String>{
         CustomDimensions.commandBuildBundleTargetPlatform: localEnvironment.defines['TargetPlatform'],
-        CustomDimensions.commandBuildBundleIsModule: '${futterProject.isModule}',
+        CustomDimensions.commandBuildBundleIsModule: '${flutterProject.isModule}',
       };
     } on Exception {
       // We've failed to send usage.
@@ -286,7 +287,7 @@ void writePerformanceData(Iterable<PerformanceMeasurement> measurements, File ou
     'targets': <Object>[
       for (final PerformanceMeasurement measurement in measurements)
         <String, Object>{
-          'name': measurement.analyicsName,
+          'name': measurement.analyticsName,
           'skipped': measurement.skipped,
           'succeeded': measurement.succeeded,
           'elapsedMilliseconds': measurement.elapsedMilliseconds,

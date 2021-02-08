@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// @dart = 2.8
+
 import 'package:yaml/yaml.dart';
 
 import 'base/file_system.dart';
@@ -85,7 +87,12 @@ class FlutterProjectMetadata {
       if (!_metadataFile.existsSync()) {
         return null;
       }
-      final dynamic metadataYaml = loadYaml(_metadataFile.readAsStringSync());
+      dynamic metadataYaml;
+      try {
+        metadataYaml = loadYaml(_metadataFile.readAsStringSync());
+      } on YamlException {
+        // Handled in return below.
+      }
       if (metadataYaml is YamlMap) {
         _metadataYaml = metadataYaml;
       } else {

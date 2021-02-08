@@ -151,7 +151,7 @@ function upgrade_flutter () (
 
     retry_upgrade
 
-    "$DART" --disable-dart-dev $FLUTTER_TOOL_ARGS --snapshot="$SNAPSHOT_PATH" --packages="$FLUTTER_TOOLS_DIR/.packages" --no-enable-mirrors "$SCRIPT_PATH"
+    "$DART" --verbosity=error --disable-dart-dev $FLUTTER_TOOL_ARGS --snapshot="$SNAPSHOT_PATH" --packages="$FLUTTER_TOOLS_DIR/.packages" --no-enable-mirrors "$SCRIPT_PATH"
     echo "$revision" > "$STAMP_PATH"
   fi
   # The exit here is extraneous since the function is run in a subshell, but
@@ -165,6 +165,12 @@ function upgrade_flutter () (
 # entrypoints.
 function shared::execute() {
   export FLUTTER_ROOT="$(cd "${BIN_DIR}/.." ; pwd -P)"
+
+  # If present, run the bootstrap script first
+  BOOTSTRAP_PATH="$FLUTTER_ROOT/bin/internal/bootstrap.sh"
+  if [ -f "$BOOTSTRAP_PATH" ]; then
+    source "$BOOTSTRAP_PATH"
+  fi
 
   FLUTTER_TOOLS_DIR="$FLUTTER_ROOT/packages/flutter_tools"
   SNAPSHOT_PATH="$FLUTTER_ROOT/bin/cache/flutter_tools.snapshot"

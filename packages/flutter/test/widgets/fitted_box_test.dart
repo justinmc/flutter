@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
@@ -167,7 +165,7 @@ void main() {
       expect(insideBox.size.width, 10.0);
       expect(insideBox.size.height, 10.0);
 
-      final Offset insideTopLeft = insideBox.localToGlobal(const Offset(0.0, 0.0));
+      final Offset insideTopLeft = insideBox.localToGlobal(Offset.zero);
       final Offset outsideTopLeft = outsideBox.localToGlobal(const Offset(0.0, 90.0));
       final Offset insideBottomRight = insideBox.localToGlobal(const Offset(10.0, 10.0));
       final Offset outsideBottomRight = outsideBox.localToGlobal(const Offset(10.0, 100.0));
@@ -208,7 +206,7 @@ void main() {
       expect(insideBox.size.width, 10.0);
       expect(insideBox.size.height, 10.0);
 
-      final Offset insideTopLeft = insideBox.localToGlobal(const Offset(0.0, 0.0));
+      final Offset insideTopLeft = insideBox.localToGlobal(Offset.zero);
       final Offset outsideTopLeft = outsideBox.localToGlobal(const Offset(90.0, 90.0));
       final Offset insideBottomRight = insideBox.localToGlobal(const Offset(10.0, 10.0));
       final Offset outsideBottomRight = outsideBox.localToGlobal(const Offset(100.0, 100.0));
@@ -249,7 +247,7 @@ void main() {
       expect(insideBox.size.width, 10.0);
       expect(insideBox.size.height, 10.0);
 
-      final Offset insideTopLeft = insideBox.localToGlobal(const Offset(0.0, 0.0));
+      final Offset insideTopLeft = insideBox.localToGlobal(Offset.zero);
       final Offset outsideTopLeft = outsideBox.localToGlobal(const Offset(45.0, 45.0));
       final Offset insideBottomRight = insideBox.localToGlobal(const Offset(10.0, 10.0));
       final Offset outsideBottomRight = outsideBox.localToGlobal(const Offset(55.0, 55.0));
@@ -290,7 +288,7 @@ void main() {
       expect(insideBox.size.width, 30.0);
       expect(insideBox.size.height, 10.0);
 
-      final Offset insideTopLeft = insideBox.localToGlobal(const Offset(0.0, 0.0));
+      final Offset insideTopLeft = insideBox.localToGlobal(Offset.zero);
       final Offset outsideTopLeft = outsideBox.localToGlobal(const Offset(35.0, 45.0));
       final Offset insideBottomRight = insideBox.localToGlobal(const Offset(30.0, 10.0));
       final Offset outsideBottomRight = outsideBox.localToGlobal(const Offset(65.0, 55.0));
@@ -331,8 +329,8 @@ void main() {
       expect(insideBox.size.width, 30.0);
       expect(insideBox.size.height, 10.0);
 
-      final Offset insideTopLeft = insideBox.localToGlobal(const Offset(0.0, 0.0));
-      final Offset outsideTopLeft = outsideBox.localToGlobal(const Offset(0.0, 0.0));
+      final Offset insideTopLeft = insideBox.localToGlobal(Offset.zero);
+      final Offset outsideTopLeft = outsideBox.localToGlobal(Offset.zero);
       final Offset insideBottomRight = insideBox.localToGlobal(const Offset(30.0, 10.0));
       final Offset outsideBottomRight = outsideBox.localToGlobal(const Offset(100.0, 100.0));
 
@@ -481,7 +479,7 @@ void main() {
   testWidgets('Can set and update clipBehavior', (WidgetTester tester) async {
     await tester.pumpWidget(FittedBox(fit: BoxFit.none, child: Container()));
     final RenderFittedBox renderObject = tester.allRenderObjects.whereType<RenderFittedBox>().first;
-    expect(renderObject.clipBehavior, equals(Clip.hardEdge));
+    expect(renderObject.clipBehavior, equals(Clip.none));
 
     await tester.pumpWidget(FittedBox(fit: BoxFit.none, child: Container(), clipBehavior: Clip.antiAlias));
     expect(renderObject.clipBehavior, equals(Clip.antiAlias));
@@ -595,12 +593,11 @@ void main() {
 
 List<Type> getLayers() {
   final List<Type> layers = <Type>[];
-  Layer layer = RendererBinding.instance.renderView.debugLayer;
-  while (layer is ContainerLayer) {
-    final ContainerLayer container = layer as ContainerLayer;
+  Layer? container = RendererBinding.instance!.renderView.debugLayer;
+  while (container is ContainerLayer) {
     layers.add(container.runtimeType);
     expect(container.firstChild, same(container.lastChild));
-    layer = container.firstChild;
+    container = container.firstChild;
   }
   return layers;
 }

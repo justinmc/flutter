@@ -2,9 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// @dart = 2.8
+
 import '../artifacts.dart';
 import '../base/common.dart';
-import '../base/process.dart';
 import '../globals.dart' as globals;
 import '../runner/flutter_command.dart';
 
@@ -72,7 +73,7 @@ class FormatCommand extends FlutterCommand {
       ...argResults.rest,
     ];
 
-    final int result = await processUtils.stream(command);
+    final int result = await globals.processUtils.stream(command);
     if (result != 0) {
       throwToolExit('Formatting failed: $result', exitCode: result);
     }

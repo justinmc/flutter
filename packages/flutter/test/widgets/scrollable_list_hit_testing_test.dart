@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
@@ -98,7 +96,7 @@ void main() {
     expect(tapped, equals(<int>[]));
     await tester.tap(find.text('1'));
     expect(tapped, equals(<int>[1]));
-    await tester.tap(find.text('3'));
+    await tester.tap(find.text('3'), warnIfMissed: false);
     expect(tapped, equals(<int>[1])); // the center of the third item is off-screen so it shouldn't get hit
   });
 

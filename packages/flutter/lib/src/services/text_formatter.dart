@@ -11,6 +11,49 @@ import 'package:flutter/foundation.dart';
 import 'text_editing.dart';
 import 'text_input.dart';
 
+/// {@template flutter.services.textFormatter.maxLengthEnforcement}
+/// ### [MaxLengthEnforcement.enforced] versus
+/// [MaxLengthEnforcement.truncateAfterCompositionEnds]
+///
+/// Both [MaxLengthEnforcement.enforced] and
+/// [MaxLengthEnforcement.truncateAfterCompositionEnds] make sure the final
+/// length of the text does not exceed the max length specified. The difference
+/// is that [MaxLengthEnforcement.enforced] truncates all text while
+/// [MaxLengthEnforcement.truncateAfterCompositionEnds] allows composing text to
+/// exceed the limit. Allowing this "placeholder" composing text to exceed the
+/// limit may provide a better user experience on some platforms for entering
+/// ideographic characters (e.g. CJK characters) via composing on phonetic
+/// keyboards.
+///
+/// Some input methods (Gboard on Android for example) initiate text composition
+/// even for Latin characters, in which case the best experience may be to
+/// truncate those composing characters with [MaxLengthEnforcement.enforced].
+///
+/// In fields that strictly support only a small subset of characters, such as
+/// verification code fields, [MaxLengthEnforcement.enforced] may provide the
+/// best experience.
+/// {@endtemplate}
+///
+/// See also:
+///
+///  * [TextField.maxLengthEnforcement] which is used in conjunction with
+///  [TextField.maxLength] to limit the length of user input. [TextField] also
+///  provides a character counter to provide visual feedback.
+enum MaxLengthEnforcement {
+  /// No enforcement applied to the editing value. It's possible to exceed the
+  /// max length.
+  none,
+
+  /// Keep the length of the text input from exceeding the max length even when
+  /// the text has an unfinished composing region.
+  enforced,
+
+  /// Users can still input text if the current value is composing even after
+  /// reaching the max length limit. After composing ends, the value will be
+  /// truncated.
+  truncateAfterCompositionEnds,
+}
+
 /// A [TextInputFormatter] can be optionally injected into an [EditableText]
 /// to provide as-you-type validation and formatting of the text being edited.
 ///
@@ -24,6 +67,9 @@ import 'text_input.dart';
 ///
 /// To create custom formatters, extend the [TextInputFormatter] class and
 /// implement the [formatEditUpdate] method.
+///
+/// ## Handling emojis and other complex characters
+/// {@macro flutter.widgets.EditableText.onChanged}
 ///
 /// See also:
 ///
@@ -132,7 +178,7 @@ class FilteringTextInputFormatter extends TextInputFormatter {
 
   /// A [Pattern] to match and replace in incoming [TextEditingValue]s.
   ///
-  /// The behaviour of the pattern depends on the [allow] property. If
+  /// The behavior of the pattern depends on the [allow] property. If
   /// it is true, then this is an allow list, specifying a pattern that
   /// characters must match to be accepted. Otherwise, it is a deny list,
   /// specifying a pattern that characters must not match to be accepted.
@@ -300,21 +346,29 @@ class WhitelistingTextInputFormatter extends FilteringTextInputFormatter {
 }
 
 /// A [TextInputFormatter] that prevents the insertion of more characters
-/// (currently defined as Unicode scalar values) than allowed.
+/// than allowed.
 ///
 /// Since this formatter only prevents new characters from being added to the
 /// text, it preserves the existing [TextEditingValue.selection].
 ///
+/// Characters are counted as user-perceived characters using the
+/// [characters](https://pub.dev/packages/characters) package, so even complex
+/// characters like extended grapheme clusters and surrogate pairs are counted
+/// as single characters.
+///
+/// See also:
 ///  * [maxLength], which discusses the precise meaning of "number of
-///    characters" and how it may differ from the intuitive meaning.
+///    characters".
 class LengthLimitingTextInputFormatter extends TextInputFormatter {
   /// Creates a formatter that prevents the insertion of more characters than a
   /// limit.
   ///
   /// The [maxLength] must be null, -1 or greater than zero. If it is null or -1
   /// then no limit is enforced.
-  LengthLimitingTextInputFormatter(this.maxLength)
-    : assert(maxLength == null || maxLength == -1 || maxLength > 0);
+  LengthLimitingTextInputFormatter(
+    this.maxLength, {
+    this.maxLengthEnforcement,
+  }) : assert(maxLength == null || maxLength == -1 || maxLength > 0);
 
   /// The limit on the number of user-perceived characters that this formatter
   /// will allow.
@@ -354,6 +408,50 @@ class LengthLimitingTextInputFormatter extends TextInputFormatter {
   /// composing is not allowed.
   final int? maxLength;
 
+  /// Determines how the [maxLength] limit should be enforced.
+  ///
+  /// Defaults to [MaxLengthEnforcement.enforced].
+  ///
+  /// {@macro flutter.services.textFormatter.maxLengthEnforcement}
+  final MaxLengthEnforcement? maxLengthEnforcement;
+
+  /// Returns a [MaxLengthEnforcement] that follows the specified [platform]'s
+  /// convention.
+  ///
+  /// {@template flutter.services.textFormatter.effectiveMaxLengthEnforcement}
+  /// ### Platform specific behaviors
+  ///
+  /// Different platforms follow different behaviors by default, according to
+  /// their native behavior.
+  ///  * Android, Windows: [MaxLengthEnforcement.enforced]. The native behavior
+  ///    of these platforms is enforced. The composing will be handled by the
+  ///    IME while users are entering CJK characters.
+  ///  * iOS: [MaxLengthEnforcement.truncateAfterCompositionEnds]. iOS has no
+  ///    default behavior and it requires users implement the behavior
+  ///    themselves. Allow the composition to exceed to avoid breaking CJK input.
+  ///  * Web, macOS, linux, fuchsia:
+  ///    [MaxLengthEnforcement.truncateAfterCompositionEnds]. These platforms
+  ///    allow the composition to exceed by default.
+  /// {@endtemplate}
+  static MaxLengthEnforcement getDefaultMaxLengthEnforcement([
+    TargetPlatform? platform,
+  ]) {
+    if (kIsWeb) {
+      return MaxLengthEnforcement.truncateAfterCompositionEnds;
+    } else {
+      switch (platform ?? defaultTargetPlatform) {
+        case TargetPlatform.android:
+        case TargetPlatform.windows:
+          return MaxLengthEnforcement.enforced;
+        case TargetPlatform.iOS:
+        case TargetPlatform.macOS:
+        case TargetPlatform.linux:
+        case TargetPlatform.fuchsia:
+          return MaxLengthEnforcement.truncateAfterCompositionEnds;
+      }
+    }
+  }
+
   /// Truncate the given TextEditingValue to maxLength user-perceived
   /// characters.
   ///
@@ -367,13 +465,19 @@ class LengthLimitingTextInputFormatter extends TextInputFormatter {
       iterator.expandNext(maxLength);
     }
     final String truncated = iterator.current;
+
     return TextEditingValue(
       text: truncated,
       selection: value.selection.copyWith(
         baseOffset: math.min(value.selection.start, truncated.length),
         extentOffset: math.min(value.selection.end, truncated.length),
       ),
-      composing: TextRange.empty,
+      composing: !value.composing.isCollapsed && truncated.length > value.composing.start
+        ? TextRange(
+            start: value.composing.start,
+            end: math.min(value.composing.end, truncated.length),
+          )
+        : TextRange.empty,
     );
   }
 
@@ -384,20 +488,43 @@ class LengthLimitingTextInputFormatter extends TextInputFormatter {
   ) {
     final int? maxLength = this.maxLength;
 
-    if (maxLength == null || maxLength == -1 || newValue.text.characters.length <= maxLength)
+    if (maxLength == null ||
+      maxLength == -1 ||
+      newValue.text.characters.length <= maxLength) {
       return newValue;
+    }
 
     assert(maxLength > 0);
 
-    // If already at the maximum and tried to enter even more, keep the old
-    // value.
-    if (oldValue.text.characters.length == maxLength && !oldValue.composing.isValid) {
-      return oldValue;
-    }
+    switch (maxLengthEnforcement ?? getDefaultMaxLengthEnforcement()) {
+      case MaxLengthEnforcement.none:
+        return newValue;
+      case MaxLengthEnforcement.enforced:
+        // If already at the maximum and tried to enter even more, and has no
+        // selection, keep the old value.
+        if (oldValue.text.characters.length == maxLength && !oldValue.selection.isValid) {
+          return oldValue;
+        }
 
-    // Temporarily exempt `newValue` from the maxLength limit if it has a
-    // composing text going, until the composing is finished.
-    return newValue.composing.isValid ? newValue : truncate(newValue, maxLength);
+        // Enforced to return a truncated value.
+        return truncate(newValue, maxLength);
+      case MaxLengthEnforcement.truncateAfterCompositionEnds:
+        // If already at the maximum and tried to enter even more, and the old
+        // value is not composing, keep the old value.
+        if (oldValue.text.characters.length == maxLength &&
+          !oldValue.composing.isValid) {
+          return oldValue;
+        }
+
+        // Temporarily exempt `newValue` from the maxLength limit if it has a
+        // composing text going and no enforcement to the composing value, until
+        // the composing is finished.
+        if (newValue.composing.isValid) {
+          return newValue;
+        }
+
+        return truncate(newValue, maxLength);
+    }
   }
 }
 

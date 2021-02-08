@@ -407,7 +407,7 @@ void main() {
 
     group('writeTimelineToFile', () {
 
-      Directory tempDir;
+      late Directory tempDir;
 
       setUp(() {
         useMemoryFileSystemForTesting();
@@ -478,7 +478,7 @@ void main() {
           final Timeline timeline = Timeline.fromJson(<String, dynamic>{
           'traceEvents': traceEvents,
           });
-          return SceneDisplayLagSummarizer(timeline.events);
+          return SceneDisplayLagSummarizer(timeline.events!);
       }
 
       test('average_vsyncs_missed', () async {
@@ -529,7 +529,7 @@ void main() {
           final Timeline timeline = Timeline.fromJson(<String, dynamic>{
             'traceEvents': traceEvents,
           });
-          return ProfilingSummarizer.fromEvents(timeline.events);
+          return ProfilingSummarizer.fromEvents(timeline.events!);
       }
 
       test('has_both_cpu_and_memory_usage', () async {

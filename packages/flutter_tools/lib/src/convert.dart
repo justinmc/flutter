@@ -2,13 +2,25 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// @dart = 2.8
+
 // Hide the original utf8 [Codec] so that we can export our own implementation
 // which adds additional error handling.
 import 'dart:convert' hide utf8;
 import 'dart:convert' as cnv show utf8, Utf8Decoder;
 
+import 'package:meta/meta.dart';
+
 import 'base/common.dart';
 export 'dart:convert' hide utf8, Utf8Codec, Utf8Decoder;
+
+/// The original utf8 encoding for testing overrides only.
+///
+/// Attempting to use the flutter tool utf8 decoder will surface an analyzer
+/// warning that overrides cannot change the default value of a named
+/// parameter.
+@visibleForTesting
+const Encoding utf8ForTesting = cnv.utf8;
 
 /// A [Codec] which reports malformed bytes when decoding.
 ///

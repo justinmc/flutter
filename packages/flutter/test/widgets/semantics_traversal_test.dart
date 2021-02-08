@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'dart:collection';
 import 'dart:math' as math;
 import 'dart:ui';
@@ -39,7 +37,7 @@ void main() {
     await tester.test(
       textDirection: TextDirection.ltr,
       children: <String, Rect>{
-        'A': const Offset(0.0, 0.0) & tenByTen,
+        'A': Offset.zero & tenByTen,
         'B': const Offset(20.0, 0.0) & tenByTen,
       },
       expectedTraversal: 'A B',
@@ -53,7 +51,7 @@ void main() {
     await tester.test(
       textDirection: TextDirection.rtl,
       children: <String, Rect>{
-        'A': const Offset(0.0, 0.0) & tenByTen,
+        'A': Offset.zero & tenByTen,
         'B': const Offset(20.0, 0.0) & tenByTen,
       },
       expectedTraversal: 'B A',
@@ -72,7 +70,7 @@ void main() {
       await tester.test(
         textDirection: textDirection,
         children: <String, Rect>{
-          'A': const Offset(0.0, 0.0) & tenByTen,
+          'A': Offset.zero & tenByTen,
           'B': const Offset(0.0, 20.0) & tenByTen,
         },
         expectedTraversal: 'A B',
@@ -92,7 +90,7 @@ void main() {
     await tester.test(
       textDirection: TextDirection.ltr,
       children: <String, Rect>{
-        'A': const Offset(0.0, 0.0) & tenByTen,
+        'A': Offset.zero & tenByTen,
         'B': const Offset(20.0, 0.0) & tenByTen,
         'C': const Offset(0.0, 20.0) & tenByTen,
         'D': const Offset(20.0, 20.0) & tenByTen,
@@ -113,7 +111,7 @@ void main() {
     await tester.test(
       textDirection: TextDirection.rtl,
       children: <String, Rect>{
-        'A': const Offset(0.0, 0.0) & tenByTen,
+        'A': Offset.zero & tenByTen,
         'B': const Offset(20.0, 0.0) & tenByTen,
         'C': const Offset(0.0, 20.0) & tenByTen,
         'D': const Offset(20.0, 20.0) & tenByTen,
@@ -129,7 +127,7 @@ void main() {
   //         └───┘
   testTraversal('Semantics traverses vertically overlapping nodes horizontally', (TraversalTester tester) async {
     final Map<String, Rect> children = <String, Rect>{
-      'A': const Offset(0.0, 0.0) & tenByTen,
+      'A': Offset.zero & tenByTen,
       'B': const Offset(20.0, 5.0) & tenByTen,
       'C': const Offset(40.0, 0.0) & tenByTen,
     };
@@ -186,7 +184,7 @@ void main() {
   // └───┘ └───┘ └───┘ └───┘
   testTraversal('Semantics traverses vertical groups, then horizontal groups, then knots', (TraversalTester tester) async {
     final Map<String, Rect> children = <String, Rect>{
-      'A': const Offset(0.0, 0.0) & tenByTen,
+      'A': Offset.zero & tenByTen,
       'B': const Offset(20.0, 0.0) & tenByTen,
       'C': const Offset(40.0, 0.0) & tenByTen,
       'D': const Offset(60.0, 0.0) & tenByTen,
@@ -293,9 +291,9 @@ class TraversalTester {
   final SemanticsTester semantics;
 
   Future<void> test({
-    TextDirection textDirection,
-    Map<String, Rect> children,
-    String expectedTraversal,
+    required TextDirection textDirection,
+    required Map<String, Rect> children,
+    required String expectedTraversal,
   }) async {
     assert(children is LinkedHashMap);
     await tester.pumpWidget(
@@ -314,8 +312,8 @@ class TraversalTester {
                         explicitChildNodes: true,
                         label: label,
                         child: SizedBox(
-                          width: children[label].width,
-                          height: children[label].height,
+                          width: children[label]!.width,
+                          height: children[label]!.height,
                         ),
                       ),
                     );

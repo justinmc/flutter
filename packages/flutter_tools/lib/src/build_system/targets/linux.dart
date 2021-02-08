@@ -2,9 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// @dart = 2.8
+
 import '../../artifacts.dart';
 import '../../base/file_system.dart';
 import '../../build_info.dart';
+import '../../devfs.dart';
+import '../../project.dart';
 import '../build_system.dart';
 import '../depfile.dart';
 import '../exceptions.dart';
@@ -124,10 +128,14 @@ abstract class BundleLinuxAssets extends Target {
       environment.buildDir.childFile('app.dill')
         .copySync(outputDirectory.childFile('kernel_blob.bin').path);
     }
+    final String versionInfo = FlutterProject.current().getVersionInfo();
     final Depfile depfile = await copyAssets(
       environment,
       outputDirectory,
       targetPlatform: TargetPlatform.linux_x64,
+      additionalContent: <String, DevFSContent>{
+        'version.json': DevFSStringContent(versionInfo),
+      }
     );
     final DepfileService depfileService = DepfileService(
       fileSystem: environment.fileSystem,

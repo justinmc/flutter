@@ -2,10 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:archive/archive.dart';
+// @dart = 2.8
+
 import 'package:file/memory.dart';
 import 'package:file/src/interface/file.dart';
 import 'package:file_testing/file_testing.dart';
+import 'package:flutter_tools/src/base/common.dart';
 import 'package:flutter_tools/src/base/file_system.dart';
 import 'package:flutter_tools/src/base/io.dart';
 import 'package:flutter_tools/src/base/logger.dart';
@@ -16,9 +18,9 @@ import 'package:flutter_tools/src/cache.dart';
 import 'package:mockito/mockito.dart';
 
 import '../src/common.dart';
-import '../src/mocks.dart';
+import '../src/fakes.dart';
 
-final Platform testPlatform = FakePlatform(environment: <String, String>{});
+final Platform testPlatform = FakePlatform(environment: const <String, String>{});
 
 void main() {
   testWithoutContext('ArtifactUpdater can download a zip archive', () async {
@@ -44,14 +46,133 @@ void main() {
     expect(fileSystem.file('out/test'), exists);
   });
 
+  testWithoutContext('ArtifactUpdater can download a zip archive and delete stale files', () async {
+    final MockOperatingSystemUtils operatingSystemUtils = MockOperatingSystemUtils();
+    final MemoryFileSystem fileSystem = MemoryFileSystem.test();
+    final BufferLogger logger = BufferLogger.test();
+    final ArtifactUpdater artifactUpdater = ArtifactUpdater(
+      fileSystem: fileSystem,
+      logger: logger,
+      operatingSystemUtils: operatingSystemUtils,
+      platform: testPlatform,
+      httpClient: MockHttpClient(),
+      tempStorage: fileSystem.currentDirectory.childDirectory('temp')
+        ..createSync(),
+    );
+    // Unrelated file from another cache.
+    fileSystem.file('out/bar').createSync(recursive: true);
+    // Stale file from current cache.
+    fileSystem.file('out/test/foo.txt').createSync(recursive: true);
+
+    await artifactUpdater.downloadZipArchive(
+      'test message',
+      Uri.parse('http:///test.zip'),
+      fileSystem.currentDirectory.childDirectory('out'),
+    );
+    expect(logger.statusText, contains('test message'));
+    expect(fileSystem.file('out/test'), exists);
+    expect(fileSystem.file('out/bar'), exists);
+    expect(fileSystem.file('out/test/foo.txt'), isNot(exists));
+  });
+
+  testWithoutContext('ArtifactUpdater will not validate the md5 hash if the '
+    'x-goog-hash header is present but missing an md5 entry', () async {
+    final MockOperatingSystemUtils operatingSystemUtils = MockOperatingSystemUtils();
+    final MemoryFileSystem fileSystem = MemoryFileSystem.test();
+    final BufferLogger logger = BufferLogger.test();
+    final MockHttpClient client = MockHttpClient();
+    client.testRequest.testResponse.headers = FakeHttpHeaders(<String, List<String>>{
+      'x-goog-hash': <String>[],
+    });
+
+    final ArtifactUpdater artifactUpdater = ArtifactUpdater(
+      fileSystem: fileSystem,
+      logger: logger,
+      operatingSystemUtils: operatingSystemUtils,
+      platform: testPlatform,
+      httpClient: client,
+      tempStorage: fileSystem.currentDirectory.childDirectory('temp')
+        ..createSync(),
+    );
+
+    await artifactUpdater.downloadZipArchive(
+      'test message',
+      Uri.parse('http:///test.zip'),
+      fileSystem.currentDirectory.childDirectory('out'),
+    );
+    expect(logger.statusText, contains('test message'));
+    expect(fileSystem.file('out/test'), exists);
+  });
+
+  testWithoutContext('ArtifactUpdater will validate the md5 hash if the '
+    'x-goog-hash header is present', () async {
+    final MockOperatingSystemUtils operatingSystemUtils = MockOperatingSystemUtils();
+    final MemoryFileSystem fileSystem = MemoryFileSystem.test();
+    final BufferLogger logger = BufferLogger.test();
+    final MockHttpClient client = MockHttpClient();
+    client.testRequest.testResponse.headers = FakeHttpHeaders(<String, List<String>>{
+      'x-goog-hash': <String>[
+        'foo-bar-baz',
+        'md5=k7iFrf4NoInN9jSQT9WfcQ=='
+      ],
+    });
+
+    final ArtifactUpdater artifactUpdater = ArtifactUpdater(
+      fileSystem: fileSystem,
+      logger: logger,
+      operatingSystemUtils: operatingSystemUtils,
+      platform: testPlatform,
+      httpClient: client,
+      tempStorage: fileSystem.currentDirectory.childDirectory('temp')
+        ..createSync(),
+    );
+
+    await artifactUpdater.downloadZipArchive(
+      'test message',
+      Uri.parse('http:///test.zip'),
+      fileSystem.currentDirectory.childDirectory('out'),
+    );
+    expect(logger.statusText, contains('test message'));
+    expect(fileSystem.file('out/test'), exists);
+  });
+
+  testWithoutContext('ArtifactUpdater will validate the md5 hash if the '
+    'x-goog-hash header is present and throw if it does not match', () async {
+    final MockOperatingSystemUtils operatingSystemUtils = MockOperatingSystemUtils();
+    final MemoryFileSystem fileSystem = MemoryFileSystem.test();
+    final BufferLogger logger = BufferLogger.test();
+    final MockHttpClient client = MockHttpClient();
+    client.testRequest.testResponse.headers = FakeHttpHeaders(<String, List<String>>{
+      'x-goog-hash': <String>[
+        'foo-bar-baz',
+        'md5=k7iFrf4SQT9WfcQ=='
+      ],
+    });
+
+    final ArtifactUpdater artifactUpdater = ArtifactUpdater(
+      fileSystem: fileSystem,
+      logger: logger,
+      operatingSystemUtils: operatingSystemUtils,
+      platform: testPlatform,
+      httpClient: client,
+      tempStorage: fileSystem.currentDirectory.childDirectory('temp')
+        ..createSync(),
+    );
+
+    await expectLater(() async => await artifactUpdater.downloadZipArchive(
+      'test message',
+      Uri.parse('http:///test.zip'),
+      fileSystem.currentDirectory.childDirectory('out'),
+    ), throwsToolExit(message: 'k7iFrf4SQT9WfcQ==')); // validate that the hash mismatch message is included.
+  });
+
   testWithoutContext('ArtifactUpdater will restart the status ticker if it needs to retry the download', () async {
     final MockOperatingSystemUtils operatingSystemUtils = MockOperatingSystemUtils();
     final MemoryFileSystem fileSystem = MemoryFileSystem.test();
     final Logger logger = StdoutLogger(
       terminal: Terminal.test(supportsColor: true),
-      stdio: MockStdio(),
+      stdio: FakeStdio(),
       outputPreferences: OutputPreferences.test(),
-      timeoutConfiguration: const TimeoutConfiguration(),
     );
     final ArtifactUpdater artifactUpdater = ArtifactUpdater(
       fileSystem: fileSystem,
@@ -157,7 +278,7 @@ void main() {
     expect(fileSystem.file('out/test'), isNot(exists));
   });
 
-  testWithoutContext('ArtifactUpdater will de-download a file if unzipping fails', () async {
+  testWithoutContext('ArtifactUpdater will re-download a file if unzipping fails', () async {
     final MockOperatingSystemUtils operatingSystemUtils = MockOperatingSystemUtils();
     final MemoryFileSystem fileSystem = MemoryFileSystem.test();
     final BufferLogger logger = BufferLogger.test();
@@ -205,7 +326,7 @@ void main() {
     expect(fileSystem.file('out/test'), exists);
   });
 
-  testWithoutContext('ArtifactUpdater will bail if unzipping fails more than twice', () async {
+  testWithoutContext('ArtifactUpdater will bail with a tool exit if unzipping fails more than twice', () async {
     final MockOperatingSystemUtils operatingSystemUtils = MockOperatingSystemUtils();
     final MemoryFileSystem fileSystem = MemoryFileSystem.test();
     final BufferLogger logger = BufferLogger.test();
@@ -224,7 +345,7 @@ void main() {
       'test message',
       Uri.parse('http:///test.zip'),
       fileSystem.currentDirectory.childDirectory('out'),
-    ), throwsA(isA<ProcessException>()));
+    ), throwsA(isA<ToolExit>()));
     expect(fileSystem.file('te,[/test'), isNot(exists));
     expect(fileSystem.file('out/test'), isNot(exists));
   });
@@ -248,7 +369,7 @@ void main() {
       'test message',
       Uri.parse('http:///test.zip'),
       fileSystem.currentDirectory.childDirectory('out'),
-    ), throwsA(isA<ArchiveException>()));
+    ), throwsA(isA<ToolExit>()));
     expect(fileSystem.file('te,[/test'), isNot(exists));
     expect(fileSystem.file('out/test'), isNot(exists));
   });
@@ -311,10 +432,7 @@ class MockOperatingSystemUtils extends Mock implements OperatingSystemUtils {
   void unzip(File file, Directory targetDirectory) {
     if (failures > 0) {
       failures -= 1;
-      if (windows) {
-        throw ArchiveException('zip');
-      }
-      throw const ProcessException('zip', <String>[], 'Failed to unzip');
+      throw Exception();
     }
     targetDirectory.childFile(file.fileSystem.path.basenameWithoutExtension(file.path))
       .createSync();
@@ -324,10 +442,7 @@ class MockOperatingSystemUtils extends Mock implements OperatingSystemUtils {
   void unpack(File gzippedTarFile, Directory targetDirectory) {
     if (failures > 0) {
       failures -= 1;
-      if (windows) {
-        throw ArchiveException('zip');
-      }
-      throw const ProcessException('zip', <String>[], 'Failed to unzip');
+      throw Exception();
     }
     targetDirectory.childFile(gzippedTarFile.fileSystem.path.basenameWithoutExtension(gzippedTarFile.path))
       .createSync();
@@ -353,6 +468,7 @@ class MockHttpClient extends Mock implements HttpClient {
     return testRequest;
   }
 }
+
 class MockHttpClientRequest extends Mock implements HttpClientRequest {
   final MockHttpClientResponse testResponse = MockHttpClientResponse();
 
@@ -361,12 +477,28 @@ class MockHttpClientRequest extends Mock implements HttpClientRequest {
     return testResponse;
   }
 }
+
 class MockHttpClientResponse extends Mock implements HttpClientResponse {
   @override
   int statusCode = HttpStatus.ok;
 
   @override
+  HttpHeaders headers = FakeHttpHeaders(<String, List<String>>{});
+
+  @override
   Future<void> forEach(void Function(List<int> element) action) async {
+    action(<int>[0]);
     return;
+  }
+}
+
+class FakeHttpHeaders extends Fake implements HttpHeaders {
+  FakeHttpHeaders(this.values);
+
+  final Map<String, List<String>> values;
+
+  @override
+  List<String> operator [](String key) {
+    return values[key];
   }
 }

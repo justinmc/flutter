@@ -2,13 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'dart:ui' as ui;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter/animation.dart';
 import 'package:flutter/widgets.dart';
 
 import '../scheduler/scheduler_tester.dart';
@@ -21,7 +17,7 @@ class BogusCurve extends Curve {
 void main() {
   setUp(() {
     WidgetsFlutterBinding.ensureInitialized();
-    WidgetsBinding.instance.resetEpoch();
+    WidgetsBinding.instance!.resetEpoch();
     ui.window.onBeginFrame = null;
     ui.window.onDrawFrame = null;
   });
@@ -240,14 +236,14 @@ void main() {
       vsync: const TestVSync(),
     );
     final CurvedAnimation curved = CurvedAnimation(parent: controller, curve: BogusCurve());
-    FlutterError error;
+    FlutterError? error;
     try {
       curved.value;
     } on FlutterError catch (e) {
       error = e;
     }
     expect(error, isNotNull);
-    expect(error.toStringDeep(), matches(
+    expect(error!.toStringDeep(), matches(
       // RegExp matcher is required here due to flutter web and flutter mobile generating
       // slightly different floating point numbers
       // in Flutter web 0.0 sometimes just appears as 0. or 0
@@ -271,7 +267,7 @@ FlutterError
     final CurvedAnimation curved = CurvedAnimation(parent: controller, curve: Curves.linear, reverseCurve: Curves.linear);
 
     controller.forward();
-    tick(const Duration(milliseconds: 0));
+    tick(Duration.zero);
     tick(const Duration(milliseconds: 10));
     expect(curved.value, moreOrLessEquals(0.1));
     tick(const Duration(milliseconds: 20));
@@ -322,7 +318,7 @@ FlutterError
     );
 
     controller.forward();
-    tick(const Duration(milliseconds: 0));
+    tick(Duration.zero);
     tick(const Duration(milliseconds: 10));
     expect(reversed.value, moreOrLessEquals(0.9));
     tick(const Duration(milliseconds: 20));

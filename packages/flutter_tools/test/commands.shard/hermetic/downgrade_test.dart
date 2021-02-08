@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// @dart = 2.8
+
 import 'package:file/file.dart';
 import 'package:file/memory.dart';
 import 'package:flutter_tools/src/base/io.dart';
@@ -15,7 +17,6 @@ import 'package:mockito/mockito.dart';
 
 import '../../src/common.dart';
 import '../../src/context.dart';
-import '../../src/mocks.dart';
 
 void main() {
   FileSystem fileSystem;
@@ -53,7 +54,6 @@ void main() {
       flutterVersion: flutterVersion,
       logger: bufferLogger,
     );
-    applyMocksToCommand(command);
 
     expect(createTestCommandRunner(command).run(const <String>['downgrade']),
       throwsToolExit(message: 'Flutter is not currently on a known channel.'));
@@ -79,7 +79,6 @@ void main() {
       flutterVersion: flutterVersion,
       logger: bufferLogger,
     );
-    applyMocksToCommand(command);
 
     expect(createTestCommandRunner(command).run(const <String>['downgrade']),
       throwsToolExit(message:
@@ -108,7 +107,6 @@ void main() {
       flutterVersion: flutterVersion,
       logger: bufferLogger,
     );
-    applyMocksToCommand(command);
 
     expect(createTestCommandRunner(command).run(const <String>['downgrade']),
       throwsToolExit(message: 'Failed to parse version for downgrade'));
@@ -127,7 +125,6 @@ void main() {
       flutterVersion: flutterVersion,
       logger: bufferLogger,
     );
-    applyMocksToCommand(command);
 
     when(terminal.promptForCharInput(
       const <String>['y', 'n'],
@@ -158,7 +155,6 @@ void main() {
       flutterVersion: flutterVersion,
       logger: bufferLogger,
     );
-    applyMocksToCommand(command);
 
     when(terminal.promptForCharInput(
       const <String>['y', 'n'],
@@ -192,7 +188,6 @@ void main() {
       flutterVersion: flutterVersion,
       logger: bufferLogger,
     );
-    applyMocksToCommand(command);
 
     await createTestCommandRunner(command).run(const <String>['downgrade']);
 
@@ -237,7 +232,6 @@ void main() {
       flutterVersion: flutterVersion,
       logger: bufferLogger,
     );
-    applyMocksToCommand(command);
 
     await createTestCommandRunner(command).run(const <String>['downgrade']);
 

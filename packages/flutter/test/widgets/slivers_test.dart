@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
@@ -51,9 +49,7 @@ Future<void> testSliverFixedExtentList(WidgetTester tester, List<String> items) 
               childCount : items.length,
               findChildIndexCallback: (Key key) {
                 final ValueKey<String> valueKey = key as ValueKey<String>;
-                final String data = valueKey.value;
-                final int index = items.indexOf(data);
-                return index == -1 ? null : index;
+                return items.indexOf(valueKey.value);
               },
             ),
           ),
@@ -65,10 +61,10 @@ Future<void> testSliverFixedExtentList(WidgetTester tester, List<String> items) 
 
 void verify(WidgetTester tester, List<Offset> idealPositions, List<bool> idealVisibles) {
   final List<Offset> actualPositions = tester.renderObjectList<RenderBox>(find.byType(SizedBox, skipOffstage: false)).map<Offset>(
-    (RenderBox target) => target.localToGlobal(const Offset(0.0, 0.0))
+    (RenderBox target) => target.localToGlobal(Offset.zero)
   ).toList();
   final List<bool> actualVisibles = tester.renderObjectList<RenderSliverToBoxAdapter>(find.byType(SliverToBoxAdapter, skipOffstage: false)).map<bool>(
-    (RenderSliverToBoxAdapter target) => target.geometry.visible
+    (RenderSliverToBoxAdapter target) => target.geometry!.visible
   ).toList();
   expect(actualPositions, equals(idealPositions));
   expect(actualVisibles, equals(idealVisibles));
@@ -79,7 +75,7 @@ void main() {
     await test(tester, 0.0);
     expect(tester.renderObject<RenderBox>(find.byType(Viewport)).size, equals(const Size(800.0, 600.0)));
     verify(tester, <Offset>[
-      const Offset(0.0, 0.0),
+      Offset.zero,
       const Offset(0.0, 400.0),
       const Offset(0.0, 800.0),
       const Offset(0.0, 1200.0),
@@ -147,7 +143,7 @@ void main() {
     verify(tester, <Offset>[
       const Offset(0.0, -800.0),
       const Offset(0.0, -400.0),
-      const Offset(0.0, 0.0),
+      Offset.zero,
       const Offset(0.0, 400.0),
       const Offset(0.0, 800.0),
     ], <bool>[false, false, true, true, false]);
@@ -497,7 +493,7 @@ void main() {
       addRepaintBoundaries: false,
       addSemanticIndexes: false,
     );
-    final KeyedSubtree wrapped = builderThrowsDelegate.build(_NullBuildContext(), 0) as KeyedSubtree;
+    final KeyedSubtree wrapped = builderThrowsDelegate.build(_NullBuildContext(), 0)! as KeyedSubtree;
     expect(wrapped.child, errorText);
     expect(tester.takeException(), 'builder');
     ErrorWidget.builder = oldBuilder;
@@ -614,8 +610,8 @@ void main() {
       expect(semantics.nodesWith(label: 'a'), hasLength(0));
       expect(find.byType(Text), findsNothing);
       final RenderViewport renderViewport = tester.renderObject(find.byType(Viewport));
-      final RenderSliver renderSliver = renderViewport.lastChild;
-      expect(renderSliver.geometry.scrollExtent, 0.0);
+      final RenderSliver renderSliver = renderViewport.lastChild!;
+      expect(renderSliver.geometry!.scrollExtent, 0.0);
       expect(find.byType(SliverOffstage), findsNothing);
     });
 
@@ -633,8 +629,8 @@ void main() {
       expect(semantics.nodesWith(label: 'a'), hasLength(1));
       expect(find.byType(Text), findsOneWidget);
       final RenderViewport renderViewport = tester.renderObject(find.byType(Viewport));
-      final RenderSliver renderSliver = renderViewport.lastChild;
-      expect(renderSliver.geometry.scrollExtent, 14.0);
+      final RenderSliver renderSliver = renderViewport.lastChild!;
+      expect(renderSliver.geometry!.scrollExtent, 14.0);
       expect(find.byType(SliverOffstage), paints..paragraph());
     });
   });
@@ -782,7 +778,7 @@ void main() {
         )
       ));
       expect(semantics.nodesWith(label: 'a'), hasLength(1));
-      await tester.tap(find.byType(GestureDetector));
+      await tester.tap(find.byType(GestureDetector), warnIfMissed: false);
       expect(events, equals(<String>[]));
     });
 
@@ -826,7 +822,7 @@ void main() {
         )
       ));
       expect(semantics.nodesWith(label: 'a'), hasLength(0));
-      await tester.tap(find.byType(GestureDetector));
+      await tester.tap(find.byType(GestureDetector), warnIfMissed: false);
       expect(events, equals(<String>[]));
     });
 
@@ -893,10 +889,10 @@ void main() {
                   (BuildContext context, int index) {
                   return Container(
                     child: Material(
-                      color: index % 2 == 0 ? Colors.yellow : Colors.red,
+                      color: index.isEven ? Colors.yellow : Colors.red,
                       child: InkWell(
                         onTap: () {
-                          index % 2 == 0 ? firstTapped++ : secondTapped++;
+                          index.isEven ? firstTapped++ : secondTapped++;
                         },
                         child: Text('Index $index'),
                       ),
@@ -945,7 +941,7 @@ bool sameHorizontal(Offset a, Offset b) => b.dy == a.dy;
 bool sameVertical(Offset a, Offset b) => b.dx == a.dx;
 
 class TestSliverGrid extends StatelessWidget {
-  const TestSliverGrid(this.children, { Key key }) : super(key: key);
+  const TestSliverGrid(this.children, { Key? key }) : super(key: key);
 
   final List<Widget> children;
 
@@ -1003,7 +999,7 @@ class _TestArbitrarySliverGridLayout implements SliverGridLayout {
 }
 
 class TestSliverFixedExtentList extends StatelessWidget {
-  const TestSliverFixedExtentList(this.children, { Key key }) : super(key: key);
+  const TestSliverFixedExtentList(this.children, { Key? key }) : super(key: key);
 
   final List<Widget> children;
 
@@ -1026,7 +1022,7 @@ class TestSliverFixedExtentList extends StatelessWidget {
 }
 
 class KeepAlive extends StatefulWidget {
-  const KeepAlive(this.data, { Key key }) : super(key: key);
+  const KeepAlive(this.data, { Key? key }) : super(key: key);
 
   final String data;
 

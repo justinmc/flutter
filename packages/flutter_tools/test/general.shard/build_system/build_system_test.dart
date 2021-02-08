@@ -2,6 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// @dart = 2.8
+
+import 'dart:async';
+
 import 'package:file/memory.dart';
 import 'package:file_testing/file_testing.dart';
 import 'package:flutter_tools/src/artifacts.dart';
@@ -12,7 +16,6 @@ import 'package:flutter_tools/src/base/utils.dart';
 import 'package:flutter_tools/src/build_system/build_system.dart';
 import 'package:flutter_tools/src/build_system/exceptions.dart';
 import 'package:flutter_tools/src/convert.dart';
-import 'package:mockito/mockito.dart';
 
 import '../../src/common.dart';
 import '../../src/context.dart';
@@ -84,8 +87,7 @@ void main() {
       ..inputs = const <Source>[
         Source.pattern('{PROJECT_DIR}/foo.dart'),
       ];
-    final MockArtifacts artifacts = MockArtifacts();
-    when(artifacts.isLocalEngine).thenReturn(false);
+    final Artifacts artifacts = Artifacts.test();
     environment = Environment.test(
       fileSystem.currentDirectory,
       artifacts: artifacts,
@@ -386,7 +388,7 @@ void main() {
     final Environment environmentA = Environment.test(
       fileSystem.currentDirectory,
       outputDir: fileSystem.directory('a'),
-      artifacts: MockArtifacts(),
+      artifacts: Artifacts.test(),
       processManager: FakeProcessManager.any(),
       fileSystem: fileSystem,
       logger: BufferLogger.test(),
@@ -394,7 +396,7 @@ void main() {
     final Environment environmentB = Environment.test(
       fileSystem.currentDirectory,
       outputDir: fileSystem.directory('b'),
-      artifacts: MockArtifacts(),
+      artifacts: Artifacts.test(),
       processManager: FakeProcessManager.any(),
       fileSystem: fileSystem,
       logger: BufferLogger.test(),
@@ -406,7 +408,7 @@ void main() {
   testWithoutContext('Additional inputs do not change the build configuration',  () async {
     final Environment environmentA = Environment.test(
       fileSystem.currentDirectory,
-      artifacts: MockArtifacts(),
+      artifacts: Artifacts.test(),
       processManager: FakeProcessManager.any(),
       fileSystem: fileSystem,
       logger: BufferLogger.test(),
@@ -416,7 +418,7 @@ void main() {
     );
     final Environment environmentB = Environment.test(
       fileSystem.currentDirectory,
-      artifacts: MockArtifacts(),
+      artifacts: Artifacts.test(),
       processManager: FakeProcessManager.any(),
       fileSystem: fileSystem,
       logger: BufferLogger.test(),
@@ -479,7 +481,7 @@ void main() {
     final Environment environment = Environment.test(
       fileSystem.currentDirectory,
       outputDir: fileSystem.directory('a/b/c/d'),
-      artifacts: MockArtifacts(),
+      artifacts: Artifacts.test(),
       processManager: FakeProcessManager.any(),
       fileSystem: fileSystem,
       logger: BufferLogger.test(),
@@ -561,7 +563,7 @@ void main() {
       defines: <String, String>{
         'config': 'debug',
       },
-      artifacts: MockArtifacts(),
+      artifacts: Artifacts.test(),
       processManager: FakeProcessManager.any(),
       logger: BufferLogger.test(),
       fileSystem: fileSystem,
@@ -572,7 +574,7 @@ void main() {
       defines: <String, String>{
         'config': 'profile',
       },
-      artifacts: MockArtifacts(),
+      artifacts: Artifacts.test(),
       processManager: FakeProcessManager.any(),
       logger: BufferLogger.test(),
       fileSystem: fileSystem,
@@ -645,13 +647,49 @@ void main() {
     expect(thirdResult.outputFiles, isEmpty);
   });
 
+  testWithoutContext('Build completes all dependencies before failing', () async {
+    final MemoryFileSystem fileSystem = MemoryFileSystem.test();
+    final BuildSystem buildSystem = setUpBuildSystem(fileSystem, FakePlatform(
+      operatingSystem: 'linux',
+      numberOfProcessors: 10, // Ensure the tool will process tasks concurrently.
+    ));
+    final Completer<void> startB = Completer<void>();
+    final Completer<void> startC = Completer<void>();
+    final Completer<void> finishB = Completer<void>();
+
+    final TestTarget a = TestTarget((Environment environment) {
+      throw StateError('Should not run');
+    })..name = 'A';
+    final TestTarget b = TestTarget((Environment environment) async {
+      startB.complete();
+      await finishB.future;
+      throw Exception('1');
+    })..name = 'B';
+    final TestTarget c = TestTarget((Environment environment) {
+      startC.complete();
+      throw Exception('2');
+    })..name = 'C';
+    a.dependencies.addAll(<Target>[b, c]);
+
+    final Future<BuildResult> pendingResult = buildSystem.build(a, environment);
+    await startB.future;
+    await startC.future;
+
+    finishB.complete();
+
+    final BuildResult result = await pendingResult;
+
+    expect(result.success, false);
+    expect(result.exceptions.keys, containsAll(<String>['B', 'C']));
+  });
+
 }
 
-BuildSystem setUpBuildSystem(FileSystem fileSystem) {
+BuildSystem setUpBuildSystem(FileSystem fileSystem, [FakePlatform platform]) {
   return FlutterBuildSystem(
     fileSystem: fileSystem,
     logger: BufferLogger.test(),
-    platform: FakePlatform(operatingSystem: 'linux'),
+    platform: platform ?? FakePlatform(operatingSystem: 'linux'),
   );
 }
 
@@ -688,5 +726,3 @@ class TestTarget extends Target {
   @override
   List<Source> outputs = <Source>[];
 }
-
-class MockArtifacts extends Mock implements Artifacts {}

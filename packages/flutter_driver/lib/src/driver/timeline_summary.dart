@@ -195,7 +195,7 @@ class TimelineSummary {
   /// * [Timeline.fromJson], which explains detail about the timeline data.
   Future<void> writeTimelineToFile(
     String traceName, {
-    String destinationDirectory,
+    String? destinationDirectory,
     bool pretty = false,
   }) async {
     destinationDirectory ??= testOutputsDirectory;
@@ -207,7 +207,7 @@ class TimelineSummary {
   /// Writes [summaryJson] to a file.
   Future<void> writeSummaryToFile(
     String traceName, {
-    String destinationDirectory,
+    String? destinationDirectory,
     bool pretty = false,
   }) async {
     destinationDirectory ??= testOutputsDirectory;
@@ -223,13 +223,13 @@ class TimelineSummary {
   }
 
   List<TimelineEvent> _extractNamedEvents(String name) {
-    return _timeline.events
+    return _timeline.events!
       .where((TimelineEvent event) => event.name == name)
       .toList();
   }
 
   List<TimelineEvent> _extractEventsWithNames(Set<String> names) {
-    return _timeline.events
+    return _timeline.events!
       .where((TimelineEvent event) => names.contains(event.name))
       .toList();
   }
@@ -242,7 +242,7 @@ class TimelineSummary {
     final List<TimelineEvent> events = _extractNamedEvents(name);
 
     // Timeline does not guarantee that the first event is the "begin" event.
-    TimelineEvent begin;
+    TimelineEvent? begin;
     for (final TimelineEvent event in events) {
       if (event.phase == 'B') {
         begin = event;
@@ -271,7 +271,7 @@ class TimelineSummary {
     return _extractDurations(
       name,
       (TimelineEvent beginEvent, TimelineEvent endEvent) {
-        return Duration(microseconds: endEvent.timestampMicros - beginEvent.timestampMicros);
+        return Duration(microseconds: endEvent.timestampMicros! - beginEvent.timestampMicros!);
       },
     );
   }
@@ -280,7 +280,7 @@ class TimelineSummary {
     final List<Duration> result = _extractDurations(
       name,
       (TimelineEvent beginEvent, TimelineEvent endEvent) {
-        return Duration(microseconds: beginEvent.timestampMicros);
+        return Duration(microseconds: beginEvent.timestampMicros!);
       },
     );
 

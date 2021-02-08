@@ -31,6 +31,11 @@ typedef HttpClientProvider = HttpClient Function();
 /// This value is ignored in non-debug builds.
 HttpClientProvider? debugNetworkImageHttpClientProvider;
 
+/// Called when the framework is about to paint an [Image] to a [Canvas] with an
+/// [ImageSizeInfo] that contains the decoded size of the image as well as its
+/// output size.
+///
+/// See: [debugOnPaintImage].
 typedef PaintImageCallback = void Function(ImageSizeInfo);
 
 /// Tracks the bytes used by a [dart:ui.Image] compared to the bytes needed to
@@ -152,11 +157,13 @@ PaintImageCallback? debugOnPaintImage;
 /// This has no effect unless asserts are enabled.
 bool debugInvertOversizedImages = false;
 
+const int _imageOverheadAllowanceDefault = 128 * 1024;
+
 /// The number of bytes an image must use before it triggers inversion when
 /// [debugInvertOversizedImages] is true.
 ///
-/// Default is 1024 (1kb).
-int debugImageOverheadAllowance = 1024;
+/// Default is 128kb.
+int debugImageOverheadAllowance = _imageOverheadAllowanceDefault;
 
 /// Returns true if none of the painting library debug variables have been changed.
 ///
@@ -175,7 +182,7 @@ bool debugAssertAllPaintingVarsUnset(String reason, { bool debugDisableShadowsOv
         debugNetworkImageHttpClientProvider != null ||
         debugOnPaintImage != null ||
         debugInvertOversizedImages == true ||
-        debugImageOverheadAllowance != 1024) {
+        debugImageOverheadAllowance != _imageOverheadAllowanceDefault) {
       throw FlutterError(reason);
     }
     return true;

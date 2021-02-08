@@ -2,10 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 
 void main() {
   // Pumps and ensures that the BottomSheet animates non-linearly.
@@ -25,7 +24,6 @@ void main() {
 
   testWidgets('Verify that a BottomSheet can be rebuilt with ScaffoldFeatureController.setState()', (WidgetTester tester) async {
     final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
-    PersistentBottomSheetController<void> bottomSheet;
     int buildCount = 0;
 
     await tester.pumpWidget(MaterialApp(
@@ -35,7 +33,7 @@ void main() {
       ),
     ));
 
-    bottomSheet = scaffoldKey.currentState.showBottomSheet<void>((_) {
+    final PersistentBottomSheetController<void> bottomSheet = scaffoldKey.currentState!.showBottomSheet<void>((_) {
       return Builder(
         builder: (BuildContext context) {
           buildCount += 1;
@@ -46,7 +44,7 @@ void main() {
 
     await tester.pump();
     expect(buildCount, equals(1));
-    bottomSheet.setState(() { });
+    bottomSheet.setState!(() { });
     await tester.pump();
     expect(buildCount, equals(2));
   });
@@ -92,7 +90,7 @@ void main() {
       ),
     ));
 
-    scaffoldKey.currentState.showBottomSheet<void>((BuildContext context) {
+    scaffoldKey.currentState!.showBottomSheet<void>((BuildContext context) {
       return ListView(
         shrinkWrap: true,
         primary: false,
@@ -124,7 +122,7 @@ void main() {
       ),
     ));
 
-    scaffoldKey.currentState.showBottomSheet<void>((BuildContext context) {
+    scaffoldKey.currentState!.showBottomSheet<void>((BuildContext context) {
       return ListView(
         shrinkWrap: true,
         primary: false,
@@ -159,7 +157,7 @@ void main() {
       ),
     ));
 
-    scaffoldKey.currentState.showBottomSheet<void>(
+    scaffoldKey.currentState!.showBottomSheet<void>(
       (BuildContext context) {
         return DraggableScrollableSheet(
           expand: false,
@@ -313,7 +311,7 @@ void main() {
       ),
     ));
 
-    scaffoldKey.currentState.showBottomSheet<void>(
+    scaffoldKey.currentState!.showBottomSheet<void>(
       (BuildContext context) {
         return DraggableScrollableSheet(
           expand: false,
@@ -363,7 +361,7 @@ void main() {
 
     int buildCount = 0;
     showBottomSheet<void>(
-      context: key.currentContext,
+      context: key.currentContext!,
       builder: (BuildContext context) {
         return Builder(
           builder: (BuildContext context) {
@@ -378,8 +376,8 @@ void main() {
   });
 
   testWidgets('Scaffold removes top MediaQuery padding', (WidgetTester tester) async {
-    BuildContext scaffoldContext;
-    BuildContext bottomSheetContext;
+    late BuildContext scaffoldContext;
+    late BuildContext bottomSheetContext;
 
     await tester.pumpWidget(MaterialApp(
       home: MediaQuery(
@@ -387,7 +385,7 @@ void main() {
           padding: EdgeInsets.all(50.0),
         ),
         child: Scaffold(
-          resizeToAvoidBottomPadding: false,
+          resizeToAvoidBottomInset: false,
           body: Builder(
             builder: (BuildContext context) {
               scaffoldContext = context;
@@ -478,6 +476,28 @@ void main() {
     expect(find.byKey(bottomSheetKey), findsNothing);
   });
 
+  // Regression test for https://github.com/flutter/flutter/issues/71435
+  testWidgets('Scaffold.bottomSheet should be updated without creating a new RO'
+      ' when the new widget has the same key and type.', (WidgetTester tester) async {
+    Widget buildFrame(String text) {
+      return MaterialApp(
+        home: Scaffold(
+          body: const Placeholder(),
+          bottomSheet: Text(text),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(buildFrame('I love Flutter!'));
+    final RenderParagraph renderBeforeUpdate = tester.renderObject(find.text('I love Flutter!'));
+
+    await tester.pumpWidget(buildFrame('Flutter is the best!'));
+    await tester.pumpAndSettle();
+    final RenderParagraph renderAfterUpdate = tester.renderObject(find.text('Flutter is the best!'));
+
+    expect(renderBeforeUpdate, renderAfterUpdate);
+  });
+
   testWidgets('Verify that visual properties are passed through', (WidgetTester tester) async {
     final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
     const Color color = Colors.pink;
@@ -492,7 +512,7 @@ void main() {
       ),
     ));
 
-    scaffoldKey.currentState.showBottomSheet<void>((BuildContext context) {
+    scaffoldKey.currentState!.showBottomSheet<void>((BuildContext context) {
       return ListView(
         shrinkWrap: true,
         primary: false,
@@ -522,7 +542,7 @@ void main() {
       ),
     ));
 
-    final PersistentBottomSheetController<void> bottomSheet = scaffoldKey.currentState.showBottomSheet<void>((_) {
+    final PersistentBottomSheetController<void> bottomSheet = scaffoldKey.currentState!.showBottomSheet<void>((_) {
       return Builder(
         builder: (BuildContext context) {
           return Container(height: 200.0);

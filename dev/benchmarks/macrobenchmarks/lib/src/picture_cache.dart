@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 
 class PictureCachePage extends StatelessWidget {
   static const List<String> kTabNames = <String>['1', '2', '3', '4', '5'];
@@ -132,7 +131,7 @@ class ListItem extends StatelessWidget {
           ),
         ),
         Image.asset(
-          index % 2 == 0 ? 'food/butternut_squash_soup.png' : 'food/cherry_pie.png',
+          index.isEven ? 'food/butternut_squash_soup.png' : 'food/cherry_pie.png',
           package: 'flutter_gallery_assets',
           fit: BoxFit.cover,
           width: 110,

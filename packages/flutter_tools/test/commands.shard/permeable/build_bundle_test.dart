@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// @dart = 2.8
+
 import 'package:args/command_runner.dart';
 import 'package:file/memory.dart';
 import 'package:flutter_tools/src/base/file_system.dart';
@@ -38,11 +40,7 @@ void main() {
         manifestPath: anyNamed('manifestPath'),
         applicationKernelFilePath: anyNamed('applicationKernelFilePath'),
         depfilePath: anyNamed('depfilePath'),
-        privateKeyPath: anyNamed('privateKeyPath'),
         assetDirPath: anyNamed('assetDirPath'),
-        packagesPath: anyNamed('packagesPath'),
-        precompiledSnapshot: anyNamed('precompiledSnapshot'),
-        reportLicensedPackages: anyNamed('reportLicensedPackages'),
         trackWidgetCreation: anyNamed('trackWidgetCreation'),
         extraFrontEndOptions: anyNamed('extraFrontEndOptions'),
         extraGenSnapshotOptions: anyNamed('extraGenSnapshotOptions'),
@@ -112,7 +110,7 @@ void main() {
       '--target-platform=windows-x64',
     ]), throwsToolExit());
   }, overrides: <Type, Generator>{
-    FileSystem: () => MemoryFileSystem(),
+    FileSystem: () => MemoryFileSystem.test(),
     ProcessManager: () => FakeProcessManager.any(),
     FeatureFlags: () => TestFeatureFlags(isWindowsEnabled: false),
   });
@@ -130,7 +128,7 @@ void main() {
       '--target-platform=linux-x64',
     ]), throwsToolExit());
   }, overrides: <Type, Generator>{
-    FileSystem: () => MemoryFileSystem(),
+    FileSystem: () => MemoryFileSystem.test(),
     ProcessManager: () => FakeProcessManager.any(),
     FeatureFlags: () => TestFeatureFlags(isLinuxEnabled: false),
   });
@@ -148,7 +146,7 @@ void main() {
       '--target-platform=darwin-x64',
     ]), throwsToolExit());
   }, overrides: <Type, Generator>{
-    FileSystem: () => MemoryFileSystem(),
+    FileSystem: () => MemoryFileSystem.test(),
     ProcessManager: () => FakeProcessManager.any(),
     FeatureFlags: () => TestFeatureFlags(isMacOSEnabled: false),
   });
@@ -166,7 +164,7 @@ void main() {
       '--target-platform=windows-x64',
     ]);
   }, overrides: <Type, Generator>{
-    FileSystem: () => MemoryFileSystem(),
+    FileSystem: () => MemoryFileSystem.test(),
     ProcessManager: () => FakeProcessManager.any(),
     FeatureFlags: () => TestFeatureFlags(isWindowsEnabled: true),
   });
@@ -184,7 +182,7 @@ void main() {
       '--target-platform=linux-x64',
     ]);
   }, overrides: <Type, Generator>{
-    FileSystem: () => MemoryFileSystem(),
+    FileSystem: () => MemoryFileSystem.test(),
     ProcessManager: () => FakeProcessManager.any(),
     FeatureFlags: () => TestFeatureFlags(isLinuxEnabled: true),
   });
@@ -202,7 +200,7 @@ void main() {
       '--target-platform=darwin-x64',
     ]);
   }, overrides: <Type, Generator>{
-    FileSystem: () => MemoryFileSystem(),
+    FileSystem: () => MemoryFileSystem.test(),
     ProcessManager: () => FakeProcessManager.any(),
     FeatureFlags: () => TestFeatureFlags(isMacOSEnabled: true),
   });
@@ -234,7 +232,7 @@ void main() {
     ]);
   }, overrides: <Type, Generator>{
     BuildSystem: () => MockBuildSystem(),
-    FileSystem: () => MemoryFileSystem(),
+    FileSystem: () => MemoryFileSystem.test(),
     ProcessManager: () => FakeProcessManager.any(),
   });
 }

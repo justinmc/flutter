@@ -78,6 +78,17 @@ enum _TextSelectionHandlePosition { start, end }
 /// having to store the start position.
 typedef DragSelectionUpdateCallback = void Function(DragStartDetails startDetails, DragUpdateDetails updateDetails);
 
+/// The type for a Function that builds a toolbar's container with the given
+/// child.
+///
+/// See also:
+///
+///   * [TextSelectionToolbar.toolbarBuilder], which is of this type.
+///     type.
+///   * [CupertinoTextSelectionToolbar.toolbarBuilder], which is similar, but
+///     for a Cupertino-style toolbar.
+typedef ToolbarBuilder = Widget Function(BuildContext context, Widget child);
+
 /// ParentData that determines whether or not to paint the corresponding child.
 ///
 /// Used in the layout of the Cupertino and Material text selection menus, which
@@ -131,6 +142,7 @@ abstract class TextSelectionControls {
     List<TextSelectionPoint> endpoints,
     TextSelectionDelegate delegate,
     ClipboardStatusNotifier clipboardStatus,
+    Offset? lastSecondaryTapDownPosition,
   );
 
   /// Returns the size of the selection handle.
@@ -356,7 +368,7 @@ class TextSelectionOverlay {
   ///  * [DragGestureRecognizer.dragStartBehavior], which gives an example for the different behaviors.
   final DragStartBehavior dragStartBehavior;
 
-  /// {@template flutter.widgets.textSelection.onSelectionHandleTapped}
+  /// {@template flutter.widgets.TextSelectionOverlay.onSelectionHandleTapped}
   /// A callback that's invoked when a selection handle is tapped.
   ///
   /// Both regular taps and long presses invoke this callback, but a drag
@@ -567,27 +579,35 @@ class TextSelectionOverlay {
       endpoints[0].point.dy - renderObject.preferredLineHeight,
     );
 
-    return FadeTransition(
-      opacity: _toolbarOpacity,
-      child: CompositedTransformFollower(
-        link: toolbarLayerLink,
-        showWhenUnlinked: false,
-        offset: -editingRegion.topLeft,
-        child: selectionControls!.buildToolbar(
-          context,
-          editingRegion,
-          renderObject.preferredLineHeight,
-          midpoint,
-          endpoints,
-          selectionDelegate!,
-          clipboardStatus!,
+    return Directionality(
+      textDirection: Directionality.of(this.context),
+      child: FadeTransition(
+        opacity: _toolbarOpacity,
+        child: CompositedTransformFollower(
+          link: toolbarLayerLink,
+          showWhenUnlinked: false,
+          offset: -editingRegion.topLeft,
+          child: Builder(
+            builder: (BuildContext context) {
+              return selectionControls!.buildToolbar(
+                context,
+                editingRegion,
+                renderObject.preferredLineHeight,
+                midpoint,
+                endpoints,
+                selectionDelegate!,
+                clipboardStatus!,
+                renderObject.lastSecondaryTapDownPosition,
+              );
+            },
+          ),
         ),
       ),
     );
   }
 
   void _handleSelectionHandleChanged(TextSelection newSelection, _TextSelectionHandlePosition position) {
-    TextPosition textPosition;
+    final TextPosition textPosition;
     switch (position) {
       case _TextSelectionHandlePosition.start:
         textPosition = newSelection.base;
@@ -695,7 +715,7 @@ class _TextSelectionHandleOverlayState
       return;
     }
 
-    TextSelection newSelection;
+    final TextSelection newSelection;
     switch (widget.position) {
       case _TextSelectionHandlePosition.start:
         newSelection = TextSelection(
@@ -724,8 +744,8 @@ class _TextSelectionHandleOverlayState
 
   @override
   Widget build(BuildContext context) {
-    LayerLink layerLink;
-    TextSelectionHandleType type;
+    final LayerLink layerLink;
+    final TextSelectionHandleType type;
 
     switch (widget.position) {
       case _TextSelectionHandlePosition.start:
@@ -887,6 +907,21 @@ class TextSelectionGestureDetectorBuilder {
   @protected
   final TextSelectionGestureDetectorBuilderDelegate delegate;
 
+  /// Returns true iff lastSecondaryTapDownPosition was on selection.
+  bool get _lastSecondaryTapWasOnSelection {
+    assert(renderEditable.lastSecondaryTapDownPosition != null);
+    if (renderEditable.selection == null) {
+      return false;
+    }
+
+    final TextPosition textPosition = renderEditable.getPositionForPoint(
+      renderEditable.lastSecondaryTapDownPosition!,
+    );
+
+    return renderEditable.selection!.base.offset <= textPosition.offset
+        && renderEditable.selection!.extent.offset >= textPosition.offset;
+  }
+
   /// Whether to show the selection toolbar.
   ///
   /// It is based on the signal source when a [onTapDown] is called. This getter
@@ -898,12 +933,12 @@ class TextSelectionGestureDetectorBuilder {
   /// The [State] of the [EditableText] for which the builder will provide a
   /// [TextSelectionGestureDetector].
   @protected
-  EditableTextState? get editableText => delegate.editableTextKey.currentState;
+  EditableTextState get editableText => delegate.editableTextKey.currentState!;
 
   /// The [RenderObject] of the [EditableText] for which the builder will
   /// provide a [TextSelectionGestureDetector].
   @protected
-  RenderEditable get renderEditable => editableText!.renderEditable;
+  RenderEditable get renderEditable => editableText.renderEditable;
 
   /// Handler for [TextSelectionGestureDetector.onTapDown].
   ///
@@ -922,8 +957,8 @@ class TextSelectionGestureDetectorBuilder {
     // For backwards-compatibility, we treat a null kind the same as touch.
     final PointerDeviceKind? kind = details.kind;
     _shouldShowSelectionToolbar = kind == null
-                              || kind == PointerDeviceKind.touch
-                              || kind == PointerDeviceKind.stylus;
+      || kind == PointerDeviceKind.touch
+      || kind == PointerDeviceKind.stylus;
   }
 
   /// Handler for [TextSelectionGestureDetector.onForcePressStart].
@@ -968,7 +1003,7 @@ class TextSelectionGestureDetectorBuilder {
       cause: SelectionChangedCause.forcePress,
     );
     if (shouldShowSelectionToolbar)
-      editableText!.showToolbar();
+      editableText.showToolbar();
   }
 
   /// Handler for [TextSelectionGestureDetector.onSingleTapUp].
@@ -1046,7 +1081,36 @@ class TextSelectionGestureDetectorBuilder {
   @protected
   void onSingleLongTapEnd(LongPressEndDetails details) {
     if (shouldShowSelectionToolbar)
-      editableText!.showToolbar();
+      editableText.showToolbar();
+  }
+
+  /// Handler for [TextSelectionGestureDetector.onSecondaryTap].
+  ///
+  /// By default, selects the word if possible and shows the toolbar.
+  @protected
+  void onSecondaryTap() {
+    if (delegate.selectionEnabled) {
+      if (!_lastSecondaryTapWasOnSelection) {
+        renderEditable.selectWord(cause: SelectionChangedCause.tap);
+      }
+      if (shouldShowSelectionToolbar) {
+        editableText.hideToolbar();
+        editableText.showToolbar();
+      }
+    }
+  }
+
+  /// Handler for [TextSelectionGestureDetector.onSecondaryTapDown].
+  ///
+  /// See also:
+  ///
+  ///  * [TextSelectionGestureDetector.onSecondaryTapDown], which triggers this
+  ///    callback.
+  ///  * [onSecondaryTap], which is typically called after this.
+  @protected
+  void onSecondaryTapDown(TapDownDetails details) {
+    renderEditable.handleSecondaryTapDown(details);
+    _shouldShowSelectionToolbar = true;
   }
 
   /// Handler for [TextSelectionGestureDetector.onDoubleTapDown].
@@ -1063,7 +1127,7 @@ class TextSelectionGestureDetectorBuilder {
     if (delegate.selectionEnabled) {
       renderEditable.selectWord(cause: SelectionChangedCause.tap);
       if (shouldShowSelectionToolbar)
-        editableText!.showToolbar();
+        editableText.showToolbar();
     }
   }
 
@@ -1077,6 +1141,13 @@ class TextSelectionGestureDetectorBuilder {
   ///    this callback.
   @protected
   void onDragSelectionStart(DragStartDetails details) {
+    if (!delegate.selectionEnabled)
+      return;
+    final PointerDeviceKind? kind = details.kind;
+    _shouldShowSelectionToolbar = kind == null
+      || kind == PointerDeviceKind.touch
+      || kind == PointerDeviceKind.stylus;
+
     renderEditable.selectPositionAt(
       from: details.globalPosition,
       cause: SelectionChangedCause.drag,
@@ -1094,6 +1165,8 @@ class TextSelectionGestureDetectorBuilder {
   ///    this callback./lib/src/material/text_field.dart
   @protected
   void onDragSelectionUpdate(DragStartDetails startDetails, DragUpdateDetails updateDetails) {
+    if (!delegate.selectionEnabled)
+      return;
     renderEditable.selectPositionAt(
       from: startDetails.globalPosition,
       to: updateDetails.globalPosition,
@@ -1126,6 +1199,8 @@ class TextSelectionGestureDetectorBuilder {
       onTapDown: onTapDown,
       onForcePressStart: delegate.forcePressEnabled ? onForcePressStart : null,
       onForcePressEnd: delegate.forcePressEnabled ? onForcePressEnd : null,
+      onSecondaryTap: onSecondaryTap,
+      onSecondaryTapDown: onSecondaryTapDown,
       onSingleTapUp: onSingleTapUp,
       onSingleTapCancel: onSingleTapCancel,
       onSingleLongTapStart: onSingleLongTapStart,
@@ -1163,6 +1238,8 @@ class TextSelectionGestureDetector extends StatefulWidget {
     this.onTapDown,
     this.onForcePressStart,
     this.onForcePressEnd,
+    this.onSecondaryTap,
+    this.onSecondaryTapDown,
     this.onSingleTapUp,
     this.onSingleTapCancel,
     this.onSingleLongTapStart,
@@ -1189,6 +1266,12 @@ class TextSelectionGestureDetector extends StatefulWidget {
   /// Called when a pointer that had previously triggered [onForcePressStart] is
   /// lifted off the screen.
   final GestureForcePressEndCallback? onForcePressEnd;
+
+  /// Called for a tap event with the secondary mouse button.
+  final GestureTapCallback? onSecondaryTap;
+
+  /// Called for a tap down event with the secondary mouse button.
+  final GestureTapDownCallback? onSecondaryTapDown;
 
   /// Called for each distinct tap except for every second tap of a double tap.
   /// For example, if the detector was configured with [onTapDown] and
@@ -1403,6 +1486,8 @@ class _TextSelectionGestureDetectorState extends State<TextSelectionGestureDetec
       () => _TransparentTapGestureRecognizer(debugOwner: this),
       (_TransparentTapGestureRecognizer instance) {
         instance
+          ..onSecondaryTap = widget.onSecondaryTap
+          ..onSecondaryTapDown = widget.onSecondaryTapDown
           ..onTapDown = _handleTapDown
           ..onTapUp = _handleTapUp
           ..onTapCancel = _handleTapCancel;
@@ -1514,7 +1599,7 @@ class ClipboardStatusNotifier extends ValueNotifier<ClipboardStatus> with Widget
     }
     // iOS 14 added a notification that appears when an app accesses the
     // clipboard. To avoid the notification, don't access the clipboard on iOS,
-    // and instead always shown the paste button, even when the clipboard is
+    // and instead always show the paste button, even when the clipboard is
     // empty.
     // TODO(justinmc): Use the new iOS 14 clipboard API method hasStrings that
     // won't trigger the notification.

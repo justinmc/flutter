@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// @dart = 2.8
+
 part of reporting;
 
 /// Tells crash backend that the error is from the Flutter CLI.
@@ -177,7 +179,7 @@ class CrashReportSender {
 
       final http.StreamedResponse resp = await _client.send(req);
 
-      if (resp.statusCode == 200) {
+      if (resp.statusCode == HttpStatus.ok) {
         final String reportId = await http.ByteStream(resp.stream)
           .bytesToString();
         _logger.printTrace('Crash report sent (report ID: $reportId)');
@@ -185,10 +187,11 @@ class CrashReportSender {
       } else {
         _logger.printError('Failed to send crash report. Server responded with HTTP status code ${resp.statusCode}');
       }
+
     // Catch all exceptions to print the message that makes clear that the
     // crash logger crashed.
     } catch (sendError, sendStackTrace) { // ignore: avoid_catches_without_on_clauses
-      if (sendError is SocketException || sendError is HttpException) {
+      if (sendError is SocketException || sendError is HttpException || sendError is http.ClientException) {
         _logger.printError('Failed to send crash report due to a network error: $sendError');
       } else {
         // If the sender itself crashes, just print. We did our best.

@@ -7,7 +7,6 @@ import 'dart:io' show File;
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/painting.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/semantics.dart';
@@ -18,7 +17,9 @@ import 'disposable_build_context.dart';
 import 'framework.dart';
 import 'localizations.dart';
 import 'media_query.dart';
+import 'placeholder.dart';
 import 'scroll_aware_image_provider.dart';
+import 'text.dart';
 import 'ticker_provider.dart';
 
 export 'package:flutter/painting.dart' show
@@ -50,9 +51,9 @@ export 'package:flutter/painting.dart' show
 ImageConfiguration createLocalImageConfiguration(BuildContext context, { Size? size }) {
   return ImageConfiguration(
     bundle: DefaultAssetBundle.of(context),
-    devicePixelRatio: MediaQuery.of(context, nullOk: true)?.devicePixelRatio ?? 1.0,
-    locale: Localizations.localeOf(context, nullOk: true),
-    textDirection: Directionality.of(context),
+    devicePixelRatio: MediaQuery.maybeOf(context)?.devicePixelRatio ?? 1.0,
+    locale: Localizations.maybeLocaleOf(context),
+    textDirection: Directionality.maybeOf(context),
     size: size,
     platform: defaultTargetPlatform,
   );
@@ -123,7 +124,7 @@ Future<void> precacheImage(
         stream.removeListener(listener!);
       });
     },
-    onError: (dynamic exception, StackTrace? stackTrace) {
+    onError: (Object exception, StackTrace? stackTrace) {
       if (!completer.isCompleted) {
         completer.complete();
       }
@@ -313,10 +314,9 @@ class Image extends StatefulWidget {
   /// Otherwise, the image dimensions will change as the image is loaded, which
   /// will result in ugly layout changes.
   ///
-  /// Use [filterQuality] to change the quality when scaling an image.
-  /// Use the [FilterQuality.low] quality setting to scale the image,
-  /// which corresponds to bilinear interpolation, rather than the default
-  /// [FilterQuality.none] which corresponds to nearest-neighbor.
+  /// {@template flutter.widgets.image.filterQualityParameter}
+  /// Use [filterQuality] to specify the rendering quality of the image.
+  /// {@endtemplate}
   ///
   /// If [excludeFromSemantics] is true, then [semanticLabel] will be ignored.
   const Image({
@@ -361,10 +361,7 @@ class Image extends StatefulWidget {
   /// An optional [headers] argument can be used to send custom HTTP headers
   /// with the image request.
   ///
-  /// Use [filterQuality] to change the quality when scaling an image.
-  /// Use the [FilterQuality.low] quality setting to scale the image,
-  /// which corresponds to bilinear interpolation, rather than the default
-  /// [FilterQuality.none] which corresponds to nearest-neighbor.
+  /// {@macro flutter.widgets.image.filterQualityParameter}
   ///
   /// If [excludeFromSemantics] is true, then [semanticLabel] will be ignored.
   ///
@@ -425,10 +422,7 @@ class Image extends StatefulWidget {
   /// On Android, this may require the
   /// `android.permission.READ_EXTERNAL_STORAGE` permission.
   ///
-  /// Use [filterQuality] to change the quality when scaling an image.
-  /// Use the [FilterQuality.low] quality setting to scale the image,
-  /// which corresponds to bilinear interpolation, rather than the default
-  /// [FilterQuality.none] which corresponds to nearest-neighbor.
+  /// {@macro flutter.widgets.image.filterQualityParameter}
   ///
   /// If [excludeFromSemantics] is true, then [semanticLabel] will be ignored.
   ///
@@ -479,7 +473,6 @@ class Image extends StatefulWidget {
        assert(isAntiAlias != null),
        super(key: key);
 
-
   // TODO(ianh): Implement the following (see ../services/image_resolution.dart):
   //
   // * If [width] and [height] are both specified, and [scale] is not, then
@@ -521,10 +514,7 @@ class Image extends StatefulWidget {
   /// Otherwise, the image dimensions will change as the image is loaded, which
   /// will result in ugly layout changes.
   ///
-  /// Use [filterQuality] to change the quality when scaling an image.
-  /// Use the [FilterQuality.low] quality setting to scale the image,
-  /// which corresponds to bilinear interpolation, rather than the default
-  /// [FilterQuality.none] which corresponds to nearest-neighbor.
+  /// {@macro flutter.widgets.image.filterQualityParameter}
   ///
   /// {@tool snippet}
   ///
@@ -649,7 +639,15 @@ class Image extends StatefulWidget {
 
   /// Creates a widget that displays an [ImageStream] obtained from a [Uint8List].
   ///
-  /// The [bytes], [scale], and [repeat] arguments must not be null.
+  /// The `bytes` argument specifies encoded image bytes, which can be encoded
+  /// in any of the following supported image formats:
+  /// {@macro flutter.dart:ui.imageFormats}
+  ///
+  /// The `scale` argument specifies the linear scale factor for drawing this
+  /// image at its intended size and applies to both the width and the height.
+  /// {@macro flutter.painting.imageInfo.scale}
+  ///
+  /// The `bytes`, `scale`, and [repeat] arguments must not be null.
   ///
   /// This only accepts compressed image formats (e.g. PNG). Uncompressed
   /// formats like rawRgba (the default format of [dart:ui.Image.toByteData])
@@ -660,10 +658,7 @@ class Image extends StatefulWidget {
   /// Otherwise, the image dimensions will change as the image is loaded, which
   /// will result in ugly layout changes.
   ///
-  /// Use [filterQuality] to change the quality when scaling an image.
-  /// Use the [FilterQuality.low] quality setting to scale the image,
-  /// which corresponds to bilinear interpolation, rather than the default
-  /// [FilterQuality.none] which corresponds to nearest-neighbor.
+  /// {@macro flutter.widgets.image.filterQualityParameter}
   ///
   /// If [excludeFromSemantics] is true, then [semanticLabel] will be ignored.
   ///
@@ -726,7 +721,7 @@ class Image extends StatefulWidget {
   /// be passed as the `child` argument to the [loadingBuilder]. For example,
   /// consider the following builders used in conjunction:
   ///
-  /// {@template flutter.widgets.image.chainedBuildersExample}
+  /// {@template flutter.widgets.Image.frameBuilder.chainedBuildersExample}
   /// ```dart
   /// Image(
   ///   ...
@@ -773,8 +768,8 @@ class Image extends StatefulWidget {
   ///     ),
   ///     child: Image.network(
   ///       'https://flutter.github.io/assets-for-api-docs/assets/widgets/puffin.jpg',
-  ///       frameBuilder: (BuildContext context, Widget child, int frame, bool wasSynchronouslyLoaded) {
-  ///         if (wasSynchronouslyLoaded) {
+  ///       frameBuilder: (BuildContext context, Widget child, int? frame, bool? wasSynchronouslyLoaded) {
+  ///         if (wasSynchronouslyLoaded ?? false) {
   ///           return child;
   ///         }
   ///         return AnimatedOpacity(
@@ -818,7 +813,7 @@ class Image extends StatefulWidget {
   /// builder will contain the _result_ of the [frameBuilder]. For example,
   /// consider the following builders used in conjunction:
   ///
-  /// {@macro flutter.widgets.image.chainedBuildersExample}
+  /// {@macro flutter.widgets.Image.frameBuilder.chainedBuildersExample}
   ///
   /// {@tool dartpad --template=stateless_widget_material}
   ///
@@ -835,13 +830,13 @@ class Image extends StatefulWidget {
   ///     ),
   ///     child: Image.network(
   ///       'https://example.com/image.jpg',
-  ///       loadingBuilder: (BuildContext context, Widget child, ImageChunkEvent loadingProgress) {
+  ///       loadingBuilder: (BuildContext context, Widget child, ImageChunkEvent? loadingProgress) {
   ///         if (loadingProgress == null)
   ///           return child;
   ///         return Center(
   ///           child: CircularProgressIndicator(
   ///             value: loadingProgress.expectedTotalBytes != null
-  ///                 ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes
+  ///                 ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
   ///                 : null,
   ///           ),
   ///         );
@@ -880,7 +875,7 @@ class Image extends StatefulWidget {
   ///     ),
   ///     child: Image.network(
   ///       'https://example.does.not.exist/image.jpg',
-  ///       errorBuilder: (BuildContext context, Object exception, StackTrace stackTrace) {
+  ///       errorBuilder: (BuildContext context, Object exception, StackTrace? stackTrace) {
   ///         // Appropriate logging or analytics, e.g.
   ///         // myAnalytics.recordError(
   ///         //   'An error occurred loading "https://example.does.not.exist/image.jpg"',
@@ -923,11 +918,22 @@ class Image extends StatefulWidget {
   /// If non-null, this color is blended with each image pixel using [colorBlendMode].
   final Color? color;
 
-  /// Used to set the [FilterQuality] of the image.
+  /// The rendering quality of the image.
   ///
-  /// Use the [FilterQuality.low] quality setting to scale the image with
-  /// bilinear interpolation, or the [FilterQuality.none] which corresponds
-  /// to nearest-neighbor.
+  /// If the image is of a high quality and its pixels are perfectly aligned
+  /// with the physical screen pixels, extra quality enhancement may not be
+  /// necessary. If so, then [FilterQuality.none] would be the most efficient.
+  ///
+  /// If the pixels are not perfectly aligned with the screen pixels, or if the
+  /// image itself is of a low quality, [FilterQuality.none] may produce
+  /// undesirable artifacts. Consider using other [FilterQuality] values to
+  /// improve the rendered image quality in this case. Pixels may be misaligned
+  /// with the screen pixels as a result of transforms or scaling.
+  ///
+  /// See also:
+  ///
+  ///  * [FilterQuality], the enum containing all possible filter quality
+  ///    options.
   final FilterQuality filterQuality;
 
   /// Used to combine [color] with this image.
@@ -1084,6 +1090,7 @@ class _ImageState extends State<Image> with WidgetsBindingObserver {
   late DisposableBuildContext<State<Image>> _scrollAwareContext;
   Object? _lastException;
   StackTrace? _lastStack;
+  ImageStreamCompleterHandle? _completerHandle;
 
   @override
   void initState() {
@@ -1097,7 +1104,9 @@ class _ImageState extends State<Image> with WidgetsBindingObserver {
     assert(_imageStream != null);
     WidgetsBinding.instance!.removeObserver(this);
     _stopListeningToStream();
+    _completerHandle?.dispose();
     _scrollAwareContext.dispose();
+    _replaceImage(info: null);
     super.dispose();
   }
 
@@ -1109,7 +1118,7 @@ class _ImageState extends State<Image> with WidgetsBindingObserver {
     if (TickerMode.of(context))
       _listenToStream();
     else
-      _stopListeningToStream();
+      _stopListeningToStream(keepStreamAlive: true);
 
     super.didChangeDependencies();
   }
@@ -1119,8 +1128,9 @@ class _ImageState extends State<Image> with WidgetsBindingObserver {
     super.didUpdateWidget(oldWidget);
     if (_isListeningToStream &&
         (widget.loadingBuilder == null) != (oldWidget.loadingBuilder == null)) {
-      _imageStream!.removeListener(_getListener());
+      final ImageStreamListener oldListener = _getListener();
       _imageStream!.addListener(_getListener(recreateListener: true));
+      _imageStream!.removeListener(oldListener);
     }
     if (widget.image != oldWidget.image)
       _resolveImage();
@@ -1141,7 +1151,7 @@ class _ImageState extends State<Image> with WidgetsBindingObserver {
   }
 
   void _updateInvertColors() {
-    _invertColors = MediaQuery.of(context, nullOk: true)?.invertColors
+    _invertColors = MediaQuery.maybeOf(context)?.invertColors
         ?? SemanticsBinding.instance!.accessibilityFeatures.invertColors;
   }
 
@@ -1167,12 +1177,17 @@ class _ImageState extends State<Image> with WidgetsBindingObserver {
       _imageStreamListener = ImageStreamListener(
         _handleImageFrame,
         onChunk: widget.loadingBuilder == null ? null : _handleImageChunk,
-        onError: widget.errorBuilder != null
-            ? (dynamic error, StackTrace? stackTrace) {
+        onError: widget.errorBuilder != null || kDebugMode
+            ? (Object error, StackTrace? stackTrace) {
                 setState(() {
                   _lastException = error;
                   _lastStack = stackTrace;
                 });
+                assert(() {
+                  if (widget.errorBuilder == null)
+                    throw error; // Ensures the error message is printed to the console.
+                  return true;
+                }());
               }
             : null,
       );
@@ -1182,8 +1197,10 @@ class _ImageState extends State<Image> with WidgetsBindingObserver {
 
   void _handleImageFrame(ImageInfo imageInfo, bool synchronousCall) {
     setState(() {
-      _imageInfo = imageInfo;
+      _replaceImage(info: imageInfo);
       _loadingProgress = null;
+      _lastException = null;
+      _lastStack = null;
       _frameNumber = _frameNumber == null ? 0 : _frameNumber! + 1;
       _wasSynchronouslyLoaded = _wasSynchronouslyLoaded | synchronousCall;
     });
@@ -1193,7 +1210,14 @@ class _ImageState extends State<Image> with WidgetsBindingObserver {
     assert(widget.loadingBuilder != null);
     setState(() {
       _loadingProgress = event;
+      _lastException = null;
+      _lastStack = null;
     });
+  }
+
+  void _replaceImage({required ImageInfo? info}) {
+    _imageInfo?.dispose();
+    _imageInfo = info;
   }
 
   // Updates _imageStream to newStream, and moves the stream listener
@@ -1207,7 +1231,7 @@ class _ImageState extends State<Image> with WidgetsBindingObserver {
       _imageStream!.removeListener(_getListener());
 
     if (!widget.gaplessPlayback)
-      setState(() { _imageInfo = null; });
+      setState(() { _replaceImage(info: null); });
 
     setState(() {
       _loadingProgress = null;
@@ -1223,25 +1247,75 @@ class _ImageState extends State<Image> with WidgetsBindingObserver {
   void _listenToStream() {
     if (_isListeningToStream)
       return;
+
     _imageStream!.addListener(_getListener());
+    _completerHandle?.dispose();
+    _completerHandle = null;
+
     _isListeningToStream = true;
   }
 
-  void _stopListeningToStream() {
+  /// Stops listening to the image stream, if this state object has attached a
+  /// listener.
+  ///
+  /// If the listener from this state is the last listener on the stream, the
+  /// stream will be disposed. To keep the stream alive, set `keepStreamAlive`
+  /// to true, which create [ImageStreamCompleterHandle] to keep the completer
+  /// alive and is compatible with the [TickerMode] being off.
+  void _stopListeningToStream({bool keepStreamAlive = false}) {
     if (!_isListeningToStream)
       return;
+
+    if (keepStreamAlive && _completerHandle == null && _imageStream?.completer != null) {
+      _completerHandle = _imageStream!.completer!.keepAlive();
+    }
+
     _imageStream!.removeListener(_getListener());
     _isListeningToStream = false;
   }
 
+  Widget _debugBuildErrorWidget(BuildContext context, Object error) {
+    return Stack(
+      alignment: Alignment.center,
+      children: <Widget>[
+        const Positioned.fill(
+          child: Placeholder(
+            color: Color(0xCF8D021F),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(4.0),
+          child: FittedBox(
+            child: Text(
+              '$error',
+              textAlign: TextAlign.center,
+              textDirection: TextDirection.ltr,
+              style: const TextStyle(
+                shadows: <Shadow>[
+                  Shadow(blurRadius: 1.0),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (_lastException  != null) {
-      assert(widget.errorBuilder != null);
-      return widget.errorBuilder!(context, _lastException!, _lastStack);
+    if (_lastException != null) {
+      if (widget.errorBuilder != null)
+        return widget.errorBuilder!(context, _lastException!, _lastStack);
+      if (kDebugMode)
+        return _debugBuildErrorWidget(context, _lastException!);
     }
 
     Widget result = RawImage(
+      // Do not clone the image, because RawImage is a stateless wrapper.
+      // The image will be disposed by this state object when it is not needed
+      // anymore, such as when it is unmounted or when the image stream pushes
+      // a new image.
       image: _imageInfo?.image,
       debugImageLabel: _imageInfo?.debugLabel,
       width: widget.width,

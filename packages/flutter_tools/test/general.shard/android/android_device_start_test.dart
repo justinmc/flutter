@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// @dart = 2.8
+
 import 'package:file/memory.dart';
 import 'package:flutter_tools/src/android/android_device.dart';
 import 'package:flutter_tools/src/android/android_sdk.dart';
@@ -89,8 +91,6 @@ void main() {
       processManager.addCommand(const FakeCommand(
         command: <String>['adb', '-s', '1234', 'shell', 'pm', 'list', 'packages', 'FlutterApp'],
       ));
-      processManager.addCommand(kAdbVersionCommand);
-      processManager.addCommand(kStartServer);
       processManager.addCommand(const FakeCommand(
         command: <String>['adb', '-s', '1234', 'install', '-t', '-r', 'app.apk'],
       ));
@@ -193,8 +193,6 @@ void main() {
     processManager.addCommand(const FakeCommand(
       command: <String>['adb', '-s', '1234', 'shell', 'pm', 'list', 'packages', '--user', '10', 'FlutterApp'],
     ));
-    processManager.addCommand(kAdbVersionCommand);
-    processManager.addCommand(kStartServer);
     // TODO(jonahwilliams): investigate why this doesn't work.
     // This doesn't work with the current Android log reader implementation.
     processManager.addCommand(const FakeCommand(

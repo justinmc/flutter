@@ -2,11 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'package:flutter/rendering.dart';
 import 'package:flutter/animation.dart';
-import 'package:meta/meta.dart';
 
 import '../flutter_test_alternative.dart';
 
@@ -14,22 +11,21 @@ import 'rendering_tester.dart';
 
 class TestRenderSliverBoxChildManager extends RenderSliverBoxChildManager {
   TestRenderSliverBoxChildManager({
-    this.children,
+    required this.children,
   });
 
-  RenderSliverList _renderObject;
+  late RenderSliverList _renderObject;
   List<RenderBox> children;
 
   RenderSliverList createRenderObject() {
-    assert(_renderObject == null);
     _renderObject = RenderSliverList(childManager: this);
     return _renderObject;
   }
 
-  int _currentlyUpdatingChildIndex;
+  int? _currentlyUpdatingChildIndex;
 
   @override
-  void createChild(int index, { @required RenderBox after }) {
+  void createChild(int index, { required RenderBox? after }) {
     if (index < 0 || index >= children.length)
       return;
     try {
@@ -48,13 +44,13 @@ class TestRenderSliverBoxChildManager extends RenderSliverBoxChildManager {
   @override
   double estimateMaxScrollOffset(
     SliverConstraints constraints, {
-    int firstIndex,
-    int lastIndex,
-    double leadingScrollOffset,
-    double trailingScrollOffset,
+    int? firstIndex,
+    int? lastIndex,
+    double? leadingScrollOffset,
+    double? trailingScrollOffset,
   }) {
-    assert(lastIndex >= firstIndex);
-    return children.length * (trailingScrollOffset - leadingScrollOffset) / (lastIndex - firstIndex + 1);
+    assert(lastIndex! >= firstIndex!);
+    return children.length * (trailingScrollOffset! - leadingScrollOffset!) / (lastIndex! - firstIndex! + 1);
   }
 
   @override
@@ -63,7 +59,7 @@ class TestRenderSliverBoxChildManager extends RenderSliverBoxChildManager {
   @override
   void didAdoptChild(RenderBox child) {
     assert(_currentlyUpdatingChildIndex != null);
-    final SliverMultiBoxAdaptorParentData childParentData = child.parentData as SliverMultiBoxAdaptorParentData;
+    final SliverMultiBoxAdaptorParentData childParentData = child.parentData! as SliverMultiBoxAdaptorParentData;
     childParentData.index = _currentlyUpdatingChildIndex;
   }
 
@@ -104,8 +100,8 @@ class ViewportOffsetSpy extends ViewportOffset {
   @override
   Future<void> animateTo(
     double to, {
-    @required Duration duration,
-    @required Curve curve,
+    required Duration duration,
+    required Curve curve,
   }) async {
     // Do nothing, not required in test.
   }
@@ -144,8 +140,8 @@ void main() {
     expect(root.size.width, equals(800.0));
     expect(root.size.height, equals(600.0));
 
-    expect(a.localToGlobal(const Offset(0.0, 0.0)), const Offset(0.0, 0.0));
-    expect(b.localToGlobal(const Offset(0.0, 0.0)), const Offset(0.0, 400.0));
+    expect(a.localToGlobal(Offset.zero), Offset.zero);
+    expect(b.localToGlobal(Offset.zero), const Offset(0.0, 400.0));
     expect(c.attached, false);
     expect(d.attached, false);
     expect(e.attached, false);
@@ -153,8 +149,8 @@ void main() {
     // make sure that layout is stable by laying out again
     inner.markNeedsLayout();
     pumpFrame();
-    expect(a.localToGlobal(const Offset(0.0, 0.0)), const Offset(0.0, 0.0));
-    expect(b.localToGlobal(const Offset(0.0, 0.0)), const Offset(0.0, 400.0));
+    expect(a.localToGlobal(Offset.zero), Offset.zero);
+    expect(b.localToGlobal(Offset.zero), const Offset(0.0, 400.0));
     expect(c.attached, false);
     expect(d.attached, false);
     expect(e.attached, false);
@@ -162,8 +158,8 @@ void main() {
     // now try various scroll offsets
     root.offset = ViewportOffset.fixed(200.0);
     pumpFrame();
-    expect(a.localToGlobal(const Offset(0.0, 0.0)), const Offset(0.0, -200.0));
-    expect(b.localToGlobal(const Offset(0.0, 0.0)), const Offset(0.0, 200.0));
+    expect(a.localToGlobal(Offset.zero), const Offset(0.0, -200.0));
+    expect(b.localToGlobal(Offset.zero), const Offset(0.0, 200.0));
     expect(c.attached, false);
     expect(d.attached, false);
     expect(e.attached, false);
@@ -171,8 +167,8 @@ void main() {
     root.offset = ViewportOffset.fixed(600.0);
     pumpFrame();
     expect(a.attached, false);
-    expect(b.localToGlobal(const Offset(0.0, 0.0)), const Offset(0.0, -200.0));
-    expect(c.localToGlobal(const Offset(0.0, 0.0)), const Offset(0.0, 200.0));
+    expect(b.localToGlobal(Offset.zero), const Offset(0.0, -200.0));
+    expect(c.localToGlobal(Offset.zero), const Offset(0.0, 200.0));
     expect(d.attached, false);
     expect(e.attached, false);
 
@@ -180,15 +176,15 @@ void main() {
     pumpFrame();
     expect(a.attached, false);
     expect(b.attached, false);
-    expect(c.localToGlobal(const Offset(0.0, 0.0)), const Offset(0.0, -100.0));
-    expect(d.localToGlobal(const Offset(0.0, 0.0)), const Offset(0.0, 300.0));
+    expect(c.localToGlobal(Offset.zero), const Offset(0.0, -100.0));
+    expect(d.localToGlobal(Offset.zero), const Offset(0.0, 300.0));
     expect(e.attached, false);
 
     // try going back up
     root.offset = ViewportOffset.fixed(200.0);
     pumpFrame();
-    expect(a.localToGlobal(const Offset(0.0, 0.0)), const Offset(0.0, -200.0));
-    expect(b.localToGlobal(const Offset(0.0, 0.0)), const Offset(0.0, 200.0));
+    expect(a.localToGlobal(Offset.zero), const Offset(0.0, -200.0));
+    expect(b.localToGlobal(Offset.zero), const Offset(0.0, 200.0));
     expect(c.attached, false);
     expect(d.attached, false);
     expect(e.attached, false);
@@ -220,8 +216,8 @@ void main() {
     expect(root.size.width, equals(800.0));
     expect(root.size.height, equals(600.0));
 
-    expect(a.localToGlobal(const Offset(0.0, 0.0)), const Offset(0.0, 200.0));
-    expect(b.localToGlobal(const Offset(0.0, 0.0)), const Offset(0.0, -200.0));
+    expect(a.localToGlobal(Offset.zero), const Offset(0.0, 200.0));
+    expect(b.localToGlobal(Offset.zero), const Offset(0.0, -200.0));
     expect(c.attached, false);
     expect(d.attached, false);
     expect(e.attached, false);
@@ -229,8 +225,8 @@ void main() {
     // make sure that layout is stable by laying out again
     inner.markNeedsLayout();
     pumpFrame();
-    expect(a.localToGlobal(const Offset(0.0, 0.0)), const Offset(0.0, 200.0));
-    expect(b.localToGlobal(const Offset(0.0, 0.0)), const Offset(0.0, -200.0));
+    expect(a.localToGlobal(Offset.zero), const Offset(0.0, 200.0));
+    expect(b.localToGlobal(Offset.zero), const Offset(0.0, -200.0));
     expect(c.attached, false);
     expect(d.attached, false);
     expect(e.attached, false);
@@ -238,8 +234,8 @@ void main() {
     // now try various scroll offsets
     root.offset = ViewportOffset.fixed(200.0);
     pumpFrame();
-    expect(a.localToGlobal(const Offset(0.0, 0.0)), const Offset(0.0, 400.0));
-    expect(b.localToGlobal(const Offset(0.0, 0.0)), const Offset(0.0, 0.0));
+    expect(a.localToGlobal(Offset.zero), const Offset(0.0, 400.0));
+    expect(b.localToGlobal(Offset.zero), Offset.zero);
     expect(c.attached, false);
     expect(d.attached, false);
     expect(e.attached, false);
@@ -247,8 +243,8 @@ void main() {
     root.offset = ViewportOffset.fixed(600.0);
     pumpFrame();
     expect(a.attached, false);
-    expect(b.localToGlobal(const Offset(0.0, 0.0)), const Offset(0.0, 400.0));
-    expect(c.localToGlobal(const Offset(0.0, 0.0)), const Offset(0.0, 0.0));
+    expect(b.localToGlobal(Offset.zero), const Offset(0.0, 400.0));
+    expect(c.localToGlobal(Offset.zero), Offset.zero);
     expect(d.attached, false);
     expect(e.attached, false);
 
@@ -256,15 +252,15 @@ void main() {
     pumpFrame();
     expect(a.attached, false);
     expect(b.attached, false);
-    expect(c.localToGlobal(const Offset(0.0, 0.0)), const Offset(0.0, 300.0));
-    expect(d.localToGlobal(const Offset(0.0, 0.0)), const Offset(0.0, -100.0));
+    expect(c.localToGlobal(Offset.zero), const Offset(0.0, 300.0));
+    expect(d.localToGlobal(Offset.zero), const Offset(0.0, -100.0));
     expect(e.attached, false);
 
     // try going back up
     root.offset = ViewportOffset.fixed(200.0);
     pumpFrame();
-    expect(a.localToGlobal(const Offset(0.0, 0.0)), const Offset(0.0, 400.0));
-    expect(b.localToGlobal(const Offset(0.0, 0.0)), const Offset(0.0, 0.0));
+    expect(a.localToGlobal(Offset.zero), const Offset(0.0, 400.0));
+    expect(b.localToGlobal(Offset.zero), Offset.zero);
     expect(c.attached, false);
     expect(d.attached, false);
     expect(e.attached, false);
@@ -292,7 +288,7 @@ void main() {
     );
     layout(root);
 
-    final SliverMultiBoxAdaptorParentData parentData = a.parentData as SliverMultiBoxAdaptorParentData;
+    final SliverMultiBoxAdaptorParentData parentData = a.parentData! as SliverMultiBoxAdaptorParentData;
     parentData.layoutOffset = 0.001;
 
     root.offset = ViewportOffset.fixed(900.0);
@@ -301,7 +297,7 @@ void main() {
     root.offset = ViewportOffset.fixed(0.0);
     pumpFrame();
 
-    expect(inner.geometry.scrollOffsetCorrection, isNull);
+    expect(inner.geometry?.scrollOffsetCorrection, isNull);
   });
 
   test('SliverList - no correction when tiny double precision error', () {
@@ -327,7 +323,7 @@ void main() {
     );
     layout(root);
 
-    final SliverMultiBoxAdaptorParentData parentData = a.parentData as SliverMultiBoxAdaptorParentData;
+    final SliverMultiBoxAdaptorParentData parentData = a.parentData! as SliverMultiBoxAdaptorParentData;
     // Simulate double precision error.
     parentData.layoutOffset = -0.0000000000001;
 

@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// @dart = 2.8
+
 import 'dart:convert';
 import 'dart:io';
 
@@ -20,41 +22,36 @@ import 'package:mockito/mockito.dart';
 
 import '../../../src/common.dart';
 import '../../../src/context.dart';
-import '../../../src/mocks.dart' as mocks;
+import '../../../src/fakes.dart';
 
 final Platform kNoAnsiPlatform = FakePlatform(stdoutSupportsAnsi: false);
 const List<int> _kTtfHeaderBytes = <int>[0, 1, 0, 0, 0, 15, 0, 128, 0, 3, 0, 112];
 
-const String dartPath = '/flutter/dart';
-const String constFinderPath = '/flutter/const_finder.snapshot.dart';
-const String fontSubsetPath = '/flutter/font-subset';
-
 const String inputPath = '/input/fonts/MaterialIcons-Regular.otf';
 const String outputPath = '/output/fonts/MaterialIcons-Regular.otf';
 const String relativePath = 'fonts/MaterialIcons-Regular.otf';
-
-List<String> getConstFinderArgs(String appDillPath) => <String>[
-  dartPath,
-  '--disable-dart-dev',
-  constFinderPath,
-  '--kernel-file', appDillPath,
-  '--class-library-uri', 'package:flutter/src/widgets/icon_data.dart',
-  '--class-name', 'IconData',
-];
-
-const List<String> fontSubsetArgs = <String>[
-  fontSubsetPath,
-  outputPath,
-  inputPath,
-];
 
 void main() {
   BufferLogger logger;
   MemoryFileSystem fileSystem;
   MockProcessManager mockProcessManager;
   MockProcess fontSubsetProcess;
-  MockArtifacts mockArtifacts;
+  Artifacts artifacts;
   DevFSStringContent fontManifestContent;
+
+  String dartPath;
+  String constFinderPath;
+  String fontSubsetPath;
+  List<String> fontSubsetArgs;
+
+  List<String> _getConstFinderArgs(String appDillPath) => <String>[
+    dartPath,
+    '--disable-dart-dev',
+    constFinderPath,
+    '--kernel-file', appDillPath,
+    '--class-library-uri', 'package:flutter/src/widgets/icon_data.dart',
+    '--class-name', 'IconData',
+  ];
 
   void _addConstFinderInvocation(
     String appDillPath, {
@@ -62,7 +59,7 @@ void main() {
     String stdout = '',
     String stderr = '',
   }) {
-    when(mockProcessManager.run(getConstFinderArgs(appDillPath))).thenAnswer((_) async {
+    when(mockProcessManager.run(_getConstFinderArgs(appDillPath))).thenAnswer((_) async {
       return ProcessResult(0, exitCode, stdout, stderr);
     });
   }
@@ -71,7 +68,7 @@ void main() {
     int exitCode = 0,
     String stdout = '',
     String stderr = '',
-    @required mocks.CompleterIOSink stdinSink,
+    @required CompleterIOSink stdinSink,
   }) {
     assert(stdinSink != null);
     stdinSink.writes.clear();
@@ -89,15 +86,25 @@ void main() {
 
     mockProcessManager = MockProcessManager();
     fontSubsetProcess = MockProcess();
-    mockArtifacts = MockArtifacts();
-    fileSystem = MemoryFileSystem();
+    artifacts = Artifacts.test();
+    fileSystem = MemoryFileSystem.test();
     logger = BufferLogger(
       terminal: AnsiTerminal(
-        stdio: mocks.MockStdio(),
+        stdio: FakeStdio(),
         platform: kNoAnsiPlatform,
       ),
       outputPreferences: OutputPreferences.test(showColor: false),
     );
+
+    dartPath = artifacts.getArtifactPath(Artifact.engineDartBinary);
+    constFinderPath = artifacts.getArtifactPath(Artifact.constFinder);
+    fontSubsetPath = artifacts.getArtifactPath(Artifact.fontSubset);
+
+    fontSubsetArgs = <String>[
+      fontSubsetPath,
+      outputPath,
+      inputPath,
+    ];
 
     fileSystem.file(constFinderPath).createSync(recursive: true);
     fileSystem.file(dartPath).createSync(recursive: true);
@@ -105,16 +112,13 @@ void main() {
     fileSystem.file(inputPath)
       ..createSync(recursive: true)
       ..writeAsBytesSync(_kTtfHeaderBytes);
-    when(mockArtifacts.getArtifactPath(Artifact.constFinder)).thenReturn(constFinderPath);
-    when(mockArtifacts.getArtifactPath(Artifact.fontSubset)).thenReturn(fontSubsetPath);
-    when(mockArtifacts.getArtifactPath(Artifact.engineDartBinary)).thenReturn(dartPath);
   });
 
   Environment _createEnvironment(Map<String, String> defines) {
     return Environment.test(
       fileSystem.directory('/icon_test')..createSync(recursive: true),
       defines: defines,
-      artifacts: mockArtifacts,
+      artifacts: artifacts,
       processManager: FakeProcessManager.any(),
       fileSystem: fileSystem,
       logger: BufferLogger.test(),
@@ -133,7 +137,7 @@ void main() {
       logger: logger,
       processManager: mockProcessManager,
       fileSystem: fileSystem,
-      artifacts: mockArtifacts,
+      artifacts: artifacts,
     );
 
     expect(
@@ -166,7 +170,7 @@ void main() {
       logger: logger,
       processManager: mockProcessManager,
       fileSystem: fileSystem,
-      artifacts: mockArtifacts,
+      artifacts: artifacts,
     );
 
     expect(
@@ -190,7 +194,7 @@ void main() {
       logger: logger,
       processManager: mockProcessManager,
       fileSystem: fileSystem,
-      artifacts: mockArtifacts,
+      artifacts: artifacts,
     );
 
     expect(
@@ -214,7 +218,7 @@ void main() {
       logger: logger,
       processManager: mockProcessManager,
       fileSystem: fileSystem,
-      artifacts: mockArtifacts,
+      artifacts: artifacts,
     );
 
     expect(
@@ -241,10 +245,10 @@ void main() {
       logger: logger,
       processManager: mockProcessManager,
       fileSystem: fileSystem,
-      artifacts: mockArtifacts,
+      artifacts: artifacts,
     );
 
-    final mocks.CompleterIOSink stdinSink = mocks.CompleterIOSink();
+    final CompleterIOSink stdinSink = CompleterIOSink();
     _addConstFinderInvocation(appDill.path, stdout: validConstFinderResult);
     _resetFontSubsetInvocation(stdinSink: stdinSink);
 
@@ -265,7 +269,7 @@ void main() {
     expect(subsetted, true);
     expect(stdinSink.writes, <List<int>>[utf8.encode('59470\n')]);
 
-    verify(mockProcessManager.run(getConstFinderArgs(appDill.path))).called(1);
+    verify(mockProcessManager.run(_getConstFinderArgs(appDill.path))).called(1);
     verify(mockProcessManager.start(fontSubsetArgs)).called(2);
   });
 
@@ -283,10 +287,10 @@ void main() {
       logger: logger,
       processManager: mockProcessManager,
       fileSystem: fileSystem,
-      artifacts: mockArtifacts,
+      artifacts: artifacts,
     );
 
-    final mocks.CompleterIOSink stdinSink = mocks.CompleterIOSink();
+    final CompleterIOSink stdinSink = CompleterIOSink();
     _addConstFinderInvocation(appDill.path, stdout: validConstFinderResult);
     _resetFontSubsetInvocation(stdinSink: stdinSink);
 
@@ -300,7 +304,7 @@ void main() {
     );
     expect(subsetted, false);
 
-    verifyNever(mockProcessManager.run(getConstFinderArgs(appDill.path)));
+    verifyNever(mockProcessManager.run(_getConstFinderArgs(appDill.path)));
     verifyNever(mockProcessManager.start(fontSubsetArgs));
   });
 
@@ -318,10 +322,10 @@ void main() {
       logger: logger,
       processManager: mockProcessManager,
       fileSystem: fileSystem,
-      artifacts: mockArtifacts,
+      artifacts: artifacts,
     );
 
-    final mocks.CompleterIOSink stdinSink = mocks.CompleterIOSink();
+    final CompleterIOSink stdinSink = CompleterIOSink();
     _addConstFinderInvocation(appDill.path, stdout: validConstFinderResult);
     _resetFontSubsetInvocation(stdinSink: stdinSink);
 
@@ -334,7 +338,7 @@ void main() {
     );
 
     expect(subsetted, false);
-    verifyNever(mockProcessManager.run(getConstFinderArgs(appDill.path)));
+    verifyNever(mockProcessManager.run(_getConstFinderArgs(appDill.path)));
     verifyNever(mockProcessManager.start(fontSubsetArgs));
   });
 
@@ -352,7 +356,7 @@ void main() {
       logger: logger,
       processManager: mockProcessManager,
       fileSystem: fileSystem,
-      artifacts: mockArtifacts,
+      artifacts: artifacts,
     );
 
     _addConstFinderInvocation(appDill.path, stdout: constFinderResultWithInvalid);
@@ -370,7 +374,7 @@ void main() {
       ),
     );
 
-    verify(mockProcessManager.run(getConstFinderArgs(appDill.path))).called(1);
+    verify(mockProcessManager.run(_getConstFinderArgs(appDill.path))).called(1);
     verifyNever(mockProcessManager.start(fontSubsetArgs));
   });
 
@@ -389,10 +393,10 @@ void main() {
       logger: logger,
       processManager: mockProcessManager,
       fileSystem: fileSystem,
-      artifacts: mockArtifacts,
+      artifacts: artifacts,
     );
 
-    final mocks.CompleterIOSink stdinSink = mocks.CompleterIOSink();
+    final CompleterIOSink stdinSink = CompleterIOSink();
     _addConstFinderInvocation(appDill.path, stdout: validConstFinderResult);
     _resetFontSubsetInvocation(exitCode: -1, stdinSink: stdinSink);
 
@@ -405,7 +409,7 @@ void main() {
       throwsA(isA<IconTreeShakerException>()),
     );
 
-    verify(mockProcessManager.run(getConstFinderArgs(appDill.path))).called(1);
+    verify(mockProcessManager.run(_getConstFinderArgs(appDill.path))).called(1);
     verify(mockProcessManager.start(fontSubsetArgs)).called(1);
   });
 
@@ -423,10 +427,10 @@ void main() {
       logger: logger,
       processManager: mockProcessManager,
       fileSystem: fileSystem,
-      artifacts: mockArtifacts,
+      artifacts: artifacts,
     );
 
-    final mocks.CompleterIOSink stdinSink = mocks.CompleterIOSink(throwOnAdd: true);
+    final CompleterIOSink stdinSink = CompleterIOSink(throwOnAdd: true);
     _addConstFinderInvocation(appDill.path, stdout: validConstFinderResult);
     _resetFontSubsetInvocation(exitCode: -1, stdinSink: stdinSink);
 
@@ -439,7 +443,7 @@ void main() {
       throwsA(isA<IconTreeShakerException>()),
     );
 
-    verify(mockProcessManager.run(getConstFinderArgs(appDill.path))).called(1);
+    verify(mockProcessManager.run(_getConstFinderArgs(appDill.path))).called(1);
     verify(mockProcessManager.start(fontSubsetArgs)).called(1);
   });
 
@@ -459,7 +463,7 @@ void main() {
       logger: logger,
       processManager: mockProcessManager,
       fileSystem: fileSystem,
-      artifacts: mockArtifacts,
+      artifacts: artifacts,
     );
 
     _addConstFinderInvocation(appDill.path, stdout: validConstFinderResult);
@@ -473,7 +477,7 @@ void main() {
       throwsA(isA<IconTreeShakerException>()),
     );
 
-    verify(mockProcessManager.run(getConstFinderArgs(appDill.path))).called(1);
+    verify(mockProcessManager.run(_getConstFinderArgs(appDill.path))).called(1);
     verifyNever(mockProcessManager.start(fontSubsetArgs));
   });
 
@@ -493,7 +497,7 @@ void main() {
       logger: logger,
       processManager: mockProcessManager,
       fileSystem: fileSystem,
-      artifacts: mockArtifacts,
+      artifacts: artifacts,
     );
 
     _addConstFinderInvocation(appDill.path, exitCode: -1);
@@ -507,7 +511,7 @@ void main() {
       throwsA(isA<IconTreeShakerException>()),
     );
 
-    verify(mockProcessManager.run(getConstFinderArgs(appDill.path))).called(1);
+    verify(mockProcessManager.run(_getConstFinderArgs(appDill.path))).called(1);
     verifyNever(mockProcessManager.start(fontSubsetArgs));
   });
 }
@@ -588,4 +592,3 @@ const String invalidFontManifestJson = '''
 
 class MockProcessManager extends Mock implements ProcessManager {}
 class MockProcess extends Mock implements Process {}
-class MockArtifacts extends Mock implements Artifacts {}

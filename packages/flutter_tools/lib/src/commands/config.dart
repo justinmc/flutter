@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// @dart = 2.8
+
 import '../android/android_studio.dart';
 import '../base/common.dart';
 import '../convert.dart';
@@ -84,9 +86,11 @@ class ConfigCommand extends FlutterCommand {
     if (values.isEmpty) {
       values = '  No settings have been configured.';
     }
+    final bool analyticsEnabled = globals.flutterUsage.enabled &&
+                                  !globals.flutterUsage.suppressAnalytics;
     return
       '\nSettings:\n$values\n\n'
-      'Analytics reporting is currently ${globals.flutterUsage.enabled ? 'enabled' : 'disabled'}.';
+      'Analytics reporting is currently ${analyticsEnabled ? 'enabled' : 'disabled'}.';
   }
 
   /// Return null to disable analytics recording of the `config` command.

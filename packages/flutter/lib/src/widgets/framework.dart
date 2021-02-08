@@ -9,6 +9,7 @@ import 'dart:developer';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 
+import 'binding.dart';
 import 'debug.dart';
 import 'focus_manager.dart';
 import 'inherited_model.dart';
@@ -30,13 +31,11 @@ export 'package:flutter/foundation.dart' show Key, LocalKey, ValueKey;
 export 'package:flutter/rendering.dart' show RenderObject, RenderBox, debugDumpRenderTree, debugDumpLayerTree;
 
 // Examples can assume:
-// BuildContext context;
+// late BuildContext context;
 // void setState(VoidCallback fn) { }
-
-// Examples can assume:
 // abstract class RenderFrogJar extends RenderObject { }
 // abstract class FrogJar extends RenderObjectWidget { }
-// abstract class FrogJarParentData extends ParentData { Size size; }
+// abstract class FrogJarParentData extends ParentData { late Size size; }
 
 // KEYS
 
@@ -116,6 +115,21 @@ class ObjectKey extends LocalKey {
 /// You cannot simultaneously include two widgets in the tree with the same
 /// global key. Attempting to do so will assert at runtime.
 ///
+/// ## Pitfalls
+///
+/// GlobalKeys should not be re-created on every build. They should usually be
+/// long-lived objects owned by a [State] object, for example.
+///
+/// Creating a new GlobalKey on every build will throw away the state of the
+/// subtree associated with the old key and create a new fresh subtree for the
+/// new key. Besides harming performance, this can also cause unexpected
+/// behavior in widgets in the subtree. For example, a [GestureDetector] in the
+/// subtree will be unable to track ongoing gestures since it will be recreated
+/// on each build.
+///
+/// Instead, a good practice is to let a State object own the GlobalKey, and
+/// instantiate it outside the build method, such as in [State.initState].
+///
 /// See also:
 ///
 ///  * The discussion at [Widget.key] for more information about how widgets use
@@ -135,170 +149,7 @@ abstract class GlobalKey<T extends State<StatefulWidget>> extends Key {
   /// constructor.
   const GlobalKey.constructor() : super.empty();
 
-  static final Map<GlobalKey, Element> _registry = <GlobalKey, Element>{};
-  static final Set<Element> _debugIllFatedElements = HashSet<Element>();
-  // This map keeps track which child reserves the global key with the parent.
-  // Parent, child -> global key.
-  // This provides us a way to remove old reservation while parent rebuilds the
-  // child in the same slot.
-  static final Map<Element, Map<Element, GlobalKey>> _debugReservations = <Element, Map<Element, GlobalKey>>{};
-
-  static void _debugRemoveReservationFor(Element parent, Element child) {
-    assert(() {
-      assert(parent != null);
-      assert(child != null);
-      _debugReservations[parent]?.remove(child);
-      return true;
-    }());
-  }
-
-  void _register(Element element) {
-    assert(() {
-      if (_registry.containsKey(this)) {
-        assert(element.widget != null);
-        final Element oldElement = _registry[this]!;
-        assert(oldElement.widget != null);
-        assert(element.widget.runtimeType != oldElement.widget.runtimeType);
-        _debugIllFatedElements.add(oldElement);
-      }
-      return true;
-    }());
-    _registry[this] = element;
-  }
-
-  void _unregister(Element element) {
-    assert(() {
-      if (_registry.containsKey(this) && _registry[this] != element) {
-        assert(element.widget != null);
-        final Element oldElement = _registry[this]!;
-        assert(oldElement.widget != null);
-        assert(element.widget.runtimeType != oldElement.widget.runtimeType);
-      }
-      return true;
-    }());
-    if (_registry[this] == element)
-      _registry.remove(this);
-  }
-
-  void _debugReserveFor(Element parent, Element child) {
-    assert(() {
-      assert(parent != null);
-      assert(child != null);
-      _debugReservations[parent] ??= <Element, GlobalKey>{};
-      _debugReservations[parent]![child] = this;
-      return true;
-    }());
-  }
-
-  static void _debugVerifyGlobalKeyReservation() {
-    assert(() {
-      final Map<GlobalKey, Element> keyToParent = <GlobalKey, Element>{};
-      _debugReservations.forEach((Element parent, Map<Element, GlobalKey> childToKey) {
-        // We ignore parent that are unmounted or detached.
-        if (parent._lifecycleState == _ElementLifecycle.defunct || parent.renderObject?.attached == false)
-          return;
-        childToKey.forEach((Element child, GlobalKey key) {
-          // If parent = null, the node is deactivated by its parent and is
-          // not re-attached to other part of the tree. We should ignore this
-          // node.
-          if (child._parent == null)
-            return;
-          // It is possible the same key registers to the same parent twice
-          // with different children. That is illegal, but it is not in the
-          // scope of this check. Such error will be detected in
-          // _debugVerifyIllFatedPopulation or
-          // _debugElementsThatWillNeedToBeRebuiltDueToGlobalKeyShenanigans.
-          if (keyToParent.containsKey(key) && keyToParent[key] != parent) {
-            // We have duplication reservations for the same global key.
-            final Element older = keyToParent[key]!;
-            final Element newer = parent;
-            FlutterError error;
-            if (older.toString() != newer.toString()) {
-              error = FlutterError.fromParts(<DiagnosticsNode>[
-                ErrorSummary('Multiple widgets used the same GlobalKey.'),
-                ErrorDescription(
-                  'The key $key was used by multiple widgets. The parents of those widgets were:\n'
-                    '- ${older.toString()}\n'
-                    '- ${newer.toString()}\n'
-                    'A GlobalKey can only be specified on one widget at a time in the widget tree.'
-                ),
-              ]);
-            } else {
-              error = FlutterError.fromParts(<DiagnosticsNode>[
-                ErrorSummary('Multiple widgets used the same GlobalKey.'),
-                ErrorDescription(
-                  'The key $key was used by multiple widgets. The parents of those widgets were '
-                    'different widgets that both had the following description:\n'
-                    '  ${parent.toString()}\n'
-                    'A GlobalKey can only be specified on one widget at a time in the widget tree.'
-                ),
-              ]);
-            }
-            // Fix the tree by removing the duplicated child from one of its
-            // parents to resolve the duplicated key issue. This allows us to
-            // tear down the tree during testing without producing additional
-            // misleading exceptions.
-            if (child._parent != older) {
-              older.visitChildren((Element currentChild) {
-                if (currentChild == child)
-                  older.forgetChild(child);
-              });
-            }
-            if (child._parent != newer) {
-              newer.visitChildren((Element currentChild) {
-                if (currentChild == child)
-                  newer.forgetChild(child);
-              });
-            }
-            throw error;
-          } else {
-            keyToParent[key] = parent;
-          }
-        });
-      });
-      _debugReservations.clear();
-      return true;
-    }());
-  }
-
-  static void _debugVerifyIllFatedPopulation() {
-    assert(() {
-      Map<GlobalKey, Set<Element>>? duplicates;
-      for (final Element element in _debugIllFatedElements) {
-        if (element._lifecycleState != _ElementLifecycle.defunct) {
-          assert(element != null);
-          assert(element.widget != null);
-          assert(element.widget.key != null);
-          final GlobalKey key = element.widget.key! as GlobalKey;
-          assert(_registry.containsKey(key));
-          duplicates ??= <GlobalKey, Set<Element>>{};
-          // Uses ordered set to produce consistent error message.
-          final Set<Element> elements = duplicates.putIfAbsent(key, () => LinkedHashSet<Element>());
-          elements.add(element);
-          elements.add(_registry[key]!);
-        }
-      }
-      _debugIllFatedElements.clear();
-      if (duplicates != null) {
-        final List<DiagnosticsNode> information = <DiagnosticsNode>[];
-        information.add(ErrorSummary('Multiple widgets used the same GlobalKey.'));
-        for (final GlobalKey key in duplicates.keys) {
-          final Set<Element> elements = duplicates[key]!;
-          // TODO(jacobr): this will omit the '- ' before each widget name and
-          // use the more standard whitespace style instead. Please let me know
-          // if the '- ' style is a feature we want to maintain and we can add
-          // another tree style that supports it. I also see '* ' in some places
-          // so it would be nice to unify and normalize.
-          information.add(Element.describeElements('The key $key was used by ${elements.length} widgets', elements));
-        }
-        information.add(ErrorDescription('A GlobalKey can only be specified on one widget at a time in the widget tree.'));
-        throw FlutterError.fromParts(information);
-      }
-      return true;
-    }());
-  }
-
-  Element? get _currentElement => _registry[this];
+  Element? get _currentElement => WidgetsBinding.instance!.buildOwner!._globalKeyRegistry[this];
 
   /// The build context in which the widget with this key builds.
   ///
@@ -611,7 +462,7 @@ abstract class Widget extends DiagnosticableTree {
 ///
 /// ```dart
 /// class GreenFrog extends StatelessWidget {
-///   const GreenFrog({ Key key }) : super(key: key);
+///   const GreenFrog({ Key? key }) : super(key: key);
 ///
 ///   @override
 ///   Widget build(BuildContext context) {
@@ -629,13 +480,13 @@ abstract class Widget extends DiagnosticableTree {
 /// ```dart
 /// class Frog extends StatelessWidget {
 ///   const Frog({
-///     Key key,
+///     Key? key,
 ///     this.color = const Color(0xFF2DBD3A),
 ///     this.child,
 ///   }) : super(key: key);
 ///
 ///   final Color color;
-///   final Widget child;
+///   final Widget? child;
 ///
 ///   @override
 ///   Widget build(BuildContext context) {
@@ -828,7 +679,7 @@ abstract class StatelessWidget extends Widget {
 ///
 /// ```dart
 /// class YellowBird extends StatefulWidget {
-///   const YellowBird({ Key key }) : super(key: key);
+///   const YellowBird({ Key? key }) : super(key: key);
 ///
 ///   @override
 ///   _YellowBirdState createState() => _YellowBirdState();
@@ -851,13 +702,13 @@ abstract class StatelessWidget extends Widget {
 /// ```dart
 /// class Bird extends StatefulWidget {
 ///   const Bird({
-///     Key key,
+///     Key? key,
 ///     this.color = const Color(0xFFFFE306),
 ///     this.child,
 ///   }) : super(key: key);
 ///
 ///   final Color color;
-///   final Widget child;
+///   final Widget? child;
 ///
 ///   _BirdState createState() => _BirdState();
 /// }
@@ -922,7 +773,7 @@ abstract class StatefulWidget extends Widget {
   /// [State] objects.
   @protected
   @factory
-  State createState();
+  State createState(); // ignore: no_logic_in_create_state, this is the original sin
 }
 
 /// Tracks the lifecycle of [State] objects when asserts are enabled.
@@ -1104,7 +955,7 @@ abstract class State<T extends StatefulWidget> with Diagnosticable {
   /// location at which this object was inserted into the tree (i.e., [context])
   /// or on the widget used to configure this object (i.e., [widget]).
   ///
-  /// {@template flutter.widgets.subscriptions}
+  /// {@template flutter.widgets.State.initState}
   /// If a [State]'s [build] method depends on an object that can itself
   /// change state, for example a [ChangeNotifier] or [Stream], or some
   /// other object to which one can subscribe to receive notifications, then
@@ -1146,7 +997,7 @@ abstract class State<T extends StatefulWidget> with Diagnosticable {
   /// The framework always calls [build] after calling [didUpdateWidget], which
   /// means any calls to [setState] in [didUpdateWidget] are redundant.
   ///
-  /// {@macro flutter.widgets.subscriptions}
+  /// {@macro flutter.widgets.State.initState}
   ///
   /// If you override this, make sure your method starts with a call to
   /// super.didUpdateWidget(oldWidget).
@@ -1154,7 +1005,7 @@ abstract class State<T extends StatefulWidget> with Diagnosticable {
   @protected
   void didUpdateWidget(covariant T oldWidget) { }
 
-  /// {@macro flutter.widgets.reassemble}
+  /// {@macro flutter.widgets.Element.reassemble}
   ///
   /// In addition to this method being invoked, it is guaranteed that the
   /// [build] method will be invoked when a reassemble is signaled. Most
@@ -1314,7 +1165,7 @@ abstract class State<T extends StatefulWidget> with Diagnosticable {
   /// Subclasses should override this method to release any resources retained
   /// by this object (e.g., stop any active animations).
   ///
-  /// {@macro flutter.widgets.subscriptions}
+  /// {@macro flutter.widgets.State.initState}
   ///
   /// If you override this, make sure to end your method with a call to
   /// super.dispose().
@@ -1492,7 +1343,7 @@ abstract class ProxyWidget extends Widget {
 
   /// The widget below this widget in the tree.
   ///
-  /// {@template flutter.widgets.child}
+  /// {@template flutter.widgets.ProxyWidget.child}
   /// This widget can only have one child. To lay out multiple children, let this
   /// widget's child be a widget such as [Row], [Column], or [Stack], which have a
   /// `children` property, and then provide the children to that widget.
@@ -1518,21 +1369,19 @@ abstract class ProxyWidget extends Widget {
 /// ```dart
 /// class FrogSize extends ParentDataWidget<FrogJarParentData> {
 ///   FrogSize({
-///     Key key,
-///     @required this.size,
-///     @required Widget child,
-///   }) : assert(child != null),
-///        assert(size != null),
-///        super(key: key, child: child);
+///     Key? key,
+///     required this.size,
+///     required Widget child,
+///   }) : super(key: key, child: child);
 ///
 ///   final Size size;
 ///
 ///   @override
 ///   void applyParentData(RenderObject renderObject) {
-///     final FrogJarParentData parentData = renderObject.parentData;
+///     final FrogJarParentData parentData = renderObject.parentData! as FrogJarParentData;
 ///     if (parentData.size != size) {
 ///       parentData.size = size;
-///       final RenderFrogJar targetParent = renderObject.parent;
+///       final RenderFrogJar targetParent = renderObject.parent! as RenderFrogJar;
 ///       targetParent.markNeedsLayout();
 ///     }
 ///   }
@@ -1671,17 +1520,17 @@ abstract class ParentDataWidget<T extends ParentData> extends ProxyWidget {
 /// ```dart
 /// class FrogColor extends InheritedWidget {
 ///   const FrogColor({
-///     Key key,
-///     @required this.color,
-///     @required Widget child,
-///   }) : assert(color != null),
-///        assert(child != null),
-///        super(key: key, child: child);
+///     Key? key,
+///     required this.color,
+///     required Widget child,
+///   }) : super(key: key, child: child);
 ///
 ///   final Color color;
 ///
 ///   static FrogColor of(BuildContext context) {
-///     return context.dependOnInheritedWidgetOfExactType<FrogColor>();
+///     final FrogColor? result = context.dependOnInheritedWidgetOfExactType<FrogColor>();
+///     assert(result != null, 'No FrogColor found in context');
+///     return result!;
 ///   }
 ///
 ///   @override
@@ -1874,7 +1723,7 @@ abstract class SingleChildRenderObjectWidget extends RenderObjectWidget {
 
   /// The widget below this widget in the tree.
   ///
-  /// {@macro flutter.widgets.child}
+  /// {@macro flutter.widgets.ProxyWidget.child}
   final Widget? child;
 
   @override
@@ -1904,19 +1753,20 @@ abstract class MultiChildRenderObjectWidget extends RenderObjectWidget {
   /// objects.
   MultiChildRenderObjectWidget({ Key? key, this.children = const <Widget>[] })
     : assert(children != null),
-      assert(() {
-        for (int index = 0; index < children.length; index++) {
-          // TODO(a14n): remove this check to have a lot more const widget
-          if (children[index] == null) { // ignore: dead_code
-            throw FlutterError(
+      super(key: key) {
+    assert(() {
+      for (int index = 0; index < children.length; index++) {
+        // TODO(a14n): remove this check to have a lot more const widget
+        if (children[index] == null) { // ignore: dead_code
+          throw FlutterError(
               "$runtimeType's children must not contain any null values, "
-              'but a null value was found at index $index'
-            );
-          }
+                  'but a null value was found at index $index'
+          );
         }
-        return true;
-      }()), // https://github.com/dart-lang/sdk/issues/29276
-      super(key: key);
+      }
+      return true;
+    }()); // https://github.com/dart-lang/sdk/issues/29276
+  }
 
   /// The widgets below this widget in the tree.
   ///
@@ -2097,33 +1947,52 @@ typedef ElementVisitor = void Function(Element element);
 /// widget can be used: the build context passed to the [Builder.builder]
 /// callback will be that of the [Builder] itself.
 ///
-/// For example, in the following snippet, the [ScaffoldState.showSnackBar]
+/// For example, in the following snippet, the [ScaffoldState.showBottomSheet]
 /// method is called on the [Scaffold] widget that the build method itself
 /// creates. If a [Builder] had not been used, and instead the `context`
 /// argument of the build method itself had been used, no [Scaffold] would have
 /// been found, and the [Scaffold.of] function would have returned null.
 ///
 /// ```dart
-///   @override
-///   Widget build(BuildContext context) {
-///     // here, Scaffold.of(context) returns null
-///     return Scaffold(
-///       appBar: AppBar(title: Text('Demo')),
-///       body: Builder(
-///         builder: (BuildContext context) {
-///           return TextButton(
-///             child: Text('BUTTON'),
-///             onPressed: () {
-///               // here, Scaffold.of(context) returns the locally created Scaffold
-///               Scaffold.of(context).showSnackBar(SnackBar(
-///                 content: Text('Hello.')
-///               ));
-///             }
-///           );
-///         }
-///       )
-///     );
-///   }
+/// @override
+/// Widget build(BuildContext context) {
+///   // here, Scaffold.of(context) returns null
+///   return Scaffold(
+///     appBar: const AppBar(title: Text('Demo')),
+///     body: Builder(
+///       builder: (BuildContext context) {
+///         return TextButton(
+///           child: const Text('BUTTON'),
+///           onPressed: () {
+///             Scaffold.of(context).showBottomSheet<void>(
+///               (BuildContext context) {
+///                 return Container(
+///                   alignment: Alignment.center,
+///                   height: 200,
+///                   color: Colors.amber,
+///                   child: Center(
+///                     child: Column(
+///                       mainAxisSize: MainAxisSize.min,
+///                       children: <Widget>[
+///                         const Text('BottomSheet'),
+///                         ElevatedButton(
+///                           child: const Text('Close BottomSheet'),
+///                           onPressed: () {
+///                             Navigator.pop(context),
+///                           },
+///                         )
+///                       ],
+///                     ),
+///                   ),
+///                 );
+///               },
+///             );
+///           },
+///         );
+///       },
+///     )
+///   );
+/// }
 /// ```
 ///
 /// The [BuildContext] for a particular widget can change location over time as
@@ -2206,17 +2075,6 @@ abstract class BuildContext {
   /// Registers this build context with [ancestor] such that when
   /// [ancestor]'s widget changes this build context is rebuilt.
   ///
-  /// This method is deprecated. Please use [dependOnInheritedElement] instead.
-  // TODO(a14n): Remove this when it goes to stable, https://github.com/flutter/flutter/pull/44189
-  @Deprecated(
-    'Use dependOnInheritedElement instead. '
-    'This feature was deprecated after v1.12.1.'
-  )
-  InheritedWidget inheritFromElement(InheritedElement ancestor, { Object aspect });
-
-  /// Registers this build context with [ancestor] such that when
-  /// [ancestor]'s widget changes this build context is rebuilt.
-  ///
   /// Returns `ancestor.widget`.
   ///
   /// This method is rarely called directly. Most applications should use
@@ -2226,20 +2084,6 @@ abstract class BuildContext {
   /// All of the qualifications about when [dependOnInheritedWidgetOfExactType] can
   /// be called apply to this method as well.
   InheritedWidget dependOnInheritedElement(InheritedElement ancestor, { Object aspect });
-
-  /// Obtains the nearest widget of the given type, which must be the type of a
-  /// concrete [InheritedWidget] subclass, and registers this build context with
-  /// that widget such that when that widget changes (or a new widget of that
-  /// type is introduced, or the widget goes away), this build context is
-  /// rebuilt so that it can obtain new values from that widget.
-  ///
-  /// This method is deprecated. Please use [dependOnInheritedWidgetOfExactType] instead.
-  // TODO(a14n): Remove this when it goes to stable, https://github.com/flutter/flutter/pull/44189
-  @Deprecated(
-    'Use dependOnInheritedWidgetOfExactType instead. '
-    'This feature was deprecated after v1.12.1.'
-  )
-  InheritedWidget? inheritFromWidgetOfExactType(Type targetType, { Object? aspect });
 
   /// Obtains the nearest widget of the given type `T`, which must be the type of a
   /// concrete [InheritedWidget] subclass, and registers this build context with
@@ -2282,17 +2126,6 @@ abstract class BuildContext {
   /// widget this context depends on.
   T? dependOnInheritedWidgetOfExactType<T extends InheritedWidget>({ Object? aspect });
 
-  /// Obtains the element corresponding to the nearest widget of the given type,
-  /// which must be the type of a concrete [InheritedWidget] subclass.
-  ///
-  /// This method is deprecated. Please use [getElementForInheritedWidgetOfExactType] instead.
-  // TODO(a14n): Remove this when it goes to stable, https://github.com/flutter/flutter/pull/44189
-  @Deprecated(
-    'Use getElementForInheritedWidgetOfExactType instead. '
-    'This feature was deprecated after v1.12.1.'
-  )
-  InheritedElement? ancestorInheritedElementForWidgetOfExactType(Type targetType);
-
   /// Obtains the element corresponding to the nearest widget of the given type `T`,
   /// which must be the type of a concrete [InheritedWidget] subclass.
   ///
@@ -2310,17 +2143,6 @@ abstract class BuildContext {
   /// safe to use this method from [State.deactivate], which is called whenever
   /// the widget is removed from the tree.
   InheritedElement? getElementForInheritedWidgetOfExactType<T extends InheritedWidget>();
-
-  /// Returns the nearest ancestor widget of the given type, which must be the
-  /// type of a concrete [Widget] subclass.
-  ///
-  /// This method is deprecated. Please use [findAncestorWidgetOfExactType] instead.
-  // TODO(a14n): Remove this when it goes to stable, https://github.com/flutter/flutter/pull/44189
-  @Deprecated(
-    'Use findAncestorWidgetOfExactType instead. '
-    'This feature was deprecated after v1.12.1.'
-  )
-  Widget? ancestorWidgetOfExactType(Type targetType);
 
   /// Returns the nearest ancestor widget of the given type `T`, which must be the
   /// type of a concrete [Widget] subclass.
@@ -2347,17 +2169,6 @@ abstract class BuildContext {
   /// Returns null if a widget of the requested type does not appear in the
   /// ancestors of this context.
   T? findAncestorWidgetOfExactType<T extends Widget>();
-
-  /// Returns the [State] object of the nearest ancestor [StatefulWidget] widget
-  /// that matches the given [TypeMatcher].
-  ///
-  /// This method is deprecated. Please use [findAncestorStateOfType] instead.
-  // TODO(a14n): Remove this when it goes to stable, https://github.com/flutter/flutter/pull/44189
-  @Deprecated(
-    'Use findAncestorStateOfType instead. '
-    'This feature was deprecated after v1.12.1.'
-  )
-  State? ancestorStateOfType(TypeMatcher matcher);
 
   /// Returns the [State] object of the nearest ancestor [StatefulWidget] widget
   /// that is an instance of the given type `T`.
@@ -2387,21 +2198,10 @@ abstract class BuildContext {
   /// {@tool snippet}
   ///
   /// ```dart
-  /// ScrollableState scrollable = context.findAncestorStateOfType<ScrollableState>();
+  /// ScrollableState? scrollable = context.findAncestorStateOfType<ScrollableState>();
   /// ```
   /// {@end-tool}
   T? findAncestorStateOfType<T extends State>();
-
-  /// Returns the [State] object of the furthest ancestor [StatefulWidget] widget
-  /// that matches the given [TypeMatcher].
-  ///
-  /// This method is deprecated. Please use [findRootAncestorStateOfType] instead.
-  // TODO(a14n): Remove this when it goes to stable, https://github.com/flutter/flutter/pull/44189
-  @Deprecated(
-    'Use findRootAncestorStateOfType instead. '
-    'This feature was deprecated after v1.12.1.'
-  )
-  State? rootAncestorStateOfType(TypeMatcher matcher);
 
   /// Returns the [State] object of the furthest ancestor [StatefulWidget] widget
   /// that is an instance of the given type `T`.
@@ -2413,17 +2213,6 @@ abstract class BuildContext {
   /// This operation is O(N) as well though N is the entire widget tree rather than
   /// a subtree.
   T? findRootAncestorStateOfType<T extends State>();
-
-  /// Returns the [RenderObject] object of the nearest ancestor [RenderObjectWidget] widget
-  /// that matches the given [TypeMatcher].
-  ///
-  /// This method is deprecated. Please use [findAncestorRenderObjectOfType] instead.
-  // TODO(a14n): Remove this when it goes to stable, https://github.com/flutter/flutter/pull/44189
-  @Deprecated(
-    'Use findAncestorRenderObjectOfType instead. '
-    'This feature was deprecated after v1.12.1.'
-  )
-  RenderObject? ancestorRenderObjectOfType(TypeMatcher matcher);
 
   /// Returns the [RenderObject] object of the nearest ancestor [RenderObjectWidget] widget
   /// that is an instance of the given type `T`.
@@ -2520,7 +2309,8 @@ abstract class BuildContext {
 /// widget tree.
 class BuildOwner {
   /// Creates an object that manages widgets.
-  BuildOwner({ this.onBuildScheduled });
+  BuildOwner({ this.onBuildScheduled, FocusManager? focusManager }) :
+      focusManager = focusManager ?? FocusManager();
 
   /// Called on each build pass when the first buildable element is marked
   /// dirty.
@@ -2551,7 +2341,7 @@ class BuildOwner {
   /// the [FocusScopeNode] for a given [BuildContext].
   ///
   /// See [FocusManager] for more details.
-  FocusManager focusManager = FocusManager();
+  FocusManager focusManager;
 
   /// Adds an element to the dirty elements list so that it will be rebuilt
   /// when [WidgetsBinding.drawFrame] calls [buildScope].
@@ -2571,7 +2361,7 @@ class BuildOwner {
           ErrorHint(
             'If you did not attempt to call scheduleBuildFor() yourself, then this probably '
             'indicates a bug in the widgets framework. Please report it:\n'
-            '  https://github.com/flutter/flutter/issues/new?template=BUG.md'
+            '  https://github.com/flutter/flutter/issues/new?template=2_bug.md'
           ),
         ]);
       }
@@ -2817,6 +2607,173 @@ class BuildOwner {
     _debugElementsThatWillNeedToBeRebuiltDueToGlobalKeyShenanigans?.remove(node);
   }
 
+  final Map<GlobalKey, Element> _globalKeyRegistry = <GlobalKey, Element>{};
+  final Set<Element> _debugIllFatedElements = HashSet<Element>();
+  // This map keeps track which child reserves the global key with the parent.
+  // Parent, child -> global key.
+  // This provides us a way to remove old reservation while parent rebuilds the
+  // child in the same slot.
+  final Map<Element, Map<Element, GlobalKey>> _debugGlobalKeyReservations = <Element, Map<Element, GlobalKey>>{};
+
+  /// The number of [GlobalKey] instances that are currently associated with
+  /// [Element]s that have been built by this build owner.
+  int get globalKeyCount => _globalKeyRegistry.length;
+
+  void _debugRemoveGlobalKeyReservationFor(Element parent, Element child) {
+    assert(() {
+      assert(parent != null);
+      assert(child != null);
+      _debugGlobalKeyReservations[parent]?.remove(child);
+      return true;
+    }());
+  }
+
+  void _registerGlobalKey(GlobalKey key, Element element) {
+    assert(() {
+      if (_globalKeyRegistry.containsKey(key)) {
+        assert(element.widget != null);
+        final Element oldElement = _globalKeyRegistry[key]!;
+        assert(oldElement.widget != null);
+        assert(element.widget.runtimeType != oldElement.widget.runtimeType);
+        _debugIllFatedElements.add(oldElement);
+      }
+      return true;
+    }());
+    _globalKeyRegistry[key] = element;
+  }
+
+  void _unregisterGlobalKey(GlobalKey key, Element element) {
+    assert(() {
+      if (_globalKeyRegistry.containsKey(key) && _globalKeyRegistry[key] != element) {
+        assert(element.widget != null);
+        final Element oldElement = _globalKeyRegistry[key]!;
+        assert(oldElement.widget != null);
+        assert(element.widget.runtimeType != oldElement.widget.runtimeType);
+      }
+      return true;
+    }());
+    if (_globalKeyRegistry[key] == element)
+      _globalKeyRegistry.remove(key);
+  }
+
+  void _debugReserveGlobalKeyFor(Element parent, Element child, GlobalKey key) {
+    assert(() {
+      assert(parent != null);
+      assert(child != null);
+      _debugGlobalKeyReservations[parent] ??= <Element, GlobalKey>{};
+      _debugGlobalKeyReservations[parent]![child] = key;
+      return true;
+    }());
+  }
+
+  void _debugVerifyGlobalKeyReservation() {
+    assert(() {
+      final Map<GlobalKey, Element> keyToParent = <GlobalKey, Element>{};
+      _debugGlobalKeyReservations.forEach((Element parent, Map<Element, GlobalKey> childToKey) {
+        // We ignore parent that are unmounted or detached.
+        if (parent._lifecycleState == _ElementLifecycle.defunct || parent.renderObject?.attached == false)
+          return;
+        childToKey.forEach((Element child, GlobalKey key) {
+          // If parent = null, the node is deactivated by its parent and is
+          // not re-attached to other part of the tree. We should ignore this
+          // node.
+          if (child._parent == null)
+            return;
+          // It is possible the same key registers to the same parent twice
+          // with different children. That is illegal, but it is not in the
+          // scope of this check. Such error will be detected in
+          // _debugVerifyIllFatedPopulation or
+          // _debugElementsThatWillNeedToBeRebuiltDueToGlobalKeyShenanigans.
+          if (keyToParent.containsKey(key) && keyToParent[key] != parent) {
+            // We have duplication reservations for the same global key.
+            final Element older = keyToParent[key]!;
+            final Element newer = parent;
+            final FlutterError error;
+            if (older.toString() != newer.toString()) {
+              error = FlutterError.fromParts(<DiagnosticsNode>[
+                ErrorSummary('Multiple widgets used the same GlobalKey.'),
+                ErrorDescription(
+                    'The key $key was used by multiple widgets. The parents of those widgets were:\n'
+                    '- ${older.toString()}\n'
+                    '- ${newer.toString()}\n'
+                    'A GlobalKey can only be specified on one widget at a time in the widget tree.'
+                ),
+              ]);
+            } else {
+              error = FlutterError.fromParts(<DiagnosticsNode>[
+                ErrorSummary('Multiple widgets used the same GlobalKey.'),
+                ErrorDescription(
+                    'The key $key was used by multiple widgets. The parents of those widgets were '
+                    'different widgets that both had the following description:\n'
+                    '  ${parent.toString()}\n'
+                    'A GlobalKey can only be specified on one widget at a time in the widget tree.'
+                ),
+              ]);
+            }
+            // Fix the tree by removing the duplicated child from one of its
+            // parents to resolve the duplicated key issue. This allows us to
+            // tear down the tree during testing without producing additional
+            // misleading exceptions.
+            if (child._parent != older) {
+              older.visitChildren((Element currentChild) {
+                if (currentChild == child)
+                  older.forgetChild(child);
+              });
+            }
+            if (child._parent != newer) {
+              newer.visitChildren((Element currentChild) {
+                if (currentChild == child)
+                  newer.forgetChild(child);
+              });
+            }
+            throw error;
+          } else {
+            keyToParent[key] = parent;
+          }
+        });
+      });
+      _debugGlobalKeyReservations.clear();
+      return true;
+    }());
+  }
+
+  void _debugVerifyIllFatedPopulation() {
+    assert(() {
+      Map<GlobalKey, Set<Element>>? duplicates;
+      for (final Element element in _debugIllFatedElements) {
+        if (element._lifecycleState != _ElementLifecycle.defunct) {
+          assert(element != null);
+          assert(element.widget != null);
+          assert(element.widget.key != null);
+          final GlobalKey key = element.widget.key! as GlobalKey;
+          assert(_globalKeyRegistry.containsKey(key));
+          duplicates ??= <GlobalKey, Set<Element>>{};
+          // Uses ordered set to produce consistent error message.
+          final Set<Element> elements = duplicates.putIfAbsent(key, () => LinkedHashSet<Element>());
+          elements.add(element);
+          elements.add(_globalKeyRegistry[key]!);
+        }
+      }
+      _debugIllFatedElements.clear();
+      if (duplicates != null) {
+        final List<DiagnosticsNode> information = <DiagnosticsNode>[];
+        information.add(ErrorSummary('Multiple widgets used the same GlobalKey.'));
+        for (final GlobalKey key in duplicates.keys) {
+          final Set<Element> elements = duplicates[key]!;
+          // TODO(jacobr): this will omit the '- ' before each widget name and
+          // use the more standard whitespace style instead. Please let me know
+          // if the '- ' style is a feature we want to maintain and we can add
+          // another tree style that supports it. I also see '* ' in some places
+          // so it would be nice to unify and normalize.
+          information.add(Element.describeElements('The key $key was used by ${elements.length} widgets', elements));
+        }
+        information.add(ErrorDescription('A GlobalKey can only be specified on one widget at a time in the widget tree.'));
+        throw FlutterError.fromParts(information);
+      }
+      return true;
+    }());
+  }
+
   /// Complete the element build pass by unmounting any elements that are no
   /// longer active.
   ///
@@ -2835,8 +2792,8 @@ class BuildOwner {
       });
       assert(() {
         try {
-          GlobalKey._debugVerifyGlobalKeyReservation();
-          GlobalKey._debugVerifyIllFatedPopulation();
+          _debugVerifyGlobalKeyReservation();
+          _debugVerifyIllFatedPopulation();
           if (_debugElementsThatWillNeedToBeRebuiltDueToGlobalKeyShenanigans != null &&
               _debugElementsThatWillNeedToBeRebuiltDueToGlobalKeyShenanigans!.isNotEmpty) {
             final Set<GlobalKey> keys = HashSet<GlobalKey>();
@@ -3086,7 +3043,7 @@ abstract class Element extends DiagnosticableTree implements BuildContext {
   BuildOwner? get owner => _owner;
   BuildOwner? _owner;
 
-  /// {@template flutter.widgets.reassemble}
+  /// {@template flutter.widgets.Element.reassemble}
   /// Called whenever the application is reassembled during debugging, for
   /// example during hot reload.
   ///
@@ -3292,6 +3249,15 @@ abstract class Element extends DiagnosticableTree implements BuildContext {
   /// | :-----------------: | :--------------------- | :---------------------- |
   /// |  **child == null**  |  Returns null.         |  Returns new [Element]. |
   /// |  **child != null**  |  Old child is removed, returns null. | Old child updated if possible, returns child or new [Element]. |
+  ///
+  /// The `newSlot` argument is used only if `newWidget` is not null. If `child`
+  /// is null (or if the old child cannot be updated), then the `newSlot` is
+  /// given to the new [Element] that is created for the child, via
+  /// [inflateWidget]. If `child` is not null (and the old child _can_ be
+  /// updated), then the `newSlot` is given to [updateSlotForChild] to update
+  /// its slot, in case it has moved around since it was last built.
+  ///
+  /// See the [RenderObjectElement] documentation for more information on slots.
   @protected
   Element? updateChild(Element? child, Widget? newWidget, dynamic newSlot) {
     if (newWidget == null) {
@@ -3299,7 +3265,7 @@ abstract class Element extends DiagnosticableTree implements BuildContext {
         deactivateChild(child);
       return null;
     }
-    Element newChild;
+    final Element newChild;
     if (child != null) {
       bool hasSameSuperclass = true;
       // When the type of a widget is changed between Stateful and Stateless via
@@ -3351,7 +3317,8 @@ abstract class Element extends DiagnosticableTree implements BuildContext {
         _debugRemoveGlobalKeyReservation(child);
       final Key? key = newWidget.key;
       if (key is GlobalKey) {
-        key._debugReserveFor(this, newChild);
+        assert(owner != null);
+        owner!._debugReserveGlobalKeyFor(this, newChild, key);
       }
       return true;
     }());
@@ -3384,17 +3351,23 @@ abstract class Element extends DiagnosticableTree implements BuildContext {
     _slot = newSlot;
     _lifecycleState = _ElementLifecycle.active;
     _depth = _parent != null ? _parent!.depth + 1 : 1;
-    if (parent != null) // Only assign ownership if the parent is non-null
+    if (parent != null) {
+      // Only assign ownership if the parent is non-null. If parent is null
+      // (the root node), the owner should have already been assigned.
+      // See RootRenderObjectElement.assignOwner().
       _owner = parent.owner;
+    }
+    assert(owner != null);
     final Key? key = widget.key;
     if (key is GlobalKey) {
-      key._register(this);
+      owner!._registerGlobalKey(key, this);
     }
     _updateInheritance();
   }
 
   void _debugRemoveGlobalKeyReservation(Element child) {
-    GlobalKey._debugRemoveReservationFor(this, child);
+    assert(owner != null);
+    owner!._debugRemoveGlobalKeyReservationFor(this, child);
   }
 
   /// Change the widget used to configure this element.
@@ -3760,10 +3733,11 @@ abstract class Element extends DiagnosticableTree implements BuildContext {
     assert(_lifecycleState == _ElementLifecycle.inactive);
     assert(_widget != null); // Use the private property to avoid a CastError during hot reload.
     assert(depth != null);
+    assert(owner != null);
     // Use the private property to avoid a CastError during hot reload.
     final Key? key = _widget.key;
     if (key is GlobalKey) {
-      key._unregister(this);
+      owner!._unregisterGlobalKey(key, this);
     }
     _lifecycleState = _ElementLifecycle.defunct;
   }
@@ -3919,16 +3893,6 @@ abstract class Element extends DiagnosticableTree implements BuildContext {
     return true;
   }
 
-  // TODO(a14n): Remove this when it goes to stable, https://github.com/flutter/flutter/pull/44189
-  @Deprecated(
-    'Use dependOnInheritedElement instead. '
-    'This feature was deprecated after v1.12.1.'
-  )
-  @override
-  InheritedWidget inheritFromElement(InheritedElement ancestor, { Object? aspect }) {
-    return dependOnInheritedElement(ancestor, aspect: aspect);
-  }
-
   @override
   InheritedWidget dependOnInheritedElement(InheritedElement ancestor, { Object? aspect }) {
     assert(ancestor != null);
@@ -3936,23 +3900,6 @@ abstract class Element extends DiagnosticableTree implements BuildContext {
     _dependencies!.add(ancestor);
     ancestor.updateDependencies(this, aspect);
     return ancestor.widget;
-  }
-
-  // TODO(a14n): Remove this when it goes to stable, https://github.com/flutter/flutter/pull/44189
-  @Deprecated(
-    'Use dependOnInheritedWidgetOfExactType instead. '
-    'This feature was deprecated after v1.12.1.'
-  )
-  @override
-  InheritedWidget? inheritFromWidgetOfExactType(Type targetType, { Object? aspect }) {
-    assert(_debugCheckStateIsActiveForAncestorLookup());
-    final InheritedElement? ancestor = _inheritedWidgets == null ? null : _inheritedWidgets![targetType];
-    if (ancestor != null) {
-      assert(ancestor is InheritedElement);
-      return inheritFromElement(ancestor, aspect: aspect);
-    }
-    _hadUnsatisfiedDependencies = true;
-    return null;
   }
 
   @override
@@ -3967,18 +3914,6 @@ abstract class Element extends DiagnosticableTree implements BuildContext {
     return null;
   }
 
-  // TODO(a14n): Remove this when it goes to stable, https://github.com/flutter/flutter/pull/44189
-  @Deprecated(
-    'Use getElementForInheritedWidgetOfExactType instead. '
-    'This feature was deprecated after v1.12.1.'
-  )
-  @override
-  InheritedElement? ancestorInheritedElementForWidgetOfExactType(Type targetType) {
-    assert(_debugCheckStateIsActiveForAncestorLookup());
-    final InheritedElement? ancestor = _inheritedWidgets == null ? null : _inheritedWidgets![targetType];
-    return ancestor;
-  }
-
   @override
   InheritedElement? getElementForInheritedWidgetOfExactType<T extends InheritedWidget>() {
     assert(_debugCheckStateIsActiveForAncestorLookup());
@@ -3991,20 +3926,6 @@ abstract class Element extends DiagnosticableTree implements BuildContext {
     _inheritedWidgets = _parent?._inheritedWidgets;
   }
 
-  // TODO(a14n): Remove this when it goes to stable, https://github.com/flutter/flutter/pull/44189
-  @Deprecated(
-    'Use findAncestorWidgetOfExactType instead. '
-    'This feature was deprecated after v1.12.1.'
-  )
-  @override
-  Widget? ancestorWidgetOfExactType(Type targetType) {
-    assert(_debugCheckStateIsActiveForAncestorLookup());
-    Element? ancestor = _parent;
-    while (ancestor != null && ancestor.widget.runtimeType != targetType)
-      ancestor = ancestor._parent;
-    return ancestor?.widget;
-  }
-
   @override
   T? findAncestorWidgetOfExactType<T extends Widget>() {
     assert(_debugCheckStateIsActiveForAncestorLookup());
@@ -4012,24 +3933,6 @@ abstract class Element extends DiagnosticableTree implements BuildContext {
     while (ancestor != null && ancestor.widget.runtimeType != T)
       ancestor = ancestor._parent;
     return ancestor?.widget as T?;
-  }
-
-  // TODO(a14n): Remove this when it goes to stable, https://github.com/flutter/flutter/pull/44189
-  @Deprecated(
-    'Use findAncestorStateOfType instead. '
-    'This feature was deprecated after v1.12.1.'
-  )
-  @override
-  State? ancestorStateOfType(TypeMatcher matcher) {
-    assert(_debugCheckStateIsActiveForAncestorLookup());
-    Element? ancestor = _parent;
-    while (ancestor != null) {
-      if (ancestor is StatefulElement && matcher.check(ancestor.state))
-        break;
-      ancestor = ancestor._parent;
-    }
-    final StatefulElement? statefulAncestor = ancestor as StatefulElement?;
-    return statefulAncestor?.state;
   }
 
   @override
@@ -4045,24 +3948,6 @@ abstract class Element extends DiagnosticableTree implements BuildContext {
     return statefulAncestor?.state as T?;
   }
 
-  // TODO(a14n): Remove this when it goes to stable, https://github.com/flutter/flutter/pull/44189
-  @Deprecated(
-    'Use findRootAncestorStateOfType instead. '
-    'This feature was deprecated after v1.12.1.'
-  )
-  @override
-  State? rootAncestorStateOfType(TypeMatcher matcher) {
-    assert(_debugCheckStateIsActiveForAncestorLookup());
-    Element? ancestor = _parent;
-    StatefulElement? statefulAncestor;
-    while (ancestor != null) {
-      if (ancestor is StatefulElement && matcher.check(ancestor.state))
-        statefulAncestor = ancestor;
-      ancestor = ancestor._parent;
-    }
-    return statefulAncestor?.state;
-  }
-
   @override
   T? findRootAncestorStateOfType<T extends State<StatefulWidget>>() {
     assert(_debugCheckStateIsActiveForAncestorLookup());
@@ -4074,23 +3959,6 @@ abstract class Element extends DiagnosticableTree implements BuildContext {
       ancestor = ancestor._parent;
     }
     return statefulAncestor?.state as T?;
-  }
-
-  // TODO(a14n): Remove this when it goes to stable, https://github.com/flutter/flutter/pull/44189
-  @Deprecated(
-    'Use findAncestorRenderObjectOfType instead. '
-    'This feature was deprecated after v1.12.1.'
-  )
-  @override
-  RenderObject? ancestorRenderObjectOfType(TypeMatcher matcher) {
-    assert(_debugCheckStateIsActiveForAncestorLookup());
-    Element? ancestor = _parent;
-    while (ancestor != null) {
-      if (ancestor is RenderObjectElement && matcher.check(ancestor.renderObject))
-        return ancestor.renderObject;
-      ancestor = ancestor._parent;
-    }
-    return null;
   }
 
   @override
@@ -4492,7 +4360,7 @@ class ErrorWidget extends LeafRenderObjectWidget {
       message = _stringify(details.exception) + '\nSee also: https://flutter.dev/docs/testing/errors';
       return true;
     }());
-    final dynamic exception = details.exception;
+    final Object exception = details.exception;
     return ErrorWidget.withDetails(message: message, error: exception is FlutterError ? exception : null);
   }
 
@@ -4589,7 +4457,7 @@ typedef TransitionBuilder = Widget Function(BuildContext context, Widget? child)
 /// See also:
 ///
 ///  * [WidgetBuilder], which is similar but only takes a [BuildContext].
-typedef ControlsWidgetBuilder = Widget Function(BuildContext context, { VoidCallback onStepContinue, VoidCallback onStepCancel });
+typedef ControlsWidgetBuilder = Widget Function(BuildContext context, { VoidCallback? onStepContinue, VoidCallback? onStepCancel });
 
 /// An [Element] that composes other [Element]s.
 ///
@@ -4877,16 +4745,6 @@ class StatefulElement extends ComponentElement {
       ]);
     }());
     state._element = null;
-  }
-
-  // TODO(a14n): Remove this when it goes to stable, https://github.com/flutter/flutter/pull/44189
-  @Deprecated(
-    'Use dependOnInheritedElement instead. '
-    'This feature was deprecated after v1.12.1.'
-  )
-  @override
-  InheritedWidget inheritFromElement(Element ancestor, { Object? aspect }) {
-    return dependOnInheritedElement(ancestor, aspect: aspect);
   }
 
   @override
@@ -5302,10 +5160,10 @@ class InheritedElement extends ProxyElement {
 /// class FooElement extends RenderObjectElement {
 ///
 ///   @override
-///   Foo get widget => super.widget;
+///   Foo get widget => super.widget as Foo;
 ///
 ///   @override
-///   RenderFoo get renderObject => super.renderObject;
+///   RenderFoo get renderObject => super.renderObject as RenderFoo;
 ///
 ///   // ...
 /// }
@@ -5363,13 +5221,13 @@ class InheritedElement extends ProxyElement {
 ///
 /// #### Dynamically determining the children during layout
 ///
-/// If the widgets are to be generated at layout time, then generating them when
-/// the [update] method won't work: layout of this element's render object
-/// hasn't started yet at that point. Instead, the [update] method can mark the
-/// render object as needing layout (see [RenderObject.markNeedsLayout]), and
-/// then the render object's [RenderObject.performLayout] method can call back
-/// to the element to have it generate the widgets and call [updateChild]
-/// accordingly.
+/// If the widgets are to be generated at layout time, then generating them in
+/// the [mount] and [update] methods won't work: layout of this element's render
+/// object hasn't started yet at that point. Instead, the [update] method can
+/// mark the render object as needing layout (see
+/// [RenderObject.markNeedsLayout]), and then the render object's
+/// [RenderObject.performLayout] method can call back to the element to have it
+/// generate the widgets and call [updateChild] accordingly.
 ///
 /// For a render object to call an element during layout, it must use
 /// [RenderObject.invokeLayoutCallback]. For an element to call [updateChild]
@@ -5433,8 +5291,8 @@ abstract class RenderObjectElement extends Element {
 
   /// The underlying [RenderObject] for this element.
   @override
-  RenderObject get renderObject => _renderObject;
-  late RenderObject _renderObject;
+  RenderObject get renderObject => _renderObject!;
+  RenderObject? _renderObject;
 
   bool _debugDoingBuild = false;
   @override
@@ -5536,7 +5394,7 @@ abstract class RenderObjectElement extends Element {
 
   void _debugUpdateRenderObjectOwner() {
     assert(() {
-      _renderObject.debugCreator = DebugCreator(this);
+      renderObject.debugCreator = DebugCreator(this);
       return true;
     }());
   }
@@ -5831,7 +5689,7 @@ abstract class RenderObjectElement extends Element {
 
   /// Insert the given child into [renderObject] at the given slot.
   ///
-  /// {@macro flutter.widgets.slots}
+  /// {@macro flutter.widgets.RenderObjectElement.insertRenderObjectChild}
   ///
   /// ## Deprecation
   ///
@@ -5878,7 +5736,7 @@ abstract class RenderObjectElement extends Element {
 
   /// Insert the given child into [renderObject] at the given slot.
   ///
-  /// {@template flutter.widgets.slots}
+  /// {@template flutter.widgets.RenderObjectElement.insertRenderObjectChild}
   /// The semantics of `slot` are determined by this element. For example, if
   /// this element has a single child, the slot should always be null. If this
   /// element has a list of children, the previous sibling element wrapped in an
@@ -5893,7 +5751,7 @@ abstract class RenderObjectElement extends Element {
   ///
   /// The given child is guaranteed to have [renderObject] as its parent.
   ///
-  /// {@macro flutter.widgets.slots}
+  /// {@macro flutter.widgets.RenderObjectElement.insertRenderObjectChild}
   ///
   /// This method is only ever called if [updateChild] can end up being called
   /// with an existing [Element] child and a `slot` that differs from the slot
@@ -5953,7 +5811,7 @@ abstract class RenderObjectElement extends Element {
   ///
   /// The given child is guaranteed to have [renderObject] as its parent.
   ///
-  /// {@macro flutter.widgets.slots}
+  /// {@macro flutter.widgets.RenderObjectElement.insertRenderObjectChild}
   ///
   /// This method is only ever called if [updateChild] can end up being called
   /// with an existing [Element] child and a `slot` that differs from the slot
@@ -6028,7 +5886,7 @@ abstract class RenderObjectElement extends Element {
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
     super.debugFillProperties(properties);
-    properties.add(DiagnosticsProperty<RenderObject>('renderObject', renderObject, defaultValue: null));
+    properties.add(DiagnosticsProperty<RenderObject>('renderObject', _renderObject, defaultValue: null));
   }
 }
 
@@ -6183,6 +6041,11 @@ class MultiChildRenderObjectElement extends RenderObjectElement {
   @override
   MultiChildRenderObjectWidget get widget => super.widget as MultiChildRenderObjectWidget;
 
+  @override
+  ContainerRenderObjectMixin<RenderObject, ContainerParentDataMixin<RenderObject>> get renderObject {
+    return super.renderObject as ContainerRenderObjectMixin<RenderObject, ContainerParentDataMixin<RenderObject>>;
+  }
+
   /// The current list of children of this element.
   ///
   /// This list is filtered to hide elements that have been forgotten (using
@@ -6198,8 +6061,7 @@ class MultiChildRenderObjectElement extends RenderObjectElement {
 
   @override
   void insertRenderObjectChild(RenderObject child, IndexedSlot<Element?> slot) {
-    final ContainerRenderObjectMixin<RenderObject, ContainerParentDataMixin<RenderObject>> renderObject =
-      this.renderObject as ContainerRenderObjectMixin<RenderObject, ContainerParentDataMixin<RenderObject>>;
+    final ContainerRenderObjectMixin<RenderObject, ContainerParentDataMixin<RenderObject>> renderObject = this.renderObject;
     assert(renderObject.debugValidateChild(child));
     renderObject.insert(child, after: slot.value?.renderObject);
     assert(renderObject == this.renderObject);
@@ -6207,8 +6069,7 @@ class MultiChildRenderObjectElement extends RenderObjectElement {
 
   @override
   void moveRenderObjectChild(RenderObject child, IndexedSlot<Element?> oldSlot, IndexedSlot<Element?> newSlot) {
-    final ContainerRenderObjectMixin<RenderObject, ContainerParentDataMixin<RenderObject>> renderObject =
-      this.renderObject as ContainerRenderObjectMixin<RenderObject, ContainerParentDataMixin<RenderObject>>;
+    final ContainerRenderObjectMixin<RenderObject, ContainerParentDataMixin<RenderObject>> renderObject = this.renderObject;
     assert(child.parent == renderObject);
     renderObject.move(child, after: newSlot.value?.renderObject);
     assert(renderObject == this.renderObject);
@@ -6216,8 +6077,7 @@ class MultiChildRenderObjectElement extends RenderObjectElement {
 
   @override
   void removeRenderObjectChild(RenderObject child, dynamic slot) {
-    final ContainerRenderObjectMixin<RenderObject, ContainerParentDataMixin<RenderObject>> renderObject =
-      this.renderObject as ContainerRenderObjectMixin<RenderObject, ContainerParentDataMixin<RenderObject>>;
+    final ContainerRenderObjectMixin<RenderObject, ContainerParentDataMixin<RenderObject>> renderObject = this.renderObject;
     assert(child.parent == renderObject);
     renderObject.remove(child);
     assert(renderObject == this.renderObject);
@@ -6263,8 +6123,8 @@ class MultiChildRenderObjectElement extends RenderObjectElement {
 
 /// A wrapper class for the [Element] that is the creator of a [RenderObject].
 ///
-/// Attaching a [DebugCreator] attach the [RenderObject] will lead to better error
-/// message.
+/// Setting a [DebugCreator] as [RenderObject.debugCreator] will lead to better
+/// error messages.
 class DebugCreator {
   /// Create a [DebugCreator] instance with input [Element].
   DebugCreator(this.element);
@@ -6278,7 +6138,7 @@ class DebugCreator {
 
 FlutterErrorDetails _debugReportException(
   DiagnosticsNode context,
-  dynamic exception,
+  Object exception,
   StackTrace? stack, {
   InformationCollector? informationCollector,
 }) {

@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// @dart = 2.8
+
 import 'package:file/memory.dart';
 import 'package:flutter_tools/src/application_package.dart';
 import 'package:flutter_tools/src/artifacts.dart';
@@ -25,6 +27,7 @@ import 'package:vm_service/vm_service.dart';
 import '../../src/common.dart';
 import '../../src/context.dart';
 import '../../src/fake_process_manager.dart';
+import '../../src/fakes.dart';
 
 List<String> _xattrArgs(FlutterProject flutterProject) {
   return <String>[
@@ -37,7 +40,6 @@ List<String> _xattrArgs(FlutterProject flutterProject) {
 }
 
 const List<String> kRunReleaseArgs = <String>[
-  '/usr/bin/env',
   'xcrun',
   'xcodebuild',
   '-configuration',
@@ -68,11 +70,19 @@ final FakePlatform macPlatform = FakePlatform(
 );
 
 void main() {
+  Artifacts artifacts;
+  String iosDeployPath;
+
+  setUp(() {
+    artifacts = Artifacts.test();
+    iosDeployPath = artifacts.getArtifactPath(Artifact.iosDeploy, platform: TargetPlatform.ios);
+  });
+
   group('IOSDevice.startApp succeeds in release mode', () {
     FileSystem fileSystem;
     FakeProcessManager processManager;
     BufferLogger logger;
-    MockXcode mockXcode;
+    Xcode xcode;
     MockXcodeProjectInterpreter mockXcodeProjectInterpreter;
 
     setUp(() {
@@ -82,6 +92,8 @@ void main() {
 
       mockXcodeProjectInterpreter = MockXcodeProjectInterpreter();
       when(mockXcodeProjectInterpreter.isInstalled).thenReturn(true);
+      when(mockXcodeProjectInterpreter.majorVersion).thenReturn(1000);
+      when(mockXcodeProjectInterpreter.xcrunCommand()).thenReturn(<String>['xcrun']);
       when(mockXcodeProjectInterpreter.getInfo(any, projectFilename: anyNamed('projectFilename'))).thenAnswer(
           (_) {
           return Future<XcodeProjectInfo>.value(XcodeProjectInfo(
@@ -92,8 +104,7 @@ void main() {
           ));
         }
       );
-      mockXcode = MockXcode();
-      when(mockXcode.isVersionSatisfactory).thenReturn(true);
+      xcode = Xcode.test(processManager: FakeProcessManager.any(), xcodeProjectInterpreter: mockXcodeProjectInterpreter);
       fileSystem.file('foo/.packages')
         ..createSync(recursive: true)
         ..writeAsStringSync('\n');
@@ -104,6 +115,7 @@ void main() {
         fileSystem: fileSystem,
         processManager: processManager,
         logger: logger,
+        artifacts: artifacts,
       );
       setUpIOSProject(fileSystem);
       final FlutterProject flutterProject = FlutterProject.fromDirectory(fileSystem.currentDirectory);
@@ -114,7 +126,7 @@ void main() {
       processManager.addCommand(const FakeCommand(command: <String>[...kRunReleaseArgs, '-showBuildSettings']));
       processManager.addCommand(FakeCommand(
         command: <String>[
-          'ios-deploy',
+          iosDeployPath,
           '--id',
           '123',
           '--bundle',
@@ -124,9 +136,7 @@ void main() {
           '--args',
           const <String>[
             '--enable-dart-profiling',
-            '--enable-service-port-fallback',
             '--disable-service-auth-codes',
-            '--observatory-port=53781',
           ].join(' ')
         ])
       );
@@ -145,7 +155,7 @@ void main() {
       Logger: () => logger,
       Platform: () => macPlatform,
       XcodeProjectInterpreter: () => mockXcodeProjectInterpreter,
-      Xcode: () => mockXcode,
+      Xcode: () => xcode,
     });
 
     testUsingContext('with flaky buildSettings call', () async {
@@ -155,6 +165,7 @@ void main() {
           fileSystem: fileSystem,
           processManager: processManager,
           logger: logger,
+          artifacts: artifacts,
         );
         setUpIOSProject(fileSystem);
         final FlutterProject flutterProject = FlutterProject.fromDirectory(fileSystem.currentDirectory);
@@ -168,7 +179,7 @@ void main() {
             command: <String>[...kRunReleaseArgs, '-showBuildSettings'],
             duration: Duration(minutes: 5), // this is longer than the timeout of 1 minute.
           ));
-        // The second call succeedes and is made after the first times out.
+        // The second call succeeds and is made after the first times out.
         processManager.addCommand(
           const FakeCommand(
             command: <String>[...kRunReleaseArgs, '-showBuildSettings'],
@@ -176,7 +187,7 @@ void main() {
           ));
         processManager.addCommand(FakeCommand(
           command: <String>[
-            'ios-deploy',
+            iosDeployPath,
             '--id',
             '123',
             '--bundle',
@@ -186,9 +197,7 @@ void main() {
             '--args',
             const <String>[
               '--enable-dart-profiling',
-              '--enable-service-port-fallback',
               '--disable-service-auth-codes',
-              '--observatory-port=53781',
             ].join(' ')
           ])
         );
@@ -220,7 +229,7 @@ void main() {
       Logger: () => logger,
       Platform: () => macPlatform,
       XcodeProjectInterpreter: () => mockXcodeProjectInterpreter,
-      Xcode: () => mockXcode,
+      Xcode: () => xcode,
     });
 
     testUsingContext('with concurrent build failures', () async {
@@ -228,6 +237,7 @@ void main() {
         fileSystem: fileSystem,
         processManager: processManager,
         logger: logger,
+        artifacts: artifacts,
       );
       setUpIOSProject(fileSystem);
       final FlutterProject flutterProject = FlutterProject.fromDirectory(fileSystem.currentDirectory);
@@ -250,7 +260,7 @@ void main() {
         ));
       processManager.addCommand(FakeCommand(
         command: <String>[
-          'ios-deploy',
+          iosDeployPath,
           '--id',
           '123',
           '--bundle',
@@ -260,9 +270,7 @@ void main() {
           '--args',
           const <String>[
             '--enable-dart-profiling',
-            '--enable-service-port-fallback',
             '--disable-service-auth-codes',
-            '--observatory-port=53781',
           ].join(' ')
         ])
       );
@@ -286,7 +294,7 @@ void main() {
       Logger: () => logger,
       Platform: () => macPlatform,
       XcodeProjectInterpreter: () => mockXcodeProjectInterpreter,
-      Xcode: () => mockXcode,
+      Xcode: () => xcode,
     }, skip: true); // TODO(jonahwilliams): clean up with https://github.com/flutter/flutter/issues/60675
   });
 }
@@ -306,17 +314,16 @@ IOSDevice setUpIOSDevice({
   FileSystem fileSystem,
   Logger logger,
   ProcessManager processManager,
+  Artifacts artifacts,
 }) {
-  const MapEntry<String, String> dyldLibraryEntry = MapEntry<String, String>(
-    'DYLD_LIBRARY_PATH',
-    '/path/to/libraries',
+  artifacts ??= Artifacts.test();
+  final Cache cache = Cache.test(
+    artifacts: <ArtifactSet>[
+      FakeDyldEnvironmentArtifact(),
+    ],
   );
-  final MockCache cache = MockCache();
-  final MockArtifacts artifacts = MockArtifacts();
+
   logger ??= BufferLogger.test();
-  when(cache.dyLdLibEntry).thenReturn(dyldLibraryEntry);
-  when(artifacts.getArtifactPath(Artifact.iosDeploy, platform: anyNamed('platform')))
-    .thenReturn('ios-deploy');
   return IOSDevice('123',
     name: 'iPhone 1',
     sdkVersion: sdkVersion,
@@ -339,12 +346,8 @@ IOSDevice setUpIOSDevice({
     ),
     cpuArchitecture: DarwinArch.arm64,
     interfaceType: IOSDeviceInterface.usb,
-    vmServiceConnectUri: (String string, {Log log}) async => MockVmService(),
   );
 }
 
-class MockArtifacts extends Mock implements Artifacts {}
-class MockCache extends Mock implements Cache {}
-class MockXcode extends Mock implements Xcode {}
 class MockXcodeProjectInterpreter extends Mock implements XcodeProjectInterpreter {}
 class MockVmService extends Mock implements VmService {}

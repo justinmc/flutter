@@ -2,12 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter/animation.dart';
 import 'package:flutter/widgets.dart';
 
 void main() {
@@ -249,7 +246,7 @@ void main() {
   test('CatmullRomSpline interpolates values properly', () {
     final CatmullRomSpline curve = CatmullRomSpline(
       const <Offset>[
-        Offset(0.0, 0.0),
+        Offset.zero,
         Offset(0.01, 0.25),
         Offset(0.2, 0.25),
         Offset(0.33, 0.25),
@@ -276,9 +273,6 @@ void main() {
 
   test('CatmullRomSpline enforces contract', () {
     expect(() {
-      CatmullRomSpline(null);
-    }, throwsAssertionError);
-    expect(() {
       CatmullRomSpline(const <Offset>[]);
     }, throwsAssertionError);
     expect(() {
@@ -301,7 +295,7 @@ void main() {
   test('CatmullRomSpline interpolates values properly when precomputed', () {
     final CatmullRomSpline curve = CatmullRomSpline.precompute(
       const <Offset>[
-        Offset(0.0, 0.0),
+        Offset.zero,
         Offset(0.01, 0.25),
         Offset(0.2, 0.25),
         Offset(0.33, 0.25),
@@ -327,9 +321,6 @@ void main() {
   });
 
   test('CatmullRomSpline enforces contract when precomputed', () {
-    expect(() {
-      CatmullRomSpline.precompute(null);
-    }, throwsAssertionError);
     expect(() {
       CatmullRomSpline.precompute(const <Offset>[]);
     }, throwsAssertionError);
@@ -395,9 +386,6 @@ void main() {
   });
 
   test('CatmullRomCurve enforces contract', () {
-    expect(() {
-      CatmullRomCurve(null);
-    }, throwsAssertionError);
     expect(() {
       CatmullRomCurve(const <Offset>[]);
     }, throwsAssertionError);
@@ -517,9 +505,6 @@ void main() {
   });
 
   test('CatmullRomCurve enforces contract when precomputed', () {
-    expect(() {
-      CatmullRomCurve.precompute(null);
-    }, throwsAssertionError);
     expect(() {
       CatmullRomCurve.precompute(const <Offset>[]);
     }, throwsAssertionError);

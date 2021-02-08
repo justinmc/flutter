@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// @dart = 2.8
+
 import 'package:flutter_tools/src/build_info.dart';
 import 'package:flutter_tools/src/build_system/build_system.dart';
 import 'package:flutter_tools/src/bundle.dart';
@@ -38,7 +40,6 @@ void main() {
       outputDir: 'example',
       targetPlatform: TargetPlatform.ios,
       depfilePath: 'example.d',
-      precompiled: false,
       treeShakeIcons: false,
     );
     expect(globals.fs.file(globals.fs.path.join('example', 'kernel_blob.bin')).existsSync(), true);
@@ -61,7 +62,6 @@ void main() {
       outputDir: 'example',
       targetPlatform: TargetPlatform.linux_x64,
       depfilePath: 'example.d',
-      precompiled: false,
       treeShakeIcons: false,
     ), throwsToolExit());
   }));

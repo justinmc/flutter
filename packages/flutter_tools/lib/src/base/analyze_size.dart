@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// @dart = 2.8
+
 import 'package:archive/archive.dart';
 import 'package:archive/archive_io.dart';
 import 'package:meta/meta.dart';
@@ -310,9 +312,9 @@ class SizeAnalyzer {
       color = TerminalColor.yellow;
     }
 
-    // Compute any preceeding directories, and compare this to the stored
-    // directoried (in _leadingPaths) for the last entity that was printed. The
-    // similary determines whether or not leading directory information needs to
+    // Compute any preceding directories, and compare this to the stored
+    // directories (in _leadingPaths) for the last entity that was printed. The
+    // similarly determines whether or not leading directory information needs to
     // be printed.
     final List<String> localSegments = entityName.split('/')
         ..removeLast();

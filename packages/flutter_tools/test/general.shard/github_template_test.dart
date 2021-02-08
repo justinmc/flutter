@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// @dart = 2.8
+
 import 'package:file/file.dart';
 import 'package:file/memory.dart';
 import 'package:flutter_tools/src/base/io.dart';
@@ -21,7 +23,7 @@ void main() {
   FileSystem fs;
   setUp(() {
     logger = BufferLogger.test();
-    fs = MemoryFileSystem();
+    fs = MemoryFileSystem.test();
   });
 
   group('GitHub template creator', () {
@@ -170,7 +172,7 @@ void main() {
             _kShortURL
         );
       }, overrides: <Type, Generator>{
-        FileSystem: () => MemoryFileSystem(),
+        FileSystem: () => MemoryFileSystem.test(),
         ProcessManager: () => FakeProcessManager.any(),
       });
 
@@ -196,7 +198,7 @@ void main() {
         );
         expect(logger.traceText, contains('Failed to shorten GitHub template URL'));
       }, overrides: <Type, Generator>{
-        FileSystem: () => MemoryFileSystem(),
+        FileSystem: () => MemoryFileSystem.test(),
         ProcessManager: () => FakeProcessManager.any(),
       });
 

@@ -2,12 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
-import 'package:flutter/gestures.dart';
 
 import '../widgets/semantics_tester.dart';
 
@@ -28,7 +24,7 @@ void main() {
   }
 
   testWidgets('Tapping on a modal BottomSheet should not dismiss it', (WidgetTester tester) async {
-    BuildContext savedContext;
+    late BuildContext savedContext;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -64,7 +60,7 @@ void main() {
   });
 
   testWidgets('Tapping outside a modal BottomSheet should dismiss it by default', (WidgetTester tester) async {
-    BuildContext savedContext;
+    late BuildContext savedContext;
 
     await tester.pumpWidget(MaterialApp(
       home: Builder(
@@ -98,7 +94,7 @@ void main() {
   });
 
   testWidgets('Tapping outside a modal BottomSheet should dismiss it when isDismissible=true', (WidgetTester tester) async {
-    BuildContext savedContext;
+    late BuildContext savedContext;
 
     await tester.pumpWidget(MaterialApp(
       home: Builder(
@@ -133,7 +129,7 @@ void main() {
   });
 
   testWidgets('Verify that the BottomSheet animates non-linearly', (WidgetTester tester) async {
-    BuildContext savedContext;
+    late BuildContext savedContext;
 
     await tester.pumpWidget(MaterialApp(
       home: Builder(
@@ -165,7 +161,7 @@ void main() {
   });
 
   testWidgets('Tapping outside a modal BottomSheet should not dismiss it when isDismissible=false', (WidgetTester tester) async {
-    BuildContext savedContext;
+    late BuildContext savedContext;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -202,7 +198,7 @@ void main() {
   });
 
   testWidgets('Swiping down a modal BottomSheet should dismiss it by default', (WidgetTester tester) async {
-    BuildContext savedContext;
+    late BuildContext savedContext;
 
     await tester.pumpWidget(MaterialApp(
       home: Builder(
@@ -237,7 +233,7 @@ void main() {
   });
 
   testWidgets('Swiping down a modal BottomSheet should not dismiss it when enableDrag is false', (WidgetTester tester) async {
-    BuildContext savedContext;
+    late BuildContext savedContext;
 
     await tester.pumpWidget(MaterialApp(
       home: Builder(
@@ -273,7 +269,7 @@ void main() {
   });
 
   testWidgets('Swiping down a modal BottomSheet should dismiss it when enableDrag is true', (WidgetTester tester) async {
-    BuildContext savedContext;
+    late BuildContext savedContext;
 
     await tester.pumpWidget(MaterialApp(
       home: Builder(
@@ -309,7 +305,7 @@ void main() {
   });
 
   testWidgets('Modal BottomSheet builder should only be called once', (WidgetTester tester) async {
-    BuildContext savedContext;
+    late BuildContext savedContext;
 
     await tester.pumpWidget(MaterialApp(
       home: Builder(
@@ -354,7 +350,7 @@ void main() {
     expect(showBottomSheetThenCalled, isFalse);
     expect(find.text('BottomSheet'), findsNothing);
 
-    scaffoldKey.currentState.showBottomSheet<void>((BuildContext context) {
+    scaffoldKey.currentState!.showBottomSheet<void>((BuildContext context) {
       return Container(
         margin: const EdgeInsets.all(40.0),
         child: const Text('BottomSheet'),
@@ -408,7 +404,7 @@ void main() {
       ),
     ));
 
-    scaffoldKey.currentState.showBottomSheet<void>((BuildContext context) {
+    scaffoldKey.currentState!.showBottomSheet<void>((BuildContext context) {
       return Container(
         margin: const EdgeInsets.all(40.0),
         child: const Text('BottomSheet'),
@@ -428,8 +424,8 @@ void main() {
   });
 
   testWidgets('modal BottomSheet has no top MediaQuery', (WidgetTester tester) async {
-    BuildContext outerContext;
-    BuildContext innerContext;
+    late BuildContext outerContext;
+    late BuildContext innerContext;
 
     await tester.pumpWidget(Localizations(
       locale: const Locale('en', 'US'),
@@ -490,7 +486,7 @@ void main() {
     ));
 
 
-    showModalBottomSheet<void>(context: scaffoldKey.currentContext, builder: (BuildContext context) {
+    showModalBottomSheet<void>(context: scaffoldKey.currentContext!, builder: (BuildContext context) {
       return Container(
         child: const Text('BottomSheet'),
       );
@@ -545,7 +541,7 @@ void main() {
     ));
 
     showModalBottomSheet<void>(
-      context: scaffoldKey.currentContext,
+      context: scaffoldKey.currentContext!,
       backgroundColor: color,
       barrierColor: barrierColor,
       elevation: elevation,
@@ -584,7 +580,7 @@ void main() {
 
 
     showModalBottomSheet<void>(
-      context: scaffoldKey.currentContext,
+      context: scaffoldKey.currentContext!,
       builder: (BuildContext context) {
         return DraggableScrollableSheet(
           expand: false,
@@ -710,13 +706,13 @@ void main() {
       ),
     ));
 
-    RouteSettings retrievedRouteSettings;
+    late RouteSettings retrievedRouteSettings;
 
     showModalBottomSheet<void>(
-      context: scaffoldKey.currentContext,
+      context: scaffoldKey.currentContext!,
       routeSettings: routeSettings,
       builder: (BuildContext context) {
-        retrievedRouteSettings = ModalRoute.of(context).settings;
+        retrievedRouteSettings = ModalRoute.of(context)!.settings;
         return Container(
           child: const Text('BottomSheet'),
         );
@@ -728,12 +724,168 @@ void main() {
 
     expect(retrievedRouteSettings, routeSettings);
   });
+
+  testWidgets('Verify showModalBottomSheet use AnimationController if provided.', (WidgetTester tester) async {
+    const Key tapTarget = Key('tap-target');
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: Builder(
+          builder: (BuildContext context) {
+            return GestureDetector(
+              key: tapTarget,
+              onTap: () {
+                showModalBottomSheet<void>(
+                  context: context,
+                  // The default duration and reverseDuration is 1 second
+                  transitionAnimationController: AnimationController(
+                    vsync: const TestVSync(),
+                    duration: const Duration(seconds: 2),
+                    reverseDuration: const Duration(seconds: 2),
+                  ),
+                  builder: (BuildContext context) {
+                    return Container(
+                      child: const Text('BottomSheet'),
+                    );
+                  },
+                );
+              },
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                height: 100.0,
+                width: 100.0,
+              ),
+            );
+          },
+        ),
+      ),
+    ));
+
+    expect(find.text('BottomSheet'), findsNothing);
+
+    await tester.tap(find.byKey(tapTarget)); // Opening animation will start after tapping
+    await tester.pump();
+
+    expect(find.text('BottomSheet'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 2000));
+    expect(find.text('BottomSheet'), findsOneWidget);
+
+    // Tapping above the bottom sheet to dismiss it.
+    await tester.tapAt(const Offset(20.0, 20.0)); // Closing animation will start after tapping
+    await tester.pump();
+
+    expect(find.text('BottomSheet'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 2000));
+    // The bottom sheet should still be present at the very end of the animation.
+    expect(find.text('BottomSheet'), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 1));
+    // The bottom sheet should not be showing any longer.
+    expect(find.text('BottomSheet'), findsNothing);
+  });
+
+  testWidgets('Verify persistence BottomSheet use AnimationController if provided.', (WidgetTester tester) async {
+    const Key tapTarget = Key('tap-target');
+    const Key tapTargetToClose = Key('tap-target-to-close');
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: Builder(
+          builder: (BuildContext context) {
+            return GestureDetector(
+              key: tapTarget,
+              onTap: () {
+                showBottomSheet<void>(
+                  context: context,
+                  // The default duration and reverseDuration is 1 second
+                  transitionAnimationController: AnimationController(
+                    vsync: const TestVSync(),
+                    duration: const Duration(seconds: 2),
+                    reverseDuration: const Duration(seconds: 2),
+                  ),
+                  builder: (BuildContext context) {
+                    return Container(
+                      child: MaterialButton(
+                        child: const Text('BottomSheet'),
+                        onPressed: () => Navigator.pop(context),
+                        key: tapTargetToClose,
+                      ),
+                    );
+                  },
+                );
+              },
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                height: 100.0,
+                width: 100.0,
+              ),
+            );
+          },
+        ),
+      ),
+    ));
+
+    expect(find.text('BottomSheet'), findsNothing);
+
+    await tester.tap(find.byKey(tapTarget)); // Opening animation will start after tapping
+    await tester.pump();
+
+    expect(find.text('BottomSheet'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 2000));
+    expect(find.text('BottomSheet'), findsOneWidget);
+
+    // Tapping button on the bottom sheet to dismiss it.
+    await tester.tap(find.byKey(tapTargetToClose)); // Closing animation will start after tapping
+    await tester.pump();
+
+    expect(find.text('BottomSheet'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 2000));
+    // The bottom sheet should still be present at the very end of the animation.
+    expect(find.text('BottomSheet'), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 1));
+    // The bottom sheet should not be showing any longer.
+    expect(find.text('BottomSheet'), findsNothing);
+  });
+
+  testWidgets('showModalBottomSheet should move along on-screen keyboard',
+          (WidgetTester tester) async {
+    late BuildContext savedContext;
+
+    // Show a keyboard (simulate by space at the bottom of the screen).
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(viewInsets: EdgeInsets.only(bottom: 200)),
+          child: Builder(
+            builder: (BuildContext context) {
+              savedContext = context;
+              return Container();
+            },
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    expect(find.text('BottomSheet'), findsNothing);
+
+    showModalBottomSheet<void>(
+      context: savedContext,
+      builder: (BuildContext context) {
+        return const Text('BottomSheet');
+      },
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('BottomSheet'), findsOneWidget);
+    expect(tester.getBottomLeft(find.text('BottomSheet')).dy, 600);
+  });
 }
 
 class _TestPage extends StatelessWidget {
-  const _TestPage({Key key, this.useRootNavigator}) : super(key: key);
+  const _TestPage({Key? key, this.useRootNavigator}) : super(key: key);
 
-  final bool useRootNavigator;
+  final bool? useRootNavigator;
 
   @override
   Widget build(BuildContext context) {
@@ -743,7 +895,7 @@ class _TestPage extends StatelessWidget {
         onPressed: () {
           if (useRootNavigator != null) {
             showModalBottomSheet<void>(
-              useRootNavigator: useRootNavigator,
+              useRootNavigator: useRootNavigator!,
               context: context,
               builder: (_) => const Text('Modal bottom sheet'),
             );

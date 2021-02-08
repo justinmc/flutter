@@ -61,6 +61,12 @@ IF NOT EXIST "%cache_dir%" (
 GOTO :after_subroutine
 
 :subroutine
+  REM If present, run the bootstrap script first
+  SET bootstrap_path=%FLUTTER_ROOT%\bin\internal\bootstrap.bat
+  IF EXIST "%bootstrap_path%" (
+    CALL "%bootstrap_path%"
+  )
+
   PUSHD "%flutter_root%"
   FOR /f %%r IN ('git rev-parse HEAD') DO SET revision=%%r
   POPD
@@ -150,9 +156,9 @@ GOTO :after_subroutine
     POPD
 
     IF "%FLUTTER_TOOL_ARGS%" == "" (
-      "%dart%" --snapshot="%snapshot_path%" --packages="%flutter_tools_dir%\.packages" --no-enable-mirrors "%script_path%"
+      "%dart%" --verbosity=error --snapshot="%snapshot_path%" --packages="%flutter_tools_dir%\.packages" --no-enable-mirrors "%script_path%"
     ) else (
-      "%dart%" "%FLUTTER_TOOL_ARGS%" --snapshot="%snapshot_path%" --packages="%flutter_tools_dir%\.packages" "%script_path%"
+      "%dart%" "%FLUTTER_TOOL_ARGS%" --verbosity=error --snapshot="%snapshot_path%" --packages="%flutter_tools_dir%\.packages" "%script_path%"
     )
     IF "%ERRORLEVEL%" NEQ "0" (
       ECHO Error: Unable to create dart snapshot for flutter tool. 1>&2

@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// @dart = 2.8
+
 import 'package:meta/meta.dart';
 
 import '../convert.dart';
@@ -95,6 +97,14 @@ abstract class Terminal {
   /// If not set, defaults to false.
   bool get usesTerminalUi;
   set usesTerminalUi(bool value);
+
+  /// Whether there is a terminal attached to stdin.
+  ///
+  /// If true, this usually indicates that a user is using the CLI as
+  /// opposed to using an IDE. This can be used to determine
+  /// whether it is appropriate to show a terminal prompt,
+  /// or whether an automatic selection should be made instead.
+  bool get stdinHasTerminal;
 
   String bolden(String message);
 
@@ -251,6 +261,9 @@ class AnsiTerminal implements Terminal {
     }
   }
 
+  @override
+  bool get stdinHasTerminal => _stdio.stdinHasTerminal;
+
   Stream<String> _broadcastStdInString;
 
   @override
@@ -339,4 +352,7 @@ class _TestTerminal implements Terminal {
 
   @override
   bool get supportsEmoji => false;
+
+  @override
+  bool get stdinHasTerminal => false;
 }
