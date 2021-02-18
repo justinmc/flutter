@@ -606,7 +606,6 @@ class RenderEditable extends RenderBox with RelayoutWhenSystemFontsChangeMixin {
 
   static final Set<LogicalKeyboardKey> _shortcutKeys = <LogicalKeyboardKey>{
     LogicalKeyboardKey.keyA,
-    LogicalKeyboardKey.keyC,
     LogicalKeyboardKey.keyV,
     LogicalKeyboardKey.keyX,
     LogicalKeyboardKey.delete,
@@ -1584,19 +1583,12 @@ class RenderEditable extends RenderBox with RelayoutWhenSystemFontsChangeMixin {
   }
 
   // Handles shortcut functionality including cut, copy, paste and select all
-  // using control/command + (X, C, V, A).
+  // using control/command + (X, V, A).
   Future<void> _handleShortcuts(LogicalKeyboardKey key) async {
     final TextSelection selection = textSelectionDelegate.textEditingValue.selection;
     final String text = textSelectionDelegate.textEditingValue.text;
     assert(selection != null);
     assert(_shortcutKeys.contains(key), 'shortcut key $key not recognized.');
-    if (key == LogicalKeyboardKey.keyC) {
-      if (!selection.isCollapsed) {
-        Clipboard.setData(
-            ClipboardData(text: selection.textInside(text)));
-      }
-      return;
-    }
     TextEditingValue? value;
     if (key == LogicalKeyboardKey.keyX && !_readOnly) {
       if (!selection.isCollapsed) {

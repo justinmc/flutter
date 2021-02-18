@@ -4,6 +4,7 @@
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 
 import 'actions.dart';
 import 'editable_text.dart';
@@ -32,6 +33,40 @@ class DefaultTextEditingActions extends StatelessWidget {
   /// The child [Widget] of DefaultTextEditingActions.
   final Widget child;
 
+  static final TextEditingAction<CopyTextIntent> _copyAction = TextEditingAction<CopyTextIntent>(
+    onInvoke: (CopyTextIntent intent, EditableTextState editableTextState) {
+      // TODO(justinmc): This needs to be deduplicated with text_selection.dart
+      // and with wherever it is handled now!
+      final TextSelectionDelegate delegate = editableTextState.renderEditable.textSelectionDelegate;
+      final TextSelection selection = delegate.textEditingValue.selection;
+      if (!selection.isCollapsed) {
+        final String text = delegate.textEditingValue.text;
+        Clipboard.setData(
+            ClipboardData(text: selection.textInside(text)));
+      }
+      /*
+      final TextSelectionDelegate delegate = editableTextState.renderEditable.textSelectionDelegate;
+      final TextEditingValue value = delegate.textEditingValue;
+      Clipboard.setData(ClipboardData(
+        text: value.selection.textInside(value.text),
+      ));
+      //clipboardStatus?.update();
+      delegate.textEditingValue = TextEditingValue(
+        text: value.text,
+        selection: TextSelection.collapsed(offset: value.selection.end),
+      );
+      delegate.bringIntoView(delegate.textEditingValue.selection.extent);
+      //delegate.hideToolbar();
+      */
+    }
+  );
+
+  static final TextEditingAction<ExtendSelectionDownTextIntent> _extendSelectionDownAction = TextEditingAction<ExtendSelectionDownTextIntent>(
+    onInvoke: (ExtendSelectionDownTextIntent intent, EditableTextState editableTextState) {
+      editableTextState.renderEditable.extendSelectionDown(SelectionChangedCause.keyboard);
+    }
+  );
+
   static final TextEditingAction<ExpandSelectionLeftByLineTextIntent> _expandSelectionLeftByLineAction = TextEditingAction<ExpandSelectionLeftByLineTextIntent>(
     onInvoke: (ExpandSelectionLeftByLineTextIntent intent, EditableTextState editableTextState) {
       editableTextState.renderEditable.expandSelectionLeftByLine(SelectionChangedCause.keyboard);
@@ -53,12 +88,6 @@ class DefaultTextEditingActions extends StatelessWidget {
   static final TextEditingAction<ExpandSelectionToStartTextIntent> _expandSelectionToStartAction = TextEditingAction<ExpandSelectionToStartTextIntent>(
     onInvoke: (ExpandSelectionToStartTextIntent intent, EditableTextState editableTextState) {
       editableTextState.renderEditable.expandSelectionToStart(SelectionChangedCause.keyboard);
-    }
-  );
-
-  static final TextEditingAction<ExtendSelectionDownTextIntent> _extendSelectionDownAction = TextEditingAction<ExtendSelectionDownTextIntent>(
-    onInvoke: (ExtendSelectionDownTextIntent intent, EditableTextState editableTextState) {
-      editableTextState.renderEditable.extendSelectionDown(SelectionChangedCause.keyboard);
     }
   );
 
@@ -189,6 +218,7 @@ class DefaultTextEditingActions extends StatelessWidget {
   // regardless of the platform; it's up to DefaultTextEditingShortcuts to decide which
   // are called on which platform.
   static final Map<Type, Action<Intent>> _shortcutsActions = <Type, Action<Intent>>{
+    CopyTextIntent: _copyAction,
     ExtendSelectionDownTextIntent: _extendSelectionDownAction,
     ExtendSelectionLeftByLineTextIntent: _extendSelectionLeftByLineAction,
     ExtendSelectionLeftByWordTextIntent: _extendSelectionLeftByWordAction,

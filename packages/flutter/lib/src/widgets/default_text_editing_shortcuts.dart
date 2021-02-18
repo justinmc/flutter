@@ -165,6 +165,7 @@ class DefaultTextEditingShortcuts extends StatelessWidget {
     LogicalKeySet(LogicalKeyboardKey.arrowUp): MoveSelectionUpTextIntent(),
     LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.arrowLeft):  MoveSelectionLeftByWordTextIntent(),
     LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.arrowRight):  MoveSelectionRightByWordTextIntent(),
+    LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyC): CopyTextIntent(),
     LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.shift, LogicalKeyboardKey.arrowLeft):  ExtendSelectionLeftByWordTextIntent(),
     LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.shift, LogicalKeyboardKey.arrowRight):  ExtendSelectionRightByWordTextIntent(),
     LogicalKeySet(LogicalKeyboardKey.shift, LogicalKeyboardKey.arrowDown): ExtendSelectionDownTextIntent(),
@@ -177,6 +178,7 @@ class DefaultTextEditingShortcuts extends StatelessWidget {
     // Meta + arrow left is not handled by this platform.
     // Meta + arrow right is not handled by this platform.
     // Meta + arrow up is not handled by this platform.
+    // Meta + C is not handled by this platform.
     // Meta + shift + arrow down is not handled by this platform.
     // Meta + shift + arrow left is not handled by this platform.
     // Meta + shift + arrow right is not handled by this platform.
@@ -200,6 +202,7 @@ class DefaultTextEditingShortcuts extends StatelessWidget {
     LogicalKeySet(LogicalKeyboardKey.arrowUp): MoveSelectionUpTextIntent(),
     LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.arrowLeft):  MoveSelectionLeftByWordTextIntent(),
     LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.arrowRight):  MoveSelectionRightByWordTextIntent(),
+    LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyC): CopyTextIntent(),
     LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.shift, LogicalKeyboardKey.arrowLeft):  ExtendSelectionLeftByWordTextIntent(),
     LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.shift, LogicalKeyboardKey.arrowRight):  ExtendSelectionRightByWordTextIntent(),
     LogicalKeySet(LogicalKeyboardKey.shift, LogicalKeyboardKey.arrowDown): ExtendSelectionDownTextIntent(),
@@ -212,6 +215,7 @@ class DefaultTextEditingShortcuts extends StatelessWidget {
     // Meta + arrow left is not handled by this platform.
     // Meta + arrow right is not handled by this platform.
     // Meta + arrow up is not handled by this platform.
+    // Meta + C is not handled by this platform.
     // Meta + shift + arrow down is not handled by this platform.
     // Meta + shift + arrow left is not handled by this platform.
     // Meta + shift + arrow right is not handled by this platform.
@@ -235,6 +239,7 @@ class DefaultTextEditingShortcuts extends StatelessWidget {
     LogicalKeySet(LogicalKeyboardKey.arrowUp): MoveSelectionUpTextIntent(),
     LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.arrowRight):  MoveSelectionRightByWordTextIntent(),
     LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.arrowLeft):  MoveSelectionLeftByWordTextIntent(),
+    LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyC): CopyTextIntent(),
     LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.shift, LogicalKeyboardKey.arrowLeft):  ExtendSelectionLeftByWordTextIntent(),
     LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.shift, LogicalKeyboardKey.arrowRight):  ExtendSelectionRightByWordTextIntent(),
     LogicalKeySet(LogicalKeyboardKey.shift, LogicalKeyboardKey.arrowDown): ExtendSelectionDownTextIntent(),
@@ -247,6 +252,7 @@ class DefaultTextEditingShortcuts extends StatelessWidget {
     // Meta + arrow left is not handled by this platform.
     // Meta + arrow right is not handled by this platform.
     // Meta + arrow up is not handled by this platform.
+    // Meta + C is not handled by this platform.
     // Meta + shift + arrow down is not handled by this platform.
     // Meta + shift + arrow left is not handled by this platform.
     // Meta + shift + arrow right is not handled by this platform.
@@ -270,6 +276,7 @@ class DefaultTextEditingShortcuts extends StatelessWidget {
     LogicalKeySet(LogicalKeyboardKey.arrowUp): MoveSelectionUpTextIntent(),
     LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.arrowLeft):  MoveSelectionLeftByWordTextIntent(),
     LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.arrowRight):  MoveSelectionRightByWordTextIntent(),
+    LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyC): CopyTextIntent(),
     LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.shift, LogicalKeyboardKey.arrowLeft):  ExtendSelectionLeftByWordTextIntent(),
     LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.shift, LogicalKeyboardKey.arrowRight):  ExtendSelectionRightByWordTextIntent(),
     LogicalKeySet(LogicalKeyboardKey.shift, LogicalKeyboardKey.arrowDown): ExtendSelectionDownTextIntent(),
@@ -282,6 +289,7 @@ class DefaultTextEditingShortcuts extends StatelessWidget {
     // Meta + arrow left is not handled by this platform.
     // Meta + arrow right is not handled by this platform.
     // Meta + arrow up is not handled by this platform.
+    // Meta + C is not handled by this platform.
     // Meta + shift + arrow down is not handled by this platform.
     // Meta + shift + arrow left is not handled by this platform.
     // Meta + shift + arrow right is not handled by this platform.
@@ -315,8 +323,10 @@ class DefaultTextEditingShortcuts extends StatelessWidget {
     LogicalKeySet(LogicalKeyboardKey.shift, LogicalKeyboardKey.arrowLeft): ExtendSelectionLeftTextIntent(),
     LogicalKeySet(LogicalKeyboardKey.shift, LogicalKeyboardKey.arrowRight): ExtendSelectionRightTextIntent(),
     LogicalKeySet(LogicalKeyboardKey.shift, LogicalKeyboardKey.arrowUp): ExtendSelectionUpTextIntent(),
+    LogicalKeySet(LogicalKeyboardKey.meta, LogicalKeyboardKey.keyC): CopyTextIntent(),
     // Control + arrow left is not handled by this platform.
     // Control + arrow right is not handled by this platform.
+    // Control + C is not handled by this platform.
     // Control + shift + arrow left is not handled by this platform.
     // Control + shift + arrow right is not handled by this platform.
     // End is not handled by this platform.
@@ -340,6 +350,7 @@ class DefaultTextEditingShortcuts extends StatelessWidget {
     LogicalKeySet(LogicalKeyboardKey.arrowUp): MoveSelectionUpTextIntent(),
     LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.arrowLeft):  MoveSelectionLeftByWordTextIntent(),
     LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.arrowRight):  MoveSelectionRightByWordTextIntent(),
+    LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyC): CopyTextIntent(),
     LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.shift, LogicalKeyboardKey.arrowLeft):  ExtendSelectionLeftByWordTextIntent(),
     LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.shift, LogicalKeyboardKey.arrowRight):  ExtendSelectionRightByWordTextIntent(),
     LogicalKeySet(LogicalKeyboardKey.end):  MoveSelectionRightByLineTextIntent(),
@@ -354,6 +365,7 @@ class DefaultTextEditingShortcuts extends StatelessWidget {
     // Meta + arrow left is not handled by this platform.
     // Meta + arrow right is not handled by this platform.
     // Meta + arrow up is not handled by this platform.
+    // Meta + C is not handled by this platform.
     // Meta + shift + arrow down is not handled by this platform.
     // Meta + shift + arrow left is not handled by this platform.
     // Meta + shift + arrow right is not handled by this platform.

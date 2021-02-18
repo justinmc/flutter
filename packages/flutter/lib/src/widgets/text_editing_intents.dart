@@ -4,8 +4,7 @@
 
 import 'actions.dart';
 
-/// An [Intent] to expand the selection left to the start/end of the current
-/// line.
+/// An [Intent] to copy the current selection.
 ///
 /// {@template flutter.widgets.TextEditingIntents.seeAlso}
 /// See also:
@@ -13,6 +12,12 @@ import 'actions.dart';
 ///   * [DefaultTextEditingActions], which responds to this [Intent].
 ///   * [DefaultTextEditingShortcuts], which triggers this [Intent].
 /// {@endtemplate}
+class CopyTextIntent extends Intent {}
+
+/// An [Intent] to expand the selection left to the start/end of the current
+/// line.
+///
+/// {@macro flutter.widgets.TextEditingIntents.seeAlso}
 class ExpandSelectionLeftByLineTextIntent extends Intent {}
 
 /// An [Intent] to expand the selection right to the start/end of the current
