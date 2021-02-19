@@ -61,6 +61,23 @@ class DefaultTextEditingActions extends StatelessWidget {
     }
   );
 
+  static final TextEditingAction<CopyToolbarTextIntent> _copyToolbarAction = TextEditingAction<CopyToolbarTextIntent>(
+    onInvoke: (CopyToolbarTextIntent intent, EditableTextState editableTextState) {
+      final TextEditingValue value = editableTextState.textEditingValue;
+      Clipboard.setData(ClipboardData(
+        text: value.selection.textInside(value.text),
+      ));
+      // TODO(justinmc): Pass this to intent?
+      //clipboardStatus?.update();
+      editableTextState.textEditingValue = TextEditingValue(
+        text: value.text,
+        selection: TextSelection.collapsed(offset: value.selection.end),
+      );
+      editableTextState.bringIntoView(editableTextState.textEditingValue.selection.extent);
+      editableTextState.hideToolbar();
+    }
+  );
+
   static final TextEditingAction<ExtendSelectionDownTextIntent> _extendSelectionDownAction = TextEditingAction<ExtendSelectionDownTextIntent>(
     onInvoke: (ExtendSelectionDownTextIntent intent, EditableTextState editableTextState) {
       editableTextState.renderEditable.extendSelectionDown(SelectionChangedCause.keyboard);

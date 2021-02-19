@@ -49,6 +49,7 @@ class MaterialTextSelectionControls extends TextSelectionControls {
       handleCopy: canCopy(delegate) ? () => handleCopy(delegate, clipboardStatus) : null,
       handlePaste: canPaste(delegate) ? () => handlePaste(delegate) : null,
       handleSelectAll: canSelectAll(delegate) ? () => handleSelectAll(delegate) : null,
+      children:
     );
   }
 
@@ -123,6 +124,10 @@ class _TextSelectionToolbarItemData {
   final VoidCallback onPressed;
 }
 
+// TODO(justinmc): I think ideally this should be a composed default version of
+// Material TextSelectionToolbar. It could be public in the future to make it
+// easy to just add a button to the toolbar without needing to redo the logic
+// for cut/copy/paste.
 // The highest level toolbar widget, built directly by buildToolbar.
 class _TextSelectionControlsToolbar extends StatefulWidget {
   const _TextSelectionControlsToolbar({
@@ -132,11 +137,11 @@ class _TextSelectionControlsToolbar extends StatefulWidget {
     required this.endpoints,
     required this.globalEditableRegion,
     required this.handleCut,
-    required this.handleCopy,
     required this.handlePaste,
     required this.handleSelectAll,
     required this.selectionMidpoint,
     required this.textLineHeight,
+    this.children = const <Widget>[],
   }) : super(key: key);
 
   final ClipboardStatusNotifier clipboardStatus;
@@ -144,11 +149,11 @@ class _TextSelectionControlsToolbar extends StatefulWidget {
   final List<TextSelectionPoint> endpoints;
   final Rect globalEditableRegion;
   final VoidCallback? handleCut;
-  final VoidCallback? handleCopy;
   final VoidCallback? handlePaste;
   final VoidCallback? handleSelectAll;
   final Offset selectionMidpoint;
   final double textLineHeight;
+  final List<Widget> children;
 
   @override
   _TextSelectionControlsToolbarState createState() => _TextSelectionControlsToolbarState();
@@ -159,6 +164,20 @@ class _TextSelectionControlsToolbarState extends State<_TextSelectionControlsToo
     setState(() {
       // Inform the widget that the value of clipboardStatus has changed.
     });
+  }
+
+  // TODO(justinmc): Can this widget share logic with Cupertino etc. about say
+  // when to show copy, etc.?
+  // Whether the current selection of the text field managed by the given
+  // `delegate` can be copied to the [Clipboard].
+  //
+  // By default, false is returned when nothing is selected in the text field.
+  //
+  // Subclasses can use this to decide if they should expose the copy
+  // functionality to the user.
+  bool _canCopy() {
+    return widget.delegate.copyEnabled
+        && !widget.delegate.textEditingValue.selection.isCollapsed;
   }
 
   @override
@@ -191,8 +210,8 @@ class _TextSelectionControlsToolbarState extends State<_TextSelectionControlsToo
   @override
   Widget build(BuildContext context) {
     // If there are no buttons to be shown, don't render anything.
-    if (widget.handleCut == null && widget.handleCopy == null
-        && widget.handlePaste == null && widget.handleSelectAll == null) {
+    if (widget.handleCut == null && widget.handlePaste == null
+        && widget.handleSelectAll == null && widget.children.isEmpty) {
       return const SizedBox.shrink();
     }
     // If the paste button is desired, don't render anything until the state of
@@ -228,10 +247,12 @@ class _TextSelectionControlsToolbarState extends State<_TextSelectionControlsToo
           label: localizations.cutButtonLabel,
           onPressed: widget.handleCut!,
         ),
-      if (widget.handleCopy != null)
+      if (_canCopy())
         _TextSelectionToolbarItemData(
           label: localizations.copyButtonLabel,
-          onPressed: widget.handleCopy!,
+          onPressed: () {
+            Actions.invoke<CopyToolbarTextIntent>(context, CopyToolbarTextIntent());
+          },
         ),
       if (widget.handlePaste != null
           && widget.clipboardStatus.value == ClipboardStatus.pasteable)

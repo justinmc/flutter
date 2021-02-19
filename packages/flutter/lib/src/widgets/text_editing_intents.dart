@@ -14,6 +14,12 @@ import 'actions.dart';
 /// {@endtemplate}
 class CopyTextIntent extends Intent {}
 
+/// An [Intent] to handle the copy button in the text selection toolbar being
+/// tapped.
+///
+/// {@macro flutter.widgets.TextEditingIntents.seeAlso}
+class CopyToolbarTextIntent extends Intent {}
+
 /// An [Intent] to expand the selection left to the start/end of the current
 /// line.
 ///
