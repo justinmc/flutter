@@ -92,6 +92,7 @@ class InteractiveViewer extends StatefulWidget {
     this.onInteractionUpdate,
     this.panEnabled = true,
     this.scaleEnabled = true,
+    this.scrollControls = InteractiveViewerScrollControls.scrollScales,
     this.transformationController,
     required Widget this.child,
   }) : assert(alignPanAxis != null),
@@ -138,6 +139,7 @@ class InteractiveViewer extends StatefulWidget {
     this.onInteractionUpdate,
     this.panEnabled = true,
     this.scaleEnabled = true,
+    this.scrollControls = InteractiveViewerScrollControls.scrollScales,
     this.transformationController,
     required InteractiveViewerWidgetBuilder this.builder,
   }) : assert(alignPanAxis != null),
@@ -563,6 +565,9 @@ class InteractiveViewer extends StatefulWidget {
   ///  * [onInteractionStart], which handles the start of the same interaction.
   ///  * [onInteractionEnd], which handles the end of the same interaction.
   final GestureScaleUpdateCallback? onInteractionUpdate;
+
+  /// A definition of the behavior caused by scroll interactions.
+  final InteractiveViewerScrollControls scrollControls;
 
   /// A [TransformationController] for the transformation performed on the
   /// child.
@@ -1188,6 +1193,33 @@ class _InteractiveViewerState extends State<InteractiveViewer> with TickerProvid
   // Handle mousewheel scroll events.
   void _receivedPointerSignal(PointerSignalEvent event) {
     if (event is PointerScrollEvent) {
+      if (widget.scrollControls == InteractiveViewerScrollControls.scrollPans) {
+        widget.onInteractionStart?.call(
+          ScaleStartDetails(
+            focalPoint: event.position,
+            localFocalPoint: event.localPosition,
+          ),
+        );
+        final Offset translation = Offset(
+          -event.scrollDelta.dx,
+          -event.scrollDelta.dy,
+        );
+        _transformationController!.value = _matrixTranslate(
+          _transformationController!.value,
+          translation,
+        );
+        widget.onInteractionUpdate?.call(ScaleUpdateDetails(
+          focalPoint: event.position + translation,
+          localFocalPoint: event.localPosition + translation,
+          rotation: 0.0,
+          scale: 1.0,
+          horizontalScale: 1.0,
+          verticalScale: 1.0,
+        ));
+        widget.onInteractionEnd?.call(ScaleEndDetails());
+        return;
+      }
+
       // Ignore left and right scroll.
       if (event.scrollDelta.dy == 0.0) {
         return;
@@ -1483,6 +1515,21 @@ class TransformationController extends ValueNotifier<Matrix4> {
     ));
     return Offset(untransformed.x, untransformed.y);
   }
+}
+
+// TODO(justinmc): What about shift/ctrl/meta + scroll? Is there a consensus on
+// how that should behave, or do I need to provide more fine-grained control?
+// Some people also seem to want scrolling to only pan vertically and not
+// horizontally, or not unless shift is held.
+/// Describes how user scroll interactions are handled.
+enum InteractiveViewerScrollControls {
+  /// Vertical scrolling scales the scene on both axes.
+  ///
+  /// Horizontal scrolling does nothing.
+  scrollScales,
+
+  /// Scrolling pans the scene in the direction of the scroll.
+  scrollPans,
 }
 
 // A classification of relevant user gestures. Each contiguous user gesture is
