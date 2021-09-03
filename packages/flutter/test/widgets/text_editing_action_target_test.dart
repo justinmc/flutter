@@ -93,6 +93,7 @@ class _FakeEditableTextState with TextSelectionDelegate, TextEditingActionTarget
 }
 
 void main() {
+  /*
   test('moveSelectionLeft/RightByLine stays on the current line', () async {
     const String text = 'one two three\n\nfour five six';
     final _FakeEditableTextState editableTextState = _FakeEditableTextState(
@@ -510,6 +511,7 @@ void main() {
     await simulateKeyUpEvent(wordModifier);
     await simulateKeyUpEvent(LogicalKeyboardKey.shift);
   }, skip: isBrowser); // https://github.com/flutter/flutter/issues/87681
+  */
 
   group('delete', () {
     test('when as a non-collapsed selection, it should delete a selection', () async {
@@ -725,6 +727,7 @@ void main() {
     });
   });
 
+  /*
   group('deleteByWord', () {
     test('when cursor is on the middle of a word, it should delete the left part of the word', () async {
       const String text = 'test with multiple blocks';
@@ -1803,4 +1806,5 @@ void main() {
       expect(TextEditingActionTarget.previousCharacter(4, '0123👨‍👩‍👦2345'), 3);
     });
   });
+  */
 }

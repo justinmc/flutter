@@ -118,6 +118,130 @@ class TextEditingValue {
     );
   }
 
+  // TODO(justinmc): Move two static methods up.
+  static TextRange _normalizeRange(TextRange range) {
+    return TextRange(
+      start: math.min(range.start, range.end),
+      end: math.max(range.start, range.end),
+    );
+  }
+
+  // Returns the net number of characters inserted or deleted by the indicated
+  // replacement that occur before the given index.
+  static int _affectedBefore(int index, TextRange replacementRange, int affected) {
+    assert(replacementRange.isValid && replacementRange.isNormalized);
+
+    if (replacementRange.end <= index) {
+      return affected;
+    }
+    if (replacementRange.start >= index) {
+      return 0;
+    }
+
+    // Here the replacementRange is straddling index.
+    return math.min(affected, index - replacementRange.start);
+  }
+
+  // Returns a new range representing the given range adjusted to accommodate
+  // the indicated replacement.
+  //
+  // range is the TextRange that's being affected by a replacement (e.g. a
+  // composing range). replacementRange is the TextRange being replaced, and
+  // replacementLength is the length of the replacement text.
+  static TextRange _replaceRange(TextRange range, TextRange replacementRange, int replacementLength) {
+    if (!range.isValid || !replacementRange.isValid) {
+      return range;
+    }
+    if (replacementRange.start == replacementRange.end && replacementLength == 0) {
+      return range;
+    }
+
+    /*
+    return TextRange(
+      start: range.start,
+      end: range.start + replacementLength,
+    );
+    */
+
+    // |00|00.0000.00
+    // |0000.0|000.00
+    // .tes|t|.
+
+    final TextRange nRange = _normalizeRange(range);
+    final TextRange nReplacementRange = _normalizeRange(replacementRange);
+
+    final int replacementRangeLength = nReplacementRange.end - nReplacementRange.start;
+    final int lengthChange = replacementLength - replacementRangeLength;
+    //print('justin affectedBeforeStart = (${nRange.start} - ${nReplacementRange.start}).clamp(0, $replacementLength)');
+    //print('justin affectedAfterStart = (${nReplacementRange.end} - ${nRange.start}).clamp(0, $replacementRangeLength)');
+    final int affected = (replacementRangeLength - replacementLength).abs();
+    final int affectedBeforeStart = _affectedBefore(nRange.start, nReplacementRange, affected);
+    final int affectedAfterStart = affected - affectedBeforeStart;
+    /*
+    final int affectedAfterStart =
+        (nReplacementRange.end - nRange.start).clamp(0, affected);
+        */
+    //print('justin affectedAfterStart = $affectedAfterStart = (${nReplacementRange.end} - ${nRange.start}).clamp(0, $affected)');
+    //final int affectedBeforeStart = affected - affectedAfterStart;
+    /*
+    final int affectedBeforeStart =
+        (nRange.start - nReplacementRange.start).clamp(0, replacementLength);
+        */
+    /*
+    final int nextStart =
+      nRange.start + replacementLength - affectedBeforeStart - affectedAfterStart;
+    final int nextEnd = 
+      nRange.end + replacementLength - affectedBeforeStart - affectedAfterStart;
+      */
+
+
+
+    final int deletions = math.max(0, replacementRangeLength - replacementLength);
+    //print('justin deletionsBeforeStart = min($deletions, $affectedBeforeStart)');
+    final int deletionsBeforeStart = math.min(deletions, affectedBeforeStart);
+    final int insertions = math.max(0, replacementLength - replacementRangeLength);
+    final int insertionsBeforeStart = math.max(0, insertions - affectedAfterStart);
+    //print('justin insertionsBeforeStart = $insertionsBeforeStart = max(0, $insertions - $affectedAfterStart)');
+
+    final int affectedAfterEnd =
+        (nReplacementRange.end - nRange.end).clamp(0, replacementRangeLength);
+    final int affectedBeforeEnd = replacementRangeLength - affectedAfterEnd;
+    //print('justin affectedBeforeEnd = $replacementRangeLength - $affectedAfterEnd');
+    final int deletionsBeforeEnd  = deletions.clamp(0, affectedBeforeEnd);
+    final int insertionsBeforeEnd = _affectedBefore(nRange.end, nReplacementRange, insertions);
+    final int insertionsAfterEnd = insertions - insertionsBeforeEnd;
+
+    final int nextStart = nRange.start - deletionsBeforeStart + insertionsBeforeStart;
+    //print('justin nextStart = $nextStart = ${nRange.start} - $deletionsBeforeStart + $insertionsBeforeStart');
+    final int nextEnd = nRange.end - deletionsBeforeEnd + insertionsBeforeEnd;
+    //print('justin nextEnd = $nextEnd = nRange.end ${nRange.end} - deletionsBeforeEnd $deletionsBeforeEnd + insertionsBeforeEnd $insertionsBeforeEnd');
+
+
+
+    return TextRange(start: nextStart, end: nextEnd);
+  }
+
+  TextEditingValue replace(TextRange range, [String replacement = '']) {
+    assert(range.isValid);
+    assert(range.start <= text.length && range.end <= text.length);
+
+    final TextRange normalizedRange = TextRange(
+      start: math.min(range.start, range.end),
+      end: math.max(range.start, range.end),
+    );
+
+    final String nextText =
+        normalizedRange.textBefore(text) + replacement + normalizedRange.textAfter(text);
+
+    final int charactersChange = nextText.length - text.length;
+
+    return TextEditingValue(
+      text: nextText,
+      selection: TextSelection.collapsed(offset: normalizedRange.end + charactersChange),
+      composing: _replaceRange(composing, range, replacement.length),
+    );
+  }
+
   /// Returns a new TextEditingValue representing a deletion from the current
   /// [selection] to the given index, inclusively.
   ///

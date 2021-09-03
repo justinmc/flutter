@@ -258,6 +258,11 @@ abstract class TextEditingActionTarget {
       return;
     }
 
+    if (!textEditingValue.selection.isCollapsed) {
+      setTextEditingValue(textEditingValue.replace(textEditingValue.selection), cause);
+      return;
+    }
+
     // `delete` does not depend on the text layout, and the boundary analysis is
     // done using the `previousCharacter` method instead of ICU, we can keep
     // deleting without having to layout the text. For this reason, we can
@@ -268,7 +273,14 @@ abstract class TextEditingActionTarget {
       textBefore,
     );
     final TextPosition position = TextPosition(offset: characterBoundary);
-    setTextEditingValue(textEditingValue.deleteTo(position), cause);
+    //setTextEditingValue(textEditingValue.deleteTo(position), cause);
+    // TODO(justinmc): Would it be possible to do deleteTo as a replace in a
+    // single line like this?
+    final TextEditingValue nextValue = textEditingValue.replace(TextRange(
+      start: textEditingValue.selection.extentOffset,
+      end: characterBoundary,
+    ));
+    setTextEditingValue(nextValue, cause);
   }
 
   /// Deletes a word backwards from the current selection.
