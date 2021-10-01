@@ -172,10 +172,12 @@ class RenderEditable extends RenderBox with RelayoutWhenSystemFontsChangeMixin, 
          "minLines can't be greater than maxLines",
        ),
        assert(expands != null),
+       /*
        assert(
          !expands || (maxLines == null && minLines == null),
          'minLines and maxLines must be null when expands is true.',
        ),
+       */
        assert(textScaleFactor != null),
        assert(offset != null),
        assert(ignorePointer != null),

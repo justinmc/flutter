@@ -489,10 +489,12 @@ class EditableText extends StatefulWidget {
          "minLines can't be greater than maxLines",
        ),
        assert(expands != null),
+       /*
        assert(
          !expands || (maxLines == null && minLines == null),
          'minLines and maxLines must be null when expands is true.',
        ),
+       */
        assert(!obscureText || maxLines == 1, 'Obscured fields cannot be multiline.'),
        assert(autofocus != null),
        assert(rendererIgnoresPointer != null),
