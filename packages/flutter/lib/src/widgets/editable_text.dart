@@ -2417,6 +2417,18 @@ class EditableTextState extends State<EditableText> with AutomaticKeepAliveClien
       });
       if (_lastBottomViewInset < WidgetsBinding.instance!.window.viewInsets.bottom) {
         _scheduleShowCaretOnScreen();
+      } else {
+        switch (defaultTargetPlatform) {
+          case TargetPlatform.iOS:
+            _stopCursorTimer();
+            break;
+          case TargetPlatform.macOS:
+          case TargetPlatform.android:
+          case TargetPlatform.fuchsia:
+          case TargetPlatform.linux:
+          case TargetPlatform.windows:
+            break;
+        }
       }
     }
     _lastBottomViewInset = WidgetsBinding.instance!.window.viewInsets.bottom;
