@@ -4,8 +4,10 @@
 
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 
 import 'basic.dart';
 import 'debug.dart';
@@ -412,7 +414,20 @@ abstract class ScrollView extends StatelessWidget {
         onNotification: (ScrollUpdateNotification notification) {
           final FocusScopeNode focusScope = FocusScope.of(context);
           if (notification.dragDetails != null && focusScope.hasFocus) {
-            focusScope.unfocus();
+            // TODO(justinmc): Is this really Android's behavior, or do we need
+            // to make this configurable?
+            switch (defaultTargetPlatform) {
+              case TargetPlatform.android:
+                SystemChannels.textInput.invokeMethod('TextInput.hide');
+                break;
+              case TargetPlatform.iOS:
+              case TargetPlatform.macOS:
+              case TargetPlatform.fuchsia:
+              case TargetPlatform.linux:
+              case TargetPlatform.windows:
+                focusScope.unfocus();
+                break;
+            }
           }
           return false;
         },
