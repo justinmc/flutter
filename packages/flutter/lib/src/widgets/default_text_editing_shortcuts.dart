@@ -150,10 +150,12 @@ class DefaultTextEditingShortcuts extends Shortcuts {
   DefaultTextEditingShortcuts({
     Key? key,
     required Widget child,
-  }) : super(
+  }) : super.builder(
     key: key,
     debugLabel: '<Default Text Editing Shortcuts>',
-    shortcuts: _shortcuts,
+    shortcutsBuilder: () {
+      return _shortcuts;
+    },
     child: child,
   );
 

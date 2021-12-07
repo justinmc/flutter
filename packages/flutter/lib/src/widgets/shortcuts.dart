@@ -732,6 +732,10 @@ class ShortcutManager extends ChangeNotifier with Diagnosticable {
   }
 }
 
+/// Signature for a function that creates a [Map] of shortucts, e.g.
+/// [Shortcuts.builder].
+typedef ShortcutsBuilder = Map<ShortcutActivator, Intent> Function();
+
 /// A widget that creates key bindings to specific actions for its
 /// descendants.
 ///
@@ -787,6 +791,20 @@ class Shortcuts extends StatefulWidget {
     this.debugLabel,
   }) : assert(shortcuts != null),
        assert(child != null),
+       super(key: key);
+
+  /// Creates a [Shortcuts] widget by building [shortcuts] with a function.
+  ///
+  /// The [child] and `shortcutsBuilder` arguments are required.
+  Shortcuts.builder({
+    Key? key,
+    this.manager,
+    required ShortcutsBuilder shortcutsBuilder,
+    required this.child,
+    this.debugLabel,
+  }) : assert(shortcutsBuilder != null),
+       assert(child != null),
+       shortcuts = shortcutsBuilder(),
        super(key: key);
 
   /// The [ShortcutManager] that will manage the mapping between key
