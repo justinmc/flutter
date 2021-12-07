@@ -673,6 +673,7 @@ class ShortcutManager extends ChangeNotifier with Diagnosticable {
   /// Defaults to a set derived from [RawKeyboard.keysPressed] if `keysPressed`
   /// is not supplied.
   Intent? _find(RawKeyEvent event, RawKeyboard state) {
+    // TODO(justinmc): Here you would need the ability to use a function instead of a Map.
     final List<_ActivatorIntentPair>? candidatesByKey = _indexedShortcuts[event.logicalKey];
     final List<_ActivatorIntentPair>? candidatesByNull = _indexedShortcuts[null];
     final List<_ActivatorIntentPair> candidates = <_ActivatorIntentPair>[
@@ -912,6 +913,7 @@ class _ShortcutsState extends State<Shortcuts> {
     if (widget.manager == null) {
       _internalManager = ShortcutManager();
     }
+    // TODO(justinmc): Actually, the map should not exist at all, it should be a function that's called with the Activator and returns an Intent.
     manager.shortcuts = widget.shortcuts;
   }
 
