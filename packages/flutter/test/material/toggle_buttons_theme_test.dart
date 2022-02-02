@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -11,7 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../rendering/mock_canvas.dart';
 
-Widget boilerplate({Widget child}) {
+Widget boilerplate({required Widget child}) {
   return Directionality(
     textDirection: TextDirection.ltr,
     child: Center(child: child),
@@ -42,7 +40,7 @@ void main() {
     expect(themeData.borderRadius, null);
     expect(themeData.borderWidth, null);
 
-    const ToggleButtonsTheme theme = ToggleButtonsTheme(data: ToggleButtonsThemeData());
+    const ToggleButtonsTheme theme = ToggleButtonsTheme(data: ToggleButtonsThemeData(), child: SizedBox());
     expect(theme.data.textStyle, null);
     expect(theme.data.constraints, null);
     expect(theme.data.color, null);
@@ -365,6 +363,73 @@ void main() {
     expect(material.type, MaterialType.button);
   });
 
+  testWidgets('Custom Theme button fillColor in different states', (WidgetTester tester) async {
+    Material buttonColor(String text) {
+      return tester.widget<Material>(
+        find.descendant(
+          of: find.byType(RawMaterialButton),
+          matching: find.widgetWithText(Material, text),
+        ),
+      );
+    }
+
+    const Color enabledFillColor = Colors.green;
+    const Color selectedFillColor = Colors.blue;
+    const Color disabledFillColor = Colors.yellow;
+
+    Color getColor(Set<MaterialState> states) {
+      if (states.contains(MaterialState.selected)) {
+        return selectedFillColor;
+      } else if (states.contains(MaterialState.disabled)) {
+        return disabledFillColor;
+      }
+      return enabledFillColor;
+    }
+
+    await tester.pumpWidget(
+      Material(
+        child: boilerplate(
+          child: ToggleButtonsTheme(
+            data: ToggleButtonsThemeData(fillColor: MaterialStateColor.resolveWith(getColor)),
+            child: ToggleButtons(
+              isSelected: const <bool>[true, false],
+              onPressed: (int index) {},
+              children: const <Widget> [
+                Text('First child'),
+                Text('Second child'),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(buttonColor('First child').color, selectedFillColor);
+    expect(buttonColor('Second child').color, enabledFillColor);
+
+    await tester.pumpWidget(
+      Material(
+        child: boilerplate(
+          child: ToggleButtonsTheme(
+            data: ToggleButtonsThemeData(fillColor: MaterialStateColor.resolveWith(getColor)),
+            child: ToggleButtons(
+              isSelected: const <bool>[true, false],
+              children: const <Widget>[
+                Text('First child'),
+                Text('Second child'),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(buttonColor('First child').color, disabledFillColor);
+    expect(buttonColor('Second child').color, disabledFillColor);
+  });
+
   testWidgets('Theme InkWell colors', (WidgetTester tester) async {
     const Color splashColor = Color(0xff4caf50);
     const Color highlightColor = Color(0xffcddc39);
@@ -429,7 +494,7 @@ void main() {
       return object.runtimeType.toString() == '_RenderInkFeatures';
     });
     expect(inkFeatures, paints..rect(color: hoverColor));
-    await hoverGesture.removePointer();
+    await hoverGesture.moveTo(Offset.zero);
 
     // focusColor
     focusNode.requestFocus();
@@ -438,6 +503,8 @@ void main() {
       return object.runtimeType.toString() == '_RenderInkFeatures';
     });
     expect(inkFeatures, paints..rect(color: focusColor));
+
+    await hoverGesture.removePointer();
   });
 
 
@@ -476,13 +543,6 @@ void main() {
       expect(
         toggleButtonRenderObject,
         paints
-          // trailing side
-          ..path(
-            style: PaintingStyle.stroke,
-            color: borderColor,
-            strokeWidth: customWidth,
-          )
-          // leading side, top and bottom
           ..path(
             style: PaintingStyle.stroke,
             color: borderColor,
@@ -516,13 +576,6 @@ void main() {
       expect(
         toggleButtonRenderObject,
         paints
-          // trailing side
-          ..path(
-            style: PaintingStyle.stroke,
-            color: selectedBorderColor,
-            strokeWidth: customWidth,
-          )
-          // leading side, top and bottom
           ..path(
             style: PaintingStyle.stroke,
             color: selectedBorderColor,
@@ -555,13 +608,6 @@ void main() {
       expect(
         toggleButtonRenderObject,
         paints
-          // trailing side
-          ..path(
-            style: PaintingStyle.stroke,
-            color: disabledBorderColor,
-            strokeWidth: customWidth,
-          )
-          // leading side, top and bottom
           ..path(
             style: PaintingStyle.stroke,
             color: disabledBorderColor,

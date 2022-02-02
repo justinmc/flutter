@@ -71,6 +71,23 @@ class PointerRouter {
     _globalRoutes.remove(route);
   }
 
+  /// The number of global routes that have been registered.
+  ///
+  /// This is valid in debug builds only. In release builds, this will throw an
+  /// [UnsupportedError].
+  int get debugGlobalRouteCount {
+    int? count;
+    assert(() {
+      count = _globalRoutes.length;
+      return true;
+    }());
+    if (count != null) {
+      return count!;
+    }
+    throw UnsupportedError('debugGlobalRouteCount is not supported in release builds');
+  }
+
+  @pragma('vm:notify-debugger-on-exception')
   void _dispatch(PointerEvent event, PointerRoute route, Matrix4? transform) {
     try {
       event = event.transformed(transform);
@@ -78,11 +95,11 @@ class PointerRouter {
     } catch (exception, stack) {
       InformationCollector? collector;
       assert(() {
-        collector = () sync* {
-          yield DiagnosticsProperty<PointerRouter>('router', this, level: DiagnosticLevel.debug);
-          yield DiagnosticsProperty<PointerRoute>('route', route, level: DiagnosticLevel.debug);
-          yield DiagnosticsProperty<PointerEvent>('event', event, level: DiagnosticLevel.debug);
-        };
+        collector = () => <DiagnosticsNode>[
+          DiagnosticsProperty<PointerRouter>('router', this, level: DiagnosticLevel.debug),
+          DiagnosticsProperty<PointerRoute>('route', route, level: DiagnosticLevel.debug),
+          DiagnosticsProperty<PointerEvent>('event', event, level: DiagnosticLevel.debug),
+        ];
         return true;
       }());
       FlutterError.reportError(FlutterErrorDetails(
@@ -90,7 +107,7 @@ class PointerRouter {
         stack: stack,
         library: 'gesture library',
         context: ErrorDescription('while routing a pointer event'),
-        informationCollector: collector
+        informationCollector: collector,
       ));
     }
   }
@@ -101,12 +118,12 @@ class PointerRouter {
   /// PointerRouter object.
   void route(PointerEvent event) {
     final Map<PointerRoute, Matrix4?>? routes = _routeMap[event.pointer];
-    final Map<PointerRoute, Matrix4?> copiedGlobalRoutes = Map<PointerRoute, Matrix4?>.from(_globalRoutes);
+    final Map<PointerRoute, Matrix4?> copiedGlobalRoutes = Map<PointerRoute, Matrix4?>.of(_globalRoutes);
     if (routes != null) {
       _dispatchEventToRoutes(
         event,
         routes,
-        Map<PointerRoute, Matrix4?>.from(routes),
+        Map<PointerRoute, Matrix4?>.of(routes),
       );
     }
     _dispatchEventToRoutes(event, _globalRoutes, copiedGlobalRoutes);

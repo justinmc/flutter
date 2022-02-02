@@ -2,15 +2,22 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'dart:async';
 import 'dart:io' as io;
 
-import 'package:android_semantics_testing/test_constants.dart';
 import 'package:android_semantics_testing/android_semantics_testing.dart';
-
-import 'package:test/test.dart' hide TypeMatcher, isInstanceOf;
+import 'package:android_semantics_testing/test_constants.dart';
 import 'package:flutter_driver/flutter_driver.dart';
 import 'package:path/path.dart' as path;
+import 'package:pub_semver/pub_semver.dart';
+import 'package:test/test.dart' hide isInstanceOf;
+
+// The accessibility focus actions are added when a semantics node receives or
+// lose accessibility focus. This test ignores these actions since it is hard to
+// predict which node has the accessibility focus after a screen changes.
+const List<AndroidSemanticsAction> ignoredAccessibilityFocusActions = <AndroidSemanticsAction>[
+  AndroidSemanticsAction.accessibilityFocus,
+  AndroidSemanticsAction.clearAccessibilityFocus,
+];
 
 String adbPath() {
   final String androidHome = io.Platform.environment['ANDROID_HOME'] ?? io.Platform.environment['ANDROID_SDK_ROOT'];
@@ -30,8 +37,54 @@ void main() {
       return AndroidSemanticsNode.deserialize(data);
     }
 
+    // The version of TalkBack running on the device.
+    Version talkbackVersion;
+
+    // The version of TalkBack where the actions on the first item were fixed.
+    final Version fixedTalkback = Version(9, 1, 0);
+
+
+    Future<Version> getTalkbackVersion() async {
+      final io.ProcessResult result = await io.Process.run(adbPath(), const <String>[
+        'shell',
+        'dumpsys',
+        'package',
+        'com.google.android.marvin.talkback',
+      ]);
+      if (result.exitCode != 0) {
+        throw Exception('Failed to get TalkBack version: ${result.stdout as String}\n${result.stderr as String}');
+      }
+      final List<String> lines = (result.stdout as String).split('\n');
+      String version;
+      for (final String line in lines) {
+        if (line.contains('versionName')) {
+          version = line.replaceAll(RegExp(r'\s*versionName='), '');
+          break;
+        }
+      }
+      if (version == null) {
+        throw Exception('Unable to determine TalkBack version.');
+      }
+
+      // Android doesn't quite use semver, so convert the version string to semver form.
+      final RegExp startVersion = RegExp(r'(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)(\.(?<build>\d+))?');
+      final RegExpMatch match = startVersion.firstMatch(version);
+      if (match == null) {
+        return Version(0, 0, 0);
+      }
+      return Version(
+        int.parse(match.namedGroup('major')),
+        int.parse(match.namedGroup('minor')),
+        int.parse(match.namedGroup('patch')),
+        build: match.namedGroup('build'),
+      );
+    }
+
     setUpAll(() async {
       driver = await FlutterDriver.connect();
+      talkbackVersion ??= await getTalkbackVersion();
+      print('TalkBack version is $talkbackVersion');
+
       // Say the magic words..
       final io.Process run = await io.Process.start(adbPath(), const <String>[
         'shell',
@@ -112,9 +165,10 @@ void main() {
             isFocused: false,
             isPassword: false,
             actions: <AndroidSemanticsAction>[
-              AndroidSemanticsAction.accessibilityFocus,
               AndroidSemanticsAction.click,
             ],
+            // We can't predict the a11y focus when the screen changes.
+            ignoredActions: ignoredAccessibilityFocusActions
           ),
         );
 
@@ -135,6 +189,7 @@ void main() {
               AndroidSemanticsAction.click,
               AndroidSemanticsAction.copy,
               AndroidSemanticsAction.setSelection,
+              AndroidSemanticsAction.setText,
             ],
           ),
         );
@@ -157,10 +212,12 @@ void main() {
               AndroidSemanticsAction.click,
               AndroidSemanticsAction.copy,
               AndroidSemanticsAction.setSelection,
+              AndroidSemanticsAction.setText,
+              AndroidSemanticsAction.previousAtMovementGranularity,
             ],
           ),
         );
-      });
+      }, timeout: Timeout.none);
 
       test('password TextField has correct Android semantics', () async {
         final SerializableFinder passwordTextField = find.descendant(
@@ -200,6 +257,7 @@ void main() {
               AndroidSemanticsAction.click,
               AndroidSemanticsAction.copy,
               AndroidSemanticsAction.setSelection,
+              AndroidSemanticsAction.setText,
             ],
           ),
         );
@@ -222,10 +280,12 @@ void main() {
               AndroidSemanticsAction.click,
               AndroidSemanticsAction.copy,
               AndroidSemanticsAction.setSelection,
+              AndroidSemanticsAction.setText,
+              AndroidSemanticsAction.previousAtMovementGranularity,
             ],
           ),
         );
-      });
+      }, timeout: Timeout.none);
 
       tearDownAll(() async {
         await driver.tap(find.byValueKey('back'));
@@ -239,12 +299,7 @@ void main() {
 
       test('Checkbox has correct Android semantics', () async {
         Future<AndroidSemanticsNode> getCheckboxSemantics(String key) async {
-          return getSemantics(
-            find.descendant(
-              of: find.byValueKey(key),
-              matching: find.byType('_CheckboxRenderObjectWidget'),
-            ),
-          );
+          return getSemantics(find.byValueKey(key));
         }
         expect(
           await getCheckboxSemantics(checkboxKeyValue),
@@ -288,15 +343,10 @@ void main() {
             ],
           ),
         );
-      });
+      }, timeout: Timeout.none);
       test('Radio has correct Android semantics', () async {
         Future<AndroidSemanticsNode> getRadioSemantics(String key) async {
-          return getSemantics(
-            find.descendant(
-              of: find.byValueKey(key),
-              matching: find.byType('_RadioRenderObjectWidget'),
-            ),
-          );
+          return getSemantics(find.byValueKey(key));
         }
         expect(
           await getRadioSemantics(radio2KeyValue),
@@ -329,15 +379,10 @@ void main() {
             ],
           ),
         );
-      });
+      }, timeout: Timeout.none);
       test('Switch has correct Android semantics', () async {
         Future<AndroidSemanticsNode> getSwitchSemantics(String key) async {
-          return getSemantics(
-            find.descendant(
-              of: find.byValueKey(key),
-              matching: find.byType('_SwitchRenderObjectWidget'),
-            ),
-          );
+          return getSemantics(find.byValueKey(key));
         }
         expect(
           await getSwitchSemantics(switchKeyValue),
@@ -370,17 +415,12 @@ void main() {
             ],
           ),
         );
-      });
+      }, timeout: Timeout.none);
 
       // Regression test for https://github.com/flutter/flutter/issues/20820.
       test('Switch can be labeled', () async {
         Future<AndroidSemanticsNode> getSwitchSemantics(String key) async {
-          return getSemantics(
-            find.descendant(
-              of: find.byValueKey(key),
-              matching: find.byType('_SwitchRenderObjectWidget'),
-            ),
-          );
+          return getSemantics(find.byValueKey(key));
         }
         expect(
           await getSwitchSemantics(labeledSwitchKeyValue),
@@ -397,7 +437,7 @@ void main() {
             ],
           ),
         );
-      });
+      }, timeout: Timeout.none);
 
       tearDownAll(() async {
         await driver.tap(find.byValueKey('back'));
@@ -465,10 +505,9 @@ void main() {
                   isEnabled: true,
                   isFocusable: true,
                   actions: <AndroidSemanticsAction>[
-                    // TODO(gspencergoog): This should really be clearAccessibilityFocus,
-                    // but TalkBack doesn't focus it the second time for some reason.
-                    // https://github.com/flutter/flutter/issues/40101
-                    AndroidSemanticsAction.accessibilityFocus,
+                    if (talkbackVersion < fixedTalkback && item == popupItems.first) AndroidSemanticsAction.accessibilityFocus,
+                    if (talkbackVersion >= fixedTalkback && item == popupItems.first) AndroidSemanticsAction.clearAccessibilityFocus,
+                    if (item != popupItems.first) AndroidSemanticsAction.accessibilityFocus,
                     AndroidSemanticsAction.click,
                   ],
                 ),
@@ -477,7 +516,7 @@ void main() {
         } finally {
           await driver.tap(find.byValueKey('$popupKeyValue.${popupItems.first}'));
         }
-      });
+      }, timeout: Timeout.none);
 
       test('Dropdown Menu has correct Android semantics', () async {
         expect(
@@ -514,10 +553,9 @@ void main() {
                   isEnabled: true,
                   isFocusable: true,
                   actions: <AndroidSemanticsAction>[
-                    // TODO(gspencergoog): This should really be different for the first item:
-                    // It should have clearAccessibilityFocus instead, but for some reason
-                    // TalkBack doesn't ask to focus it.
-                    AndroidSemanticsAction.accessibilityFocus,
+                    if (talkbackVersion < fixedTalkback && item == popupItems.first) AndroidSemanticsAction.accessibilityFocus,
+                    if (talkbackVersion >= fixedTalkback && item == popupItems.first) AndroidSemanticsAction.clearAccessibilityFocus,
+                    if (item != popupItems.first) AndroidSemanticsAction.accessibilityFocus,
                     AndroidSemanticsAction.click,
                   ],
                 ),
@@ -550,10 +588,9 @@ void main() {
                   isEnabled: true,
                   isFocusable: true,
                   actions: <AndroidSemanticsAction>[
-                    // TODO(gspencergoog): This should really be different for the first item:
-                    // It should have clearAccessibilityFocus instead, but for some reason
-                    // TalkBack doesn't ask to focus it.
-                    AndroidSemanticsAction.accessibilityFocus,
+                    if (talkbackVersion < fixedTalkback && item == popupItems.first) AndroidSemanticsAction.accessibilityFocus,
+                    if (talkbackVersion >= fixedTalkback && item == popupItems.first) AndroidSemanticsAction.clearAccessibilityFocus,
+                    if (item != popupItems.first) AndroidSemanticsAction.accessibilityFocus,
                     AndroidSemanticsAction.click,
                   ],
                 ),
@@ -567,7 +604,7 @@ void main() {
             ),
           );
         }
-      });
+      }, timeout: Timeout.none);
 
       test('Modal alert dialog has correct Android semantics', () async {
         expect(
@@ -614,8 +651,8 @@ void main() {
                   isEnabled: true,
                   isFocusable: true,
                   actions: <AndroidSemanticsAction>[
-                    if (item == 'Body1') AndroidSemanticsAction.clearAccessibilityFocus,
-                    if (item != 'Body1') AndroidSemanticsAction.accessibilityFocus,
+                    if (item == 'Title') AndroidSemanticsAction.clearAccessibilityFocus,
+                    if (item != 'Title') AndroidSemanticsAction.accessibilityFocus,
                   ],
                 ),
                 reason: "Alert $item button doesn't have the right semantics");
@@ -653,9 +690,9 @@ void main() {
                   isEnabled: true,
                   isFocusable: true,
                   actions: <AndroidSemanticsAction>[
-                    // TODO(gspencergoog): This should really be identical to the first time,
-                    // but TalkBack doesn't find it the second time for some reason.
-                    AndroidSemanticsAction.accessibilityFocus,
+                    if (talkbackVersion < fixedTalkback && item == 'Title') AndroidSemanticsAction.accessibilityFocus,
+                    if (talkbackVersion >= fixedTalkback && item == 'Title') AndroidSemanticsAction.clearAccessibilityFocus,
+                    if (item != 'Title') AndroidSemanticsAction.accessibilityFocus,
                   ],
                 ),
                 reason: "Alert $item button doesn't have the right semantics");
@@ -663,7 +700,7 @@ void main() {
         } finally {
           await driver.tap(find.byValueKey('$alertKeyValue.OK'));
         }
-      });
+      }, timeout: Timeout.none);
 
       tearDownAll(() async {
         await Future<void>.delayed(const Duration(milliseconds: 500));
@@ -681,14 +718,14 @@ void main() {
           await getSemantics(find.byValueKey(appBarTitleKeyValue)),
           hasAndroidSemantics(isHeading: true),
         );
-      });
+      }, timeout: Timeout.none);
 
       test('body text does not have Android heading semantics', () async {
         expect(
           await getSemantics(find.byValueKey(bodyTextKeyValue)),
           hasAndroidSemantics(isHeading: false),
         );
-      });
+      }, timeout: Timeout.none);
 
       tearDownAll(() async {
         await driver.tap(find.byValueKey('back'));

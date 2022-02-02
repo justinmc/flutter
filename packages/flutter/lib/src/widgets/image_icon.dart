@@ -51,7 +51,7 @@ class ImageIcon extends StatelessWidget {
   /// Defaults to the current [IconTheme] color, if any. If there is
   /// no [IconTheme], then it defaults to not recolorizing the image.
   ///
-  /// The image will additionally be adjusted by the opacity of the current
+  /// The image will be additionally adjusted by the opacity of the current
   /// [IconTheme], if any.
   final Color? color;
 
@@ -89,7 +89,6 @@ class ImageIcon extends StatelessWidget {
         height: iconSize,
         color: iconColor,
         fit: BoxFit.scaleDown,
-        alignment: Alignment.center,
         excludeFromSemantics: true,
       ),
     );

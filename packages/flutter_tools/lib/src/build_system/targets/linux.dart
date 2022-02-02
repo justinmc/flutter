@@ -5,6 +5,8 @@
 import '../../artifacts.dart';
 import '../../base/file_system.dart';
 import '../../build_info.dart';
+import '../../devfs.dart';
+import '../../project.dart';
 import '../build_system.dart';
 import '../depfile.dart';
 import '../exceptions.dart';
@@ -22,7 +24,9 @@ const String _kLinuxDepfile = 'linux_engine_sources.d';
 
 /// Copies the Linux desktop embedding files to the copy directory.
 class UnpackLinux extends Target {
-  const UnpackLinux();
+  const UnpackLinux(this.targetPlatform);
+
+  final TargetPlatform targetPlatform;
 
   @override
   String get name => 'unpack_linux';
@@ -43,18 +47,22 @@ class UnpackLinux extends Target {
 
   @override
   Future<void> build(Environment environment) async {
-    final BuildMode buildMode = getBuildModeForName(environment.defines[kBuildMode]);
+    final String? buildModeEnvironment = environment.defines[kBuildMode];
+    if (buildModeEnvironment == null) {
+      throw MissingDefineException(kBuildMode, name);
+    }
+    final BuildMode buildMode = getBuildModeForName(buildModeEnvironment);
     final String engineSourcePath = environment.artifacts
       .getArtifactPath(
         Artifact.linuxDesktopPath,
         mode: buildMode,
-        platform: TargetPlatform.linux_x64,
+        platform: targetPlatform,
       );
     final String headersPath = environment.artifacts
       .getArtifactPath(
         Artifact.linuxHeaders,
         mode: buildMode,
-        platform: TargetPlatform.linux_x64,
+        platform: targetPlatform,
       );
     final Directory outputDirectory = environment.fileSystem.directory(
       environment.fileSystem.path.join(
@@ -71,7 +79,7 @@ class UnpackLinux extends Target {
       clientSourcePaths: <String>[headersPath],
       icuDataPath: environment.artifacts.getArtifactPath(
         Artifact.icuData,
-        platform: TargetPlatform.linux_x64,
+        platform: targetPlatform,
       )
     );
     final DepfileService depfileService = DepfileService(
@@ -87,12 +95,14 @@ class UnpackLinux extends Target {
 
 /// Creates a bundle for the Linux desktop target.
 abstract class BundleLinuxAssets extends Target {
-  const BundleLinuxAssets();
+  const BundleLinuxAssets(this.targetPlatform);
+
+  final TargetPlatform targetPlatform;
 
   @override
-  List<Target> get dependencies => const <Target>[
-    KernelSnapshot(),
-    UnpackLinux(),
+  List<Target> get dependencies => <Target>[
+    const KernelSnapshot(),
+    UnpackLinux(targetPlatform),
   ];
 
   @override
@@ -109,10 +119,11 @@ abstract class BundleLinuxAssets extends Target {
 
   @override
   Future<void> build(Environment environment) async {
-    if (environment.defines[kBuildMode] == null) {
+    final String? buildModeEnvironment = environment.defines[kBuildMode];
+    if (buildModeEnvironment == null) {
       throw MissingDefineException(kBuildMode, 'bundle_linux_assets');
     }
-    final BuildMode buildMode = getBuildModeForName(environment.defines[kBuildMode]);
+    final BuildMode buildMode = getBuildModeForName(buildModeEnvironment);
     final Directory outputDirectory = environment.outputDir
       .childDirectory('flutter_assets');
     if (!outputDirectory.existsSync()) {
@@ -124,10 +135,14 @@ abstract class BundleLinuxAssets extends Target {
       environment.buildDir.childFile('app.dill')
         .copySync(outputDirectory.childFile('kernel_blob.bin').path);
     }
+    final String versionInfo = FlutterProject.current().getVersionInfo();
     final Depfile depfile = await copyAssets(
       environment,
       outputDirectory,
-      targetPlatform: TargetPlatform.linux_x64,
+      targetPlatform: targetPlatform,
+      additionalContent: <String, DevFSContent>{
+        'version.json': DevFSStringContent(versionInfo),
+      }
     );
     final DepfileService depfileService = DepfileService(
       fileSystem: environment.fileSystem,
@@ -178,10 +193,10 @@ class LinuxAotBundle extends Target {
 }
 
 class DebugBundleLinuxAssets extends BundleLinuxAssets {
-  const DebugBundleLinuxAssets();
+  const DebugBundleLinuxAssets(TargetPlatform targetPlatform) : super(targetPlatform);
 
   @override
-  String get name => 'debug_bundle_linux_assets';
+  String get name => 'debug_bundle_${getNameForTargetPlatform(targetPlatform)}_assets';
 
   @override
   List<Source> get inputs => <Source>[
@@ -195,10 +210,10 @@ class DebugBundleLinuxAssets extends BundleLinuxAssets {
 }
 
 class ProfileBundleLinuxAssets extends BundleLinuxAssets {
-  const ProfileBundleLinuxAssets();
+  const ProfileBundleLinuxAssets(TargetPlatform targetPlatform) : super(targetPlatform);
 
   @override
-  String get name => 'profile_bundle_linux_assets';
+  String get name => 'profile_bundle_${getNameForTargetPlatform(targetPlatform)}_assets';
 
   @override
   List<Source> get outputs => const <Source>[];
@@ -206,15 +221,15 @@ class ProfileBundleLinuxAssets extends BundleLinuxAssets {
   @override
   List<Target> get dependencies => <Target>[
     ...super.dependencies,
-    const LinuxAotBundle(AotElfProfile(TargetPlatform.linux_x64)),
+    LinuxAotBundle(AotElfProfile(targetPlatform)),
   ];
 }
 
 class ReleaseBundleLinuxAssets extends BundleLinuxAssets {
-  const ReleaseBundleLinuxAssets();
+  const ReleaseBundleLinuxAssets(TargetPlatform targetPlatform) : super(targetPlatform);
 
   @override
-  String get name => 'release_bundle_linux_assets';
+  String get name => 'release_bundle_${getNameForTargetPlatform(targetPlatform)}_assets';
 
   @override
   List<Source> get outputs => const <Source>[];
@@ -222,6 +237,6 @@ class ReleaseBundleLinuxAssets extends BundleLinuxAssets {
   @override
   List<Target> get dependencies => <Target>[
     ...super.dependencies,
-    const LinuxAotBundle(AotElfRelease(TargetPlatform.linux_x64)),
+    LinuxAotBundle(AotElfRelease(targetPlatform)),
   ];
 }

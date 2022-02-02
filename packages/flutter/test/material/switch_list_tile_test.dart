@@ -2,17 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import '../rendering/mock_canvas.dart';
 
 import '../widgets/semantics_tester.dart';
+import 'feedback_tester.dart';
 
-Widget wrap({ Widget child }) {
+Widget wrap({ required Widget child }) {
   return MediaQuery(
     data: const MediaQueryData(),
     child: Directionality(
@@ -38,7 +39,7 @@ void main() {
     expect(log, equals(<dynamic>[false, '-', false]));
   });
 
-  testWidgets('SwitchListTile control test', (WidgetTester tester) async {
+  testWidgets('SwitchListTile semantics test', (WidgetTester tester) async {
     final SemanticsTester semantics = SemanticsTester(tester);
     await tester.pumpWidget(wrap(
       child: Column(
@@ -51,14 +52,14 @@ void main() {
           ),
           CheckboxListTile(
             value: true,
-            onChanged: (bool value) { },
+            onChanged: (bool? value) { },
             title: const Text('BBB'),
             secondary: const Text('bbb'),
           ),
           RadioListTile<bool>(
             value: true,
             groupValue: false,
-            onChanged: (bool value) { },
+            onChanged: (bool? value) { },
             title: const Text('CCC'),
             secondary: const Text('ccc'),
           ),
@@ -72,7 +73,6 @@ void main() {
         TestSemantics.rootChild(
           id: 1,
           rect: const Rect.fromLTWH(0.0, 0.0, 800.0, 56.0),
-          transform: null,
           flags: <SemanticsFlag>[
             SemanticsFlag.hasEnabledState,
             SemanticsFlag.hasToggledState,
@@ -198,10 +198,10 @@ void main() {
       value = false;
       await tester.pumpWidget(buildFrame(platform));
       expect(find.byType(CupertinoSwitch), findsOneWidget);
-      expect(value, isFalse, reason: 'on ${describeEnum(platform)}');
+      expect(value, isFalse, reason: 'on ${platform.name}');
 
       await tester.tap(find.byType(SwitchListTile));
-      expect(value, isTrue, reason: 'on ${describeEnum(platform)}');
+      expect(value, isTrue, reason: 'on ${platform.name}');
     }
 
     for (final TargetPlatform platform in <TargetPlatform>[ TargetPlatform.android, TargetPlatform.fuchsia, TargetPlatform.linux, TargetPlatform.windows ]) {
@@ -210,19 +210,16 @@ void main() {
       await tester.pumpAndSettle(); // Finish the theme change animation.
 
       expect(find.byType(CupertinoSwitch), findsNothing);
-      expect(value, isFalse, reason: 'on ${describeEnum(platform)}');
+      expect(value, isFalse, reason: 'on ${platform.name}');
       await tester.tap(find.byType(SwitchListTile));
-      expect(value, isTrue, reason: 'on ${describeEnum(platform)}');
+      expect(value, isTrue, reason: 'on ${platform.name}');
     }
   });
 
   testWidgets('SwitchListTile contentPadding', (WidgetTester tester) async {
     Widget buildFrame(TextDirection textDirection) {
       return MediaQuery(
-        data: const MediaQueryData(
-          padding: EdgeInsets.zero,
-          textScaleFactor: 1.0,
-        ),
+        data: const MediaQueryData(),
         child: Directionality(
           textDirection: textDirection,
           child: Material(
@@ -278,7 +275,7 @@ void main() {
     );
 
     await tester.pump();
-    expect(Focus.of(childKey.currentContext, nullOk: true).hasPrimaryFocus, isTrue);
+    expect(Focus.of(childKey.currentContext!).hasPrimaryFocus, isTrue);
 
     await tester.pumpWidget(
       MaterialApp(
@@ -298,7 +295,7 @@ void main() {
     );
 
     await tester.pump();
-    expect(Focus.of(childKey.currentContext, nullOk: true).hasPrimaryFocus, isFalse);
+    expect(Focus.of(childKey.currentContext!).hasPrimaryFocus, isFalse);
   });
 
   testWidgets('SwitchListTile controlAffinity test', (WidgetTester tester) async {
@@ -339,5 +336,225 @@ void main() {
     // at trailing edge. This also covers test for ListTileControlAffinity.trailing.
     expect(listTile.leading.runtimeType, Icon);
     expect(listTile.trailing.runtimeType, Switch);
+  });
+
+  testWidgets('SwitchListTile respects shape', (WidgetTester tester) async {
+    const ShapeBorder shapeBorder = RoundedRectangleBorder(
+      borderRadius: BorderRadius.horizontal(right: Radius.circular(100)),
+    );
+
+    await tester.pumpWidget(const MaterialApp(
+      home: Material(
+        child: SwitchListTile(
+          value: true,
+          onChanged: null,
+          title: Text('Title'),
+          shape: shapeBorder,
+        ),
+      ),
+    ));
+
+    expect(tester.widget<InkWell>(find.byType(InkWell)).customBorder, shapeBorder);
+  });
+
+  testWidgets('SwitchListTile respects tileColor', (WidgetTester tester) async {
+    final Color tileColor = Colors.red.shade500;
+
+    await tester.pumpWidget(
+      wrap(
+        child: Center(
+          child: SwitchListTile(
+            value: false,
+            onChanged: null,
+            title: const Text('Title'),
+            tileColor: tileColor,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(Material), paints..path(color: tileColor));
+  });
+
+  testWidgets('SwitchListTile respects selectedTileColor', (WidgetTester tester) async {
+    final Color selectedTileColor = Colors.green.shade500;
+
+    await tester.pumpWidget(
+      wrap(
+        child: Center(
+          child: SwitchListTile(
+            value: false,
+            onChanged: null,
+            title: const Text('Title'),
+            selected: true,
+            selectedTileColor: selectedTileColor,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(Material), paints..path(color: selectedTileColor));
+  });
+
+  testWidgets('SwitchListTile selected item text Color', (WidgetTester tester) async {
+    // Regression test for https://github.com/flutter/flutter/pull/76909
+
+    const Color activeColor = Color(0xff00ff00);
+
+    Widget buildFrame({ Color? activeColor, Color? toggleableActiveColor }) {
+      return MaterialApp(
+        theme: ThemeData.light().copyWith(
+          toggleableActiveColor: toggleableActiveColor,
+        ),
+        home: Scaffold(
+          body: Center(
+            child: SwitchListTile(
+              activeColor: activeColor,
+              selected: true,
+              title: const Text('title'),
+              value: true,
+              onChanged: (bool? value) { },
+            ),
+          ),
+        ),
+      );
+    }
+
+    Color? textColor(String text) {
+      return tester.renderObject<RenderParagraph>(find.text(text)).text.style?.color;
+    }
+
+    await tester.pumpWidget(buildFrame(toggleableActiveColor: activeColor));
+    expect(textColor('title'), activeColor);
+
+    await tester.pumpWidget(buildFrame(activeColor: activeColor));
+    expect(textColor('title'), activeColor);
+  });
+
+  testWidgets('SwitchListTile respects visualDensity', (WidgetTester tester) async {
+    const Key key = Key('test');
+    Future<void> buildTest(VisualDensity visualDensity) async {
+      return tester.pumpWidget(
+        wrap(
+          child: Center(
+            child: SwitchListTile(
+              key: key,
+              value: false,
+              onChanged: (bool? value) {},
+              autofocus: true,
+              visualDensity: visualDensity,
+            ),
+          ),
+        ),
+      );
+    }
+
+    await buildTest(VisualDensity.standard);
+    final RenderBox box = tester.renderObject(find.byKey(key));
+    await tester.pumpAndSettle();
+    expect(box.size, equals(const Size(800, 56)));
+  });
+
+  testWidgets('SwitchListTile respects focusNode', (WidgetTester tester) async {
+    final GlobalKey childKey = GlobalKey();
+    await tester.pumpWidget(
+      wrap(
+        child: Center(
+          child: SwitchListTile(
+            value: false,
+            title: Text('A', key: childKey),
+            onChanged: (bool? value) {},
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    final FocusNode tileNode = Focus.of(childKey.currentContext!);
+    tileNode.requestFocus();
+    await tester.pump(); // Let the focus take effect.
+    expect(Focus.of(childKey.currentContext!).hasPrimaryFocus, isTrue);
+    expect(tileNode.hasPrimaryFocus, isTrue);
+  });
+
+  group('feedback', () {
+    late FeedbackTester feedback;
+
+    setUp(() {
+      feedback = FeedbackTester();
+    });
+
+    tearDown(() {
+      feedback.dispose();
+    });
+
+    testWidgets('SwitchListTile respects enableFeedback', (WidgetTester tester) async {
+      Future<void> buildTest(bool enableFeedback) async {
+        return tester.pumpWidget(
+          wrap(
+            child: Center(
+              child: SwitchListTile(
+                value: false,
+                onChanged: (bool? value) {},
+                enableFeedback: enableFeedback,
+              ),
+            ),
+          ),
+        );
+      }
+
+      await buildTest(false);
+      await tester.tap(find.byType(SwitchListTile));
+      await tester.pump(const Duration(seconds: 1));
+      expect(feedback.clickSoundCount, 0);
+      expect(feedback.hapticCount, 0);
+
+      await buildTest(true);
+      await tester.tap(find.byType(SwitchListTile));
+      await tester.pump(const Duration(seconds: 1));
+      expect(feedback.clickSoundCount, 1);
+      expect(feedback.hapticCount, 0);
+    });
+  });
+
+  testWidgets('SwitchListTile respects hoverColor', (WidgetTester tester) async {
+    const Key key = Key('test');
+    await tester.pumpWidget(
+      wrap(
+        child: Center(
+          child: StatefulBuilder(
+              builder: (BuildContext context, StateSetter setState) {
+            return Container(
+              width: 100,
+              height: 100,
+              color: Colors.white,
+              child: SwitchListTile(
+                value: false,
+                key: key,
+                hoverColor: Colors.orange[500],
+                title: const Text('A'),
+                onChanged: (bool? value) {},
+              ),
+            );
+          }),
+        ),
+      ),
+    );
+
+    // Start hovering
+    final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    addTearDown(gesture.removePointer);
+    await gesture.moveTo(tester.getCenter(find.byKey(key)));
+
+    await tester.pump();
+    await tester.pumpAndSettle();
+    expect(
+      Material.of(tester.element(find.byKey(key))),
+      paints
+        ..rect(
+            color: Colors.orange[500],
+            rect: const Rect.fromLTRB(350.0, 250.0, 450.0, 350.0),
+          )
+    );
   });
 }

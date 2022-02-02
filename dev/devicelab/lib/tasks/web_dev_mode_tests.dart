@@ -9,6 +9,7 @@ import 'dart:io';
 import 'package:path/path.dart' as path;
 
 import '../framework/framework.dart';
+import '../framework/task_result.dart';
 import '../framework/utils.dart';
 
 final Directory _editedFlutterGalleryDir = dir(path.join(Directory.systemTemp.path, 'edited_flutter_gallery'));
@@ -19,7 +20,6 @@ const String kFirstRestartTime = 'FistRestartTime';
 const String kFirstRecompileTime  = 'FirstRecompileTime';
 const String kSecondStartupTime = 'SecondStartupTime';
 const String kSecondRestartTime = 'SecondRestartTime';
-
 
 abstract class WebDevice {
   static const String chrome = 'chrome';
@@ -60,7 +60,8 @@ TaskFunction createWebDevModeTest(String webDevice, bool enableIncrementalCompil
               .transform<String>(utf8.decoder)
               .transform<String>(const LineSplitter())
               .listen((String line) {
-            // TODO(jonahwilliams): non-dwds builds do not know when the browser is loaded.
+            // non-dwds builds do not know when the browser is loaded so keep trying
+            // until this succeeds.
             if (line.contains('Ignoring terminal input')) {
               Future<void>.delayed(const Duration(seconds: 1)).then((void _) {
                 process.stdin.write(restarted ? 'q' : 'r');
@@ -138,7 +139,8 @@ TaskFunction createWebDevModeTest(String webDevice, bool enableIncrementalCompil
               .transform<String>(utf8.decoder)
               .transform<String>(const LineSplitter())
               .listen((String line) {
-            // TODO(jonahwilliams): non-dwds builds do not know when the browser is loaded.
+            // non-dwds builds do not know when the browser is loaded so keep trying
+            // until this succeeds.
             if (line.contains('Ignoring terminal input')) {
               Future<void>.delayed(const Duration(seconds: 1)).then((void _) {
                 process.stdin.write(restarted ? 'q' : 'r');

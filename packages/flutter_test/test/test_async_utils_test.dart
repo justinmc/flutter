@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_test/flutter_test.dart' as flutter_test show expect;
@@ -16,34 +15,38 @@ import 'package:test_api/test_api.dart' as real_test show expect;
 // of this test is to see how we handle leaking APIs.
 
 class TestAPI {
-  Future<Object> testGuard1() {
-    return TestAsyncUtils.guard<Object>(() async { return null; });
+  Future<Object?> testGuard1() {
+    return TestAsyncUtils.guard<Object?>(() async { return null; });
   }
-  Future<Object> testGuard2() {
-    return TestAsyncUtils.guard<Object>(() async { return null; });
+  Future<Object?> testGuard2() {
+    return TestAsyncUtils.guard<Object?>(() async { return null; });
   }
 }
 
 class TestAPISubclass extends TestAPI {
-  Future<Object> testGuard3() {
-    return TestAsyncUtils.guard<Object>(() async { return null; });
+  Future<Object?> testGuard3() {
+    return TestAsyncUtils.guard<Object?>(() async { return null; });
   }
+}
+
+class RecognizableTestException implements Exception {
+  const RecognizableTestException();
 }
 
 Future<Object> _guardedThrower() {
   return TestAsyncUtils.guard<Object>(() async {
-    throw 'Hello';
+    throw const RecognizableTestException();
   });
 }
 
 void main() {
   test('TestAsyncUtils - one class', () async {
     final TestAPI testAPI = TestAPI();
-    Future<Object> f1, f2;
+    Future<Object?>? f1, f2;
     f1 = testAPI.testGuard1();
     try {
       f2 = testAPI.testGuard2();
-      throw 'unexpectedly did not throw';
+      fail('unexpectedly did not throw');
     } on FlutterError catch (e) {
       final List<String> lines = e.message.split('\n');
       real_test.expect(lines[0], 'Guarded function conflict.');
@@ -61,11 +64,11 @@ void main() {
 
   test('TestAsyncUtils - two classes, all callers in superclass', () async {
     final TestAPI testAPI = TestAPISubclass();
-    Future<Object> f1, f2;
+    Future<Object?>? f1, f2;
     f1 = testAPI.testGuard1();
     try {
       f2 = testAPI.testGuard2();
-      throw 'unexpectedly did not throw';
+      fail('unexpectedly did not throw');
     } on FlutterError catch (e) {
       final List<String> lines = e.message.split('\n');
       real_test.expect(lines[0], 'Guarded function conflict.');
@@ -83,11 +86,11 @@ void main() {
 
   test('TestAsyncUtils - two classes, mixed callers', () async {
     final TestAPISubclass testAPI = TestAPISubclass();
-    Future<Object> f1, f2;
+    Future<Object?>? f1, f2;
     f1 = testAPI.testGuard1();
     try {
       f2 = testAPI.testGuard3();
-      throw 'unexpectedly did not throw';
+      fail('unexpectedly did not throw');
     } on FlutterError catch (e) {
       final List<String> lines = e.message.split('\n');
       real_test.expect(lines[0], 'Guarded function conflict.');
@@ -105,11 +108,11 @@ void main() {
 
   test('TestAsyncUtils - expect() catches pending async work', () async {
     final TestAPI testAPI = TestAPISubclass();
-    Future<Object> f1;
+    Future<Object?>? f1;
     f1 = testAPI.testGuard1();
     try {
       flutter_test.expect(0, 0);
-      throw 'unexpectedly did not throw';
+      fail('unexpectedly did not throw');
     } on FlutterError catch (e) {
       final List<String> lines = e.message.split('\n');
       real_test.expect(lines[0], 'Guarded function conflict.');
@@ -126,11 +129,11 @@ void main() {
   });
 
   testWidgets('TestAsyncUtils - expect() catches pending async work', (WidgetTester tester) async {
-    Future<Object> f1, f2;
+    Future<Object?>? f1, f2;
     try {
       f1 = tester.pump();
       f2 = tester.pump();
-      throw 'unexpectedly did not throw';
+      fail('unexpectedly did not throw');
     } on FlutterError catch (e) {
       final List<String> lines = e.message.split('\n');
       real_test.expect(lines[0], 'Guarded function conflict.');
@@ -168,11 +171,11 @@ void main() {
   });
 
   testWidgets('TestAsyncUtils - expect() catches pending async work', (WidgetTester tester) async {
-    Future<Object> f1;
+    Future<Object?>? f1;
     try {
       f1 = tester.pump();
       TestAsyncUtils.verifyAllScopesClosed();
-      throw 'unexpectedly did not throw';
+      fail('unexpectedly did not throw');
     } on FlutterError catch (e) {
       final List<String> lines = e.message.split('\n');
       real_test.expect(lines[0], 'Asynchronous call to guarded function leaked.');
@@ -193,11 +196,11 @@ void main() {
   });
 
   testWidgets('TestAsyncUtils - expect() catches pending async work', (WidgetTester tester) async {
-    Future<Object> f1;
+    Future<Object?>? f1;
     try {
       f1 = tester.pump();
       TestAsyncUtils.verifyAllScopesClosed();
-      throw 'unexpectedly did not throw';
+      fail('unexpectedly did not throw');
     } on FlutterError catch (e) {
       final List<String> lines = e.message.split('\n');
       real_test.expect(lines[0], 'Asynchronous call to guarded function leaked.');
@@ -221,8 +224,8 @@ void main() {
     try {
       await _guardedThrower();
       expect(false, true); // _guardedThrower should throw and we shouldn't reach here
-    } on String catch (s) {
-      expect(s, 'Hello');
+    } on RecognizableTestException catch (e) {
+      expect(e, const RecognizableTestException());
     }
   });
 

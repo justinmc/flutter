@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_devicelab/framework/apk_utils.dart';
 import 'package:flutter_devicelab/framework/framework.dart';
+import 'package:flutter_devicelab/framework/task_result.dart';
 import 'package:flutter_devicelab/framework/utils.dart';
 import 'package:path/path.dart' as path;
 
@@ -18,7 +18,7 @@ Future<void> main() async {
   await task(() async {
     section('Find Java');
 
-    final String javaHome = await findJavaHome();
+    final String? javaHome = await findJavaHome();
     if (javaHome == null)
       return TaskResult.failure('Could not find Java');
     print('\nUsing JAVA_HOME=$javaHome');
@@ -53,7 +53,7 @@ task printEngineMavenUrl() {
           '$mavenUrl instead');
         }
 
-        section('Checking overriden maven URL');
+        section('Checking overridden maven URL');
         mavenUrl = await eval(
           gradlewExecutable,
           <String>['printEngineMavenUrl', '-q'],
@@ -63,7 +63,7 @@ task printEngineMavenUrl() {
         );
 
         if (mavenUrl != 'https://my.special.proxy/download.flutter.io') {
-          throw TaskResult.failure('Expected overriden Android engine maven '
+          throw TaskResult.failure('Expected overridden Android engine maven '
           'dependency URL to resolve to proxy location '
           'https://my.special.proxy/download.flutter.io. Got '
           '$mavenUrl instead');

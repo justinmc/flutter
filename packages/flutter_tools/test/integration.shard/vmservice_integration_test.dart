@@ -2,12 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'dart:async';
-
 import 'package:file/file.dart';
-import 'package:flutter_tools/src/base/dds.dart';
 import 'package:flutter_tools/src/base/file_system.dart';
-import 'package:matcher/matcher.dart';
 import 'package:vm_service/vm_service.dart';
 import 'package:vm_service/vm_service_io.dart';
 
@@ -18,24 +14,25 @@ import 'test_utils.dart';
 
 void main() {
   group('Flutter Tool VMService method', () {
-    Directory tempDir;
-    FlutterRunTestDriver flutter;
-    VmService vmService;
+    late Directory tempDir;
+    late FlutterRunTestDriver flutter;
+    late VmService vmService;
 
     setUp(() async {
       tempDir = createResolvedTempDirectorySync('vmservice_integration_test.');
 
-      final BasicProject _project = BasicProject();
-      await _project.setUpIn(tempDir);
+      final BasicProject project = BasicProject();
+      await project.setUpIn(tempDir);
 
       flutter = FlutterRunTestDriver(tempDir);
       await flutter.run(withDebugger: true);
-      final int port = flutter.vmServicePort;
+      final int? port = flutter.vmServicePort;
+      expect(port != null, true);
       vmService = await vmServiceConnectUri('ws://localhost:$port/ws');
     });
 
     tearDown(() async {
-      await flutter?.stop();
+      await flutter.stop();
       tryToDelete(tempDir);
     });
 
@@ -43,10 +40,10 @@ void main() {
       final ProtocolList protocolList =
           await vmService.getSupportedProtocols();
       expect(protocolList.protocols, hasLength(2));
-      for (final Protocol protocol in protocolList.protocols) {
+      for (final Protocol protocol in protocolList.protocols!) {
         expect(protocol.protocolName, anyOf('VM Service', 'DDS'));
       }
-    }, skip: DartDevelopmentService.ddsDisabled);
+    });
 
     testWithoutContext('flutterVersion can be called', () async {
       final Response response =
@@ -64,10 +61,10 @@ void main() {
 
     testWithoutContext('reloadSources can be called', () async {
       final VM vm = await vmService.getVM();
-      final IsolateRef isolateRef = vm.isolates.first;
-
+      final IsolateRef? isolateRef = vm.isolates?.first;
+      expect(isolateRef != null, true);
       final Response response = await vmService.callMethod('s0.reloadSources',
-          isolateId: isolateRef.id);
+          isolateId: isolateRef!.id);
       expect(response.type, 'Success');
     });
 
@@ -79,10 +76,10 @@ void main() {
 
     testWithoutContext('hotRestart can be called', () async {
       final VM vm = await vmService.getVM();
-      final IsolateRef isolateRef = vm.isolates.first;
-
+      final IsolateRef? isolateRef = vm.isolates?.first;
+      expect(isolateRef != null, true);
       final Response response =
-          await vmService.callMethod('s0.hotRestart', isolateId: isolateRef.id);
+          await vmService.callMethod('s0.hotRestart', isolateId: isolateRef!.id);
       expect(response.type, 'Success');
     });
 
@@ -99,12 +96,12 @@ void main() {
     });
 
     testWithoutContext('ext.flutter.brightnessOverride can toggle window brightness', () async {
-      final Isolate isolate = await waitForExtension(vmService);
+      final Isolate isolate = await waitForExtension(vmService, 'ext.flutter.brightnessOverride');
       final Response response = await vmService.callServiceExtension(
         'ext.flutter.brightnessOverride',
         isolateId: isolate.id,
       );
-      expect(response.json['value'], 'Brightness.light');
+      expect(response.json?['value'], 'Brightness.light');
 
       final Response updateResponse = await vmService.callServiceExtension(
         'ext.flutter.brightnessOverride',
@@ -113,7 +110,7 @@ void main() {
           'value': 'Brightness.dark',
         }
       );
-      expect(updateResponse.json['value'], 'Brightness.dark');
+      expect(updateResponse.json?['value'], 'Brightness.dark');
 
       // Change the brightness back to light
       final Response verifyResponse = await vmService.callServiceExtension(
@@ -123,7 +120,7 @@ void main() {
           'value': 'Brightness.light',
         }
       );
-      expect(verifyResponse.json['value'], 'Brightness.light');
+      expect(verifyResponse.json?['value'], 'Brightness.light');
 
       // Change with a bogus value
       final Response bogusResponse = await vmService.callServiceExtension(
@@ -133,9 +130,25 @@ void main() {
           'value': 'dark', // Intentionally invalid value.
         }
       );
-      expect(bogusResponse.json['value'], 'Brightness.light');
+      expect(bogusResponse.json?['value'], 'Brightness.light');
     });
 
-    // TODO(devoncarew): These tests fail on cirrus-ci windows.
-  }, skip: platform.isWindows);
+    testWithoutContext('ext.flutter.debugPaint can toggle debug painting', () async {
+      final Isolate isolate = await waitForExtension(vmService, 'ext.flutter.debugPaint');
+      final Response response = await vmService.callServiceExtension(
+        'ext.flutter.debugPaint',
+        isolateId: isolate.id,
+      );
+      expect(response.json?['enabled'], 'false');
+
+      final Response updateResponse = await vmService.callServiceExtension(
+        'ext.flutter.debugPaint',
+        isolateId: isolate.id,
+        args: <String, String>{
+          'enabled': 'true',
+        }
+      );
+      expect(updateResponse.json?['enabled'], 'true');
+    });
+  });
 }

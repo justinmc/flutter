@@ -2,43 +2,26 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'dart:async';
-
 import 'package:file/file.dart';
 import 'package:meta/meta.dart';
 
-import '../application_package.dart';
 import '../base/analyze_size.dart';
 import '../base/common.dart';
+import '../base/logger.dart';
+import '../base/process.dart';
 import '../base/utils.dart';
 import '../build_info.dart';
 import '../convert.dart';
 import '../globals.dart' as globals;
+import '../ios/application_package.dart';
 import '../ios/mac.dart';
-import '../runner/flutter_command.dart' show DevelopmentArtifact, FlutterCommandResult;
+import '../runner/flutter_command.dart';
 import 'build.dart';
 
 /// Builds an .app for an iOS app to be used for local testing on an iOS device
-/// or simulator. Can only be run on a macOS host. For producing deployment
-/// .ipas, see https://flutter.dev/docs/deployment/ios.
-class BuildIOSCommand extends BuildSubCommand {
-  BuildIOSCommand({ @required bool verboseHelp }) {
-    addTreeShakeIconsFlag();
-    addSplitDebugInfoOption();
-    addBuildModeFlags(defaultToRelease: true);
-    usesTargetOption();
-    usesFlavorOption();
-    usesPubOption();
-    usesBuildNumberOption();
-    usesBuildNameOption();
-    addDartObfuscationOption();
-    usesDartDefineOption();
-    usesExtraFrontendOptions();
-    addEnableExperimentation(hide: !verboseHelp);
-    addBuildPerformanceFile(hide: !verboseHelp);
-    addBundleSkSLPathOption(hide: !verboseHelp);
-    addNullSafetyModeOptions(hide: !verboseHelp);
-    usesAnalyzeSizeFlag();
+/// or simulator. Can only be run on a macOS host.
+class BuildIOSCommand extends _BuildIOSSubCommand {
+  BuildIOSCommand({ required bool verboseHelp }) : super(verboseHelp: verboseHelp) {
     argParser
       ..addFlag('config-only',
         help: 'Update the project configuration without performing a build. '
@@ -62,58 +45,329 @@ class BuildIOSCommand extends BuildSubCommand {
   final String description = 'Build an iOS application bundle (Mac OS X host only).';
 
   @override
+  final XcodeBuildAction xcodeBuildAction = XcodeBuildAction.build;
+
+  @override
+  EnvironmentType get environmentType => boolArg('simulator') ? EnvironmentType.simulator : EnvironmentType.physical;
+
+  @override
+  bool get configOnly => boolArg('config-only');
+
+  @override
+  bool get shouldCodesign => boolArg('codesign');
+
+  @override
+  Directory _outputAppDirectory(String xcodeResultOutput) => globals.fs.directory(xcodeResultOutput).parent;
+}
+
+/// Builds an .xcarchive and optionally .ipa for an iOS app to be generated for
+/// App Store submission.
+///
+/// Can only be run on a macOS host.
+class BuildIOSArchiveCommand extends _BuildIOSSubCommand {
+  BuildIOSArchiveCommand({required bool verboseHelp})
+      : super(verboseHelp: verboseHelp) {
+    argParser.addOption(
+      'export-method',
+      defaultsTo: 'app-store',
+      allowed: <String>['app-store', 'ad-hoc', 'development'],
+      help: 'Specify how the IPA will be distributed.',
+      allowedHelp: <String, String>{
+        'app-store': 'Upload to the App Store.',
+        'ad-hoc': 'Distribute to designated devices that do not need to be registered with the Apple developer account. '
+                  'Requires a distribution certificate.',
+        'development': 'Distribute only to development devices registered with the Apple developer account.',
+      },
+    );
+    argParser.addOption(
+      'export-options-plist',
+      valueHelp: 'ExportOptions.plist',
+      help:
+          'Export an IPA with these options. See "xcodebuild -h" for available exportOptionsPlist keys.',
+    );
+  }
+
+  @override
+  final String name = 'ipa';
+
+  @override
+  final List<String> aliases = <String>['xcarchive'];
+
+  @override
+  final String description = 'Build an iOS archive bundle and IPA for distribution (Mac OS X host only).';
+
+  @override
+  final XcodeBuildAction xcodeBuildAction = XcodeBuildAction.archive;
+
+  @override
+  final EnvironmentType environmentType = EnvironmentType.physical;
+
+  @override
+  final bool configOnly = false;
+
+  @override
+  final bool shouldCodesign = true;
+
+  String? get exportOptionsPlist => stringArg('export-options-plist');
+
+  @override
+  Directory _outputAppDirectory(String xcodeResultOutput) => globals.fs
+      .directory(xcodeResultOutput)
+      .childDirectory('Products')
+      .childDirectory('Applications');
+
+  @override
+  Future<void> validateCommand() async {
+    final String? exportOptions = exportOptionsPlist;
+    if (exportOptions != null) {
+      if (argResults?.wasParsed('export-method') == true) {
+        throwToolExit(
+          '"--export-options-plist" is not compatible with "--export-method". Either use "--export-options-plist" and '
+          'a plist describing how the IPA should be exported by Xcode, or use "--export-method" to create a new plist.\n'
+          'See "xcodebuild -h" for available exportOptionsPlist keys.'
+        );
+      }
+      final FileSystemEntityType type = globals.fs.typeSync(exportOptions);
+      if (type == FileSystemEntityType.notFound) {
+        throwToolExit(
+            '"$exportOptions" property list does not exist.');
+      } else if (type != FileSystemEntityType.file) {
+        throwToolExit(
+            '"$exportOptions" is not a file. See "xcodebuild -h" for available keys.');
+      }
+    }
+    return super.validateCommand();
+  }
+
+  @override
+  Future<FlutterCommandResult> runCommand() async {
+    final FlutterCommandResult xcarchiveResult = await super.runCommand();
+    final BuildInfo buildInfo = await getBuildInfo();
+    displayNullSafetyMode(buildInfo);
+
+    // xcarchive failed or not at expected location.
+    if (xcarchiveResult.exitStatus != ExitStatus.success) {
+      globals.printStatus('Skipping IPA');
+      return xcarchiveResult;
+    }
+
+    // Build IPA from generated xcarchive.
+    final BuildableIOSApp app = await buildableIOSApp;
+    Status? status;
+    RunResult? result;
+    final String relativeOutputPath = app.ipaOutputPath;
+    final String absoluteOutputPath = globals.fs.path.absolute(relativeOutputPath);
+    final String absoluteArchivePath = globals.fs.path.absolute(app.archiveBundleOutputPath);
+    final String exportMethod = stringArg('export-method')!;
+    final bool isAppStoreUpload = exportMethod  == 'app-store';
+    File? generatedExportPlist;
+    try {
+      final String exportMethodDisplayName = isAppStoreUpload ? 'App Store' : exportMethod;
+      status = globals.logger.startProgress('Building $exportMethodDisplayName IPA...');
+      String? exportOptions = exportOptionsPlist;
+      if (exportOptions == null) {
+        generatedExportPlist = _createExportPlist();
+        exportOptions = generatedExportPlist.path;
+      }
+
+      result = await globals.processUtils.run(
+        <String>[
+          ...globals.xcode!.xcrunCommand(),
+          'xcodebuild',
+          '-exportArchive',
+          if (shouldCodesign) ...<String>[
+            '-allowProvisioningDeviceRegistration',
+            '-allowProvisioningUpdates',
+          ],
+          '-archivePath',
+          absoluteArchivePath,
+          '-exportPath',
+          absoluteOutputPath,
+          '-exportOptionsPlist',
+          globals.fs.path.absolute(exportOptions),
+        ],
+      );
+    } finally {
+      generatedExportPlist?.deleteSync();
+      status?.stop();
+    }
+
+    if (result.exitCode != 0) {
+      final StringBuffer errorMessage = StringBuffer();
+
+      // "error:" prefixed lines are the nicely formatted error message, the
+      // rest is the same message but printed as a IDEFoundationErrorDomain.
+      // Example:
+      // error: exportArchive: exportOptionsPlist error for key 'method': expected one of {app-store, ad-hoc, enterprise, development, validation}, but found developmentasdasd
+      // Error Domain=IDEFoundationErrorDomain Code=1 "exportOptionsPlist error for key 'method': expected one of {app-store, ad-hoc, enterprise, development, validation}, but found developmentasdasd" ...
+      LineSplitter.split(result.stderr)
+          .where((String line) => line.contains('error: '))
+          .forEach(errorMessage.writeln);
+
+      globals.printError('Encountered error while creating the IPA:');
+      globals.printError(errorMessage.toString());
+      globals.printError('Try distributing the app in Xcode: "open $absoluteArchivePath"');
+      throwToolExit(null);
+    }
+
+    globals.printStatus('Built IPA to $absoluteOutputPath.');
+
+    if (isAppStoreUpload) {
+      globals.printStatus('To upload to the App Store either:');
+      globals.printStatus(
+        '1. Drag and drop the "$relativeOutputPath/*.ipa" bundle into the Apple Transport macOS app https://apps.apple.com/us/app/transporter/id1450874784',
+        indent: 4,
+      );
+      globals.printStatus(
+        '2. Run "xcrun altool --upload-app --type ios -f $relativeOutputPath/*.ipa --apiKey your_api_key --apiIssuer your_issuer_id".',
+        indent: 4,
+      );
+      globals.printStatus(
+        'See "man altool" for details about how to authenticate with the App Store Connect API key.',
+        indent: 7,
+      );
+    }
+
+    return FlutterCommandResult.success();
+  }
+
+  File _createExportPlist() {
+    // Create the plist to be passed into xcodebuild -exportOptionsPlist.
+    final StringBuffer plistContents = StringBuffer('''
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>method</key>
+''');
+
+    plistContents.write('''
+        <string>${stringArg('export-method')}</string>
+    ''');
+    if (xcodeBuildResult?.xcodeBuildExecution?.buildSettings['ENABLE_BITCODE'] != 'YES') {
+      // Bitcode is off by default in Flutter iOS apps.
+      plistContents.write('''
+    <key>uploadBitcode</key>
+        <false/>
+    </dict>
+</plist>
+''');
+    } else {
+      plistContents.write('''
+</dict>
+</plist>
+''');
+    }
+
+    final File tempPlist = globals.fs.systemTempDirectory
+        .createTempSync('flutter_build_ios.').childFile('ExportOptions.plist');
+    tempPlist.writeAsStringSync(plistContents.toString());
+
+    return tempPlist;
+  }
+}
+
+abstract class _BuildIOSSubCommand extends BuildSubCommand {
+  _BuildIOSSubCommand({
+    required bool verboseHelp
+  }) : super(verboseHelp: verboseHelp) {
+    addTreeShakeIconsFlag();
+    addSplitDebugInfoOption();
+    addBuildModeFlags(verboseHelp: verboseHelp);
+    usesTargetOption();
+    usesFlavorOption();
+    usesPubOption();
+    usesBuildNumberOption();
+    usesBuildNameOption();
+    addDartObfuscationOption();
+    usesDartDefineOption();
+    usesExtraDartFlagOptions(verboseHelp: verboseHelp);
+    addEnableExperimentation(hide: !verboseHelp);
+    addBuildPerformanceFile(hide: !verboseHelp);
+    addBundleSkSLPathOption(hide: !verboseHelp);
+    addNullSafetyModeOptions(hide: !verboseHelp);
+    usesAnalyzeSizeFlag();
+  }
+
+  @override
   Future<Set<DevelopmentArtifact>> get requiredArtifacts async => const <DevelopmentArtifact>{
     DevelopmentArtifact.iOS,
   };
 
+  XcodeBuildAction get xcodeBuildAction;
+
+  /// The result of the Xcode build command. Null until it finishes.
+  @protected
+  XcodeBuildResult? xcodeBuildResult;
+  EnvironmentType get environmentType;
+  bool get configOnly;
+  bool get shouldCodesign;
+
+  late final Future<BuildInfo> cachedBuildInfo = getBuildInfo();
+
+  late final Future<BuildableIOSApp> buildableIOSApp = () async {
+    final BuildableIOSApp? app = await applicationPackages?.getPackageForPlatform(
+      TargetPlatform.ios,
+      buildInfo: await cachedBuildInfo,
+    ) as BuildableIOSApp?;
+
+    if (app == null) {
+      throwToolExit('Application not configured for iOS');
+    }
+    return app;
+  }();
+
+  Directory _outputAppDirectory(String xcodeResultOutput);
+
+  @override
+  bool get supported => globals.platform.isMacOS;
+
   @override
   Future<FlutterCommandResult> runCommand() async {
-    final bool forSimulator = boolArg('simulator');
-    final bool configOnly = boolArg('config-only');
-    final bool shouldCodesign = boolArg('codesign');
-    defaultBuildMode = forSimulator ? BuildMode.debug : BuildMode.release;
-    final BuildInfo buildInfo = getBuildInfo();
+    defaultBuildMode = environmentType == EnvironmentType.simulator ? BuildMode.debug : BuildMode.release;
+    final BuildInfo buildInfo = await cachedBuildInfo;
 
-    if (!globals.platform.isMacOS) {
+    if (!supported) {
       throwToolExit('Building for iOS is only supported on macOS.');
     }
-    if (forSimulator && !buildInfo.supportsSimulator) {
-      throwToolExit('${toTitleCase(buildInfo.friendlyModeName)} mode is not supported for simulators.');
+    if (environmentType == EnvironmentType.simulator && !buildInfo.supportsSimulator) {
+      throwToolExit('${sentenceCase(buildInfo.friendlyModeName)} mode is not supported for simulators.');
     }
     if (configOnly && buildInfo.codeSizeDirectory != null) {
       throwToolExit('Cannot analyze code size without performing a full build.');
     }
-    if (!forSimulator && !shouldCodesign) {
+    if (environmentType == EnvironmentType.physical && !shouldCodesign) {
       globals.printStatus(
         'Warning: Building for device with codesigning disabled. You will '
         'have to manually codesign before deploying to device.',
       );
     }
 
-    final BuildableIOSApp app = await applicationPackages.getPackageForPlatform(
-      TargetPlatform.ios,
-      buildInfo,
-    ) as BuildableIOSApp;
+    final BuildableIOSApp app = await buildableIOSApp;
 
-    if (app == null) {
-      throwToolExit('Application not configured for iOS');
+    final String logTarget = environmentType == EnvironmentType.simulator ? 'simulator' : 'device';
+    final String typeName = globals.artifacts!.getEngineType(TargetPlatform.ios, buildInfo.mode);
+    if (xcodeBuildAction == XcodeBuildAction.build) {
+      globals.printStatus('Building $app for $logTarget ($typeName)...');
+    } else {
+      globals.printStatus('Archiving $app...');
     }
-
-    final String logTarget = forSimulator ? 'simulator' : 'device';
-    final String typeName = globals.artifacts.getEngineType(TargetPlatform.ios, buildInfo.mode);
-    globals.printStatus('Building $app for $logTarget ($typeName)...');
     final XcodeBuildResult result = await buildXcodeProject(
       app: app,
       buildInfo: buildInfo,
       targetOverride: targetFile,
-      buildForDevice: !forSimulator,
+      environmentType: environmentType,
       codesign: shouldCodesign,
       configOnly: configOnly,
+      buildAction: xcodeBuildAction,
+      deviceID: globals.deviceManager?.specifiedDeviceId,
     );
+    xcodeBuildResult = result;
 
     if (!result.success) {
       await diagnoseXcodeBuildFailure(result, globals.flutterUsage, globals.logger);
-      throwToolExit('Encountered error while building for $logTarget.');
+      final String presentParticiple = xcodeBuildAction == XcodeBuildAction.build ? 'building' : 'archiving';
+      throwToolExit('Encountered error while $presentParticiple for $logTarget.');
     }
 
     if (buildInfo.codeSizeDirectory != null) {
@@ -130,35 +384,54 @@ class BuildIOSCommand extends BuildSubCommand {
       final File precompilerTrace = globals.fs.directory(buildInfo.codeSizeDirectory)
         .childFile('trace.$arch.json');
 
-      // This analysis is only supported for release builds, which also excludes the simulator.
-      // Attempt to guess the correct .app by picking the first one.
-      final Directory candidateDirectory = globals.fs.directory(
-        globals.fs.path.join(getIosBuildDirectory(), 'Release-iphoneos'),
-      );
-      final Directory appDirectory = candidateDirectory.listSync()
-        .whereType<Directory>()
-        .firstWhere((Directory directory) {
-        return globals.fs.path.extension(directory.path) == '.app';
-      });
-      final Map<String, Object> output = await sizeAnalyzer.analyzeAotSnapshot(
+      final String? resultOutput = result.output;
+      if (resultOutput == null) {
+        throwToolExit('Could not find app to analyze code size');
+      }
+      final Directory outputAppDirectoryCandidate = _outputAppDirectory(resultOutput);
+
+      Directory? appDirectory;
+      if (outputAppDirectoryCandidate.existsSync()) {
+        appDirectory = outputAppDirectoryCandidate.listSync()
+            .whereType<Directory>()
+            .where((Directory directory) {
+          return globals.fs.path.extension(directory.path) == '.app';
+        }).first;
+      }
+      if (appDirectory == null) {
+        throwToolExit('Could not find app to analyze code size in ${outputAppDirectoryCandidate.path}');
+      }
+      final Map<String, Object?> output = await sizeAnalyzer.analyzeAotSnapshot(
         aotSnapshot: aotSnapshot,
         precompilerTrace: precompilerTrace,
         outputDirectory: appDirectory,
         type: 'ios',
       );
       final File outputFile = globals.fsUtils.getUniqueFile(
-        globals.fs.directory(getBuildDirectory()),'ios-code-size-analysis', 'json',
+        globals.fs
+          .directory(globals.fsUtils.homeDirPath)
+          .childDirectory('.flutter-devtools'), 'ios-code-size-analysis', 'json',
       )..writeAsStringSync(jsonEncode(output));
       // This message is used as a sentinel in analyze_apk_size_test.dart
       globals.printStatus(
         'A summary of your iOS bundle analysis can be found at: ${outputFile.path}',
       );
+
+      // DevTools expects a file path relative to the .flutter-devtools/ dir.
+      final String relativeAppSizePath = outputFile.path.split('.flutter-devtools/').last.trim();
+      globals.printStatus(
+        '\nTo analyze your app size in Dart DevTools, run the following command:\n'
+        'flutter pub global activate devtools; flutter pub global run devtools '
+        '--appSizeBase=$relativeAppSizePath'
+      );
     }
 
     if (result.output != null) {
       globals.printStatus('Built ${result.output}.');
+
+      return FlutterCommandResult.success();
     }
 
-    return FlutterCommandResult.success();
+    return FlutterCommandResult.fail();
   }
 }

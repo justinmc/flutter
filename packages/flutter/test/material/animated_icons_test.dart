@@ -2,19 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
+@Tags(<String>['reduced-test-set'])
 
 import 'dart:math' as math show pi;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../flutter_test_alternative.dart' show Fake;
 import '../widgets/semantics_tester.dart';
 
 class MockCanvas extends Fake implements Canvas {
-  Path capturedPath;
-  Paint capturedPaint;
+  late Path capturedPath;
+  late Paint capturedPaint;
 
   @override
   void drawPath(Path path, Paint paint) {
@@ -22,13 +21,14 @@ class MockCanvas extends Fake implements Canvas {
     capturedPaint = paint;
   }
 
-  double capturedSx;
-  double capturedSy;
+  late double capturedSx;
+  late double capturedSy;
 
   @override
-  void scale(double sx, [double sy]) {
+  void scale(double sx, [double? sy]) {
     capturedSx = sx;
-    capturedSy = sy;
+    capturedSy = sy!;
+    invocations.add(RecordedScale(sx, sy));
   }
 
   final List<RecordedCanvasCall> invocations = <RecordedCanvasCall>[];
@@ -78,6 +78,21 @@ class RecordedTranslate extends RecordedCanvasCall {
   int get hashCode => hashValues(dx, dy);
 }
 
+class RecordedScale extends RecordedCanvasCall {
+  const RecordedScale(this.sx, this.sy);
+
+  final double sx;
+  final double sy;
+
+  @override
+  bool operator ==(Object other) {
+    return other is RecordedScale && other.sx == sx && other.sy == sy;
+  }
+
+  @override
+  int get hashCode => hashValues(sx, sy);
+}
+
 void main() {
   testWidgets('IconTheme color', (WidgetTester tester) async {
     await tester.pumpWidget(
@@ -96,7 +111,7 @@ void main() {
     );
     final CustomPaint customPaint = tester.widget(find.byType(CustomPaint));
     final MockCanvas canvas = MockCanvas();
-    customPaint.painter.paint(canvas, const Size(48.0, 48.0));
+    customPaint.painter!.paint(canvas, const Size(48.0, 48.0));
     expect(canvas.capturedPaint, hasColor(0xFF666666));
   });
 
@@ -118,7 +133,7 @@ void main() {
     );
     final CustomPaint customPaint = tester.widget(find.byType(CustomPaint));
     final MockCanvas canvas = MockCanvas();
-    customPaint.painter.paint(canvas, const Size(48.0, 48.0));
+    customPaint.painter!.paint(canvas, const Size(48.0, 48.0));
     expect(canvas.capturedPaint, hasColor(0x80666666));
   });
 
@@ -140,7 +155,7 @@ void main() {
     );
     final CustomPaint customPaint = tester.widget(find.byType(CustomPaint));
     final MockCanvas canvas = MockCanvas();
-    customPaint.painter.paint(canvas, const Size(48.0, 48.0));
+    customPaint.painter!.paint(canvas, const Size(48.0, 48.0));
     expect(canvas.capturedPaint, hasColor(0xFF0000FF));
   });
 
@@ -162,7 +177,7 @@ void main() {
     );
     final CustomPaint customPaint = tester.widget(find.byType(CustomPaint));
     final MockCanvas canvas = MockCanvas();
-    customPaint.painter.paint(canvas, const Size(12.0, 12.0));
+    customPaint.painter!.paint(canvas, const Size(12.0, 12.0));
     // arrow_menu default size is 48x48 so we expect it to be scaled by 0.25.
     expect(canvas.capturedSx, 0.25);
     expect(canvas.capturedSy, 0.25);
@@ -187,7 +202,7 @@ void main() {
     );
     final CustomPaint customPaint = tester.widget(find.byType(CustomPaint));
     final MockCanvas canvas = MockCanvas();
-    customPaint.painter.paint(canvas, const Size(12.0, 12.0));
+    customPaint.painter!.paint(canvas, const Size(12.0, 12.0));
     // arrow_menu default size is 48x48 so we expect it to be scaled by 2.
     expect(canvas.capturedSx, 2);
     expect(canvas.capturedSy, 2);
@@ -221,20 +236,25 @@ void main() {
           data: IconThemeData(
             color: Color(0xFF666666),
           ),
-          child: AnimatedIcon(
-            progress: AlwaysStoppedAnimation<double>(0.0),
-            icon: AnimatedIcons.arrow_menu,
+          child: RepaintBoundary(
+            child: AnimatedIcon(
+              progress: AlwaysStoppedAnimation<double>(0.0),
+              icon: AnimatedIcons.arrow_menu,
+            ),
           ),
         ),
       ),
     );
     final CustomPaint customPaint = tester.widget(find.byType(CustomPaint));
     final MockCanvas canvas = MockCanvas();
-    customPaint.painter.paint(canvas, const Size(48.0, 48.0));
+    customPaint.painter!.paint(canvas, const Size(48.0, 48.0));
     expect(canvas.invocations, const <RecordedCanvasCall>[
       RecordedRotate(math.pi),
       RecordedTranslate(-48, -48),
+      RecordedScale(0.5, 0.5),
     ]);
+    await expectLater(find.byType(AnimatedIcon),
+        matchesGoldenFile('animated_icons_test.icon.rtl.png'));
   });
 
   testWidgets('Inherited text direction ltr', (WidgetTester tester) async {
@@ -245,17 +265,23 @@ void main() {
           data: IconThemeData(
             color: Color(0xFF666666),
           ),
-          child: AnimatedIcon(
-            progress: AlwaysStoppedAnimation<double>(0.0),
-            icon: AnimatedIcons.arrow_menu,
+          child: RepaintBoundary(
+            child: AnimatedIcon(
+              progress: AlwaysStoppedAnimation<double>(0.0),
+              icon: AnimatedIcons.arrow_menu,
+            ),
           ),
         ),
       ),
     );
     final CustomPaint customPaint = tester.widget(find.byType(CustomPaint));
     final MockCanvas canvas = MockCanvas();
-    customPaint.painter.paint(canvas, const Size(48.0, 48.0));
-    expect(canvas.invocations, isEmpty);
+    customPaint.painter!.paint(canvas, const Size(48.0, 48.0));
+    expect(canvas.invocations, const <RecordedCanvasCall>[
+      RecordedScale(0.5, 0.5),
+    ]);
+    await expectLater(find.byType(AnimatedIcon),
+        matchesGoldenFile('animated_icons_test.icon.ltr.png'));
   });
 
   testWidgets('Inherited text direction overridden', (WidgetTester tester) async {
@@ -276,11 +302,28 @@ void main() {
     );
     final CustomPaint customPaint = tester.widget(find.byType(CustomPaint));
     final MockCanvas canvas = MockCanvas();
-    customPaint.painter.paint(canvas, const Size(48.0, 48.0));
+    customPaint.painter!.paint(canvas, const Size(48.0, 48.0));
     expect(canvas.invocations, const <RecordedCanvasCall>[
       RecordedRotate(math.pi),
       RecordedTranslate(-48, -48),
+      RecordedScale(0.5, 0.5),
     ]);
+  });
+
+  testWidgets('Direction has no effect on position of widget', (WidgetTester tester) async {
+    const AnimatedIcon icon = AnimatedIcon(
+      progress: AlwaysStoppedAnimation<double>(0.0),
+      icon: AnimatedIcons.arrow_menu,
+    );
+    await tester.pumpWidget(
+      const Directionality(textDirection: TextDirection.rtl, child: icon),
+    );
+    final Rect rtlRect = tester.getRect(find.byType(AnimatedIcon));
+    await tester.pumpWidget(
+      const Directionality(textDirection: TextDirection.ltr, child: icon),
+    );
+    final Rect ltrRect = tester.getRect(find.byType(AnimatedIcon));
+    expect(rtlRect, ltrRect);
   });
 }
 

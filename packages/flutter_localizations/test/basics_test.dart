@@ -37,7 +37,7 @@ void main() {
         ],
         localizationsDelegates: <LocalizationsDelegate<dynamic>>[
           _DummyLocalizationsDelegate(),
-          GlobalMaterialLocalizations.delegate,
+          ...GlobalMaterialLocalizations.delegates,
         ],
         home: PageView(),
       )
@@ -48,13 +48,11 @@ void main() {
     await tester.pumpWidget(Container());
   });
 
-  testWidgets('Locale without coutryCode', (WidgetTester tester) async {
+  testWidgets('Locale without countryCode', (WidgetTester tester) async {
     // Regression test for https://github.com/flutter/flutter/pull/16782
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
-          GlobalMaterialLocalizations.delegate,
-        ],
+        localizationsDelegates: GlobalMaterialLocalizations.delegates,
         supportedLocales: const <Locale>[
           Locale('es', 'ES'),
           Locale('zh'),
@@ -63,7 +61,7 @@ void main() {
       )
     );
 
-    await tester.binding.setLocale('zh', null);
+    await tester.binding.setLocale('zh', '');
     await tester.pump();
     await tester.binding.setLocale('es', 'US');
     await tester.pump();
@@ -84,21 +82,21 @@ class _DummyLocalizationsDelegate extends LocalizationsDelegate<DummyLocalizatio
   bool shouldReload(_DummyLocalizationsDelegate old) => true;
 }
 
-class DummyLocalizations {}
+class DummyLocalizations { }
 
 class LocalizationTracker extends StatefulWidget {
-  const LocalizationTracker({Key key}) : super(key: key);
+  const LocalizationTracker({Key? key}) : super(key: key);
 
   @override
   State<StatefulWidget> createState() => LocalizationTrackerState();
 }
 
 class LocalizationTrackerState extends State<LocalizationTracker> {
-  double captionFontSize;
+  late double captionFontSize;
 
   @override
   Widget build(BuildContext context) {
-    captionFontSize = Theme.of(context).textTheme.caption.fontSize;
+    captionFontSize = Theme.of(context).textTheme.caption!.fontSize!;
     return Container();
   }
 }

@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'dart:async';
-
 import 'package:meta/meta.dart';
 
 import '../base/analyze_size.dart';
@@ -20,7 +18,9 @@ import 'build.dart';
 
 /// A command to build a windows desktop target through a build shell script.
 class BuildWindowsCommand extends BuildSubCommand {
-  BuildWindowsCommand({ bool verboseHelp = false }) {
+  BuildWindowsCommand({
+    bool verboseHelp = false,
+  }) : super(verboseHelp: verboseHelp) {
     addCommonDesktopBuildOptions(verboseHelp: verboseHelp);
   }
 
@@ -39,18 +39,19 @@ class BuildWindowsCommand extends BuildSubCommand {
   String get description => 'Build a Windows desktop application.';
 
   @visibleForTesting
-  VisualStudio visualStudioOverride;
+  VisualStudio? visualStudioOverride;
 
   @override
   Future<FlutterCommandResult> runCommand() async {
     final FlutterProject flutterProject = FlutterProject.current();
-    final BuildInfo buildInfo = getBuildInfo();
+    final BuildInfo buildInfo = await getBuildInfo();
     if (!featureFlags.isWindowsEnabled) {
-      throwToolExit('"build windows" is not currently supported.');
+      throwToolExit('"build windows" is not currently supported. To enable, run "flutter config --enable-windows-desktop".');
     }
     if (!globals.platform.isWindows) {
       throwToolExit('"build windows" only supported on Windows hosts.');
     }
+    displayNullSafetyMode(buildInfo);
     await buildWindows(
       flutterProject.windows,
       buildInfo,

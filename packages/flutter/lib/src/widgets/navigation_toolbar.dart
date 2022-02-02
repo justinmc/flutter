@@ -4,8 +4,6 @@
 
 import 'dart:math' as math;
 
-import 'package:flutter/rendering.dart';
-
 import 'basic.dart';
 import 'debug.dart';
 import 'framework.dart';
@@ -61,7 +59,7 @@ class NavigationToolbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     assert(debugCheckHasDirectionality(context));
-    final TextDirection textDirection = Directionality.of(context)!;
+    final TextDirection textDirection = Directionality.of(context);
     return CustomMultiChildLayout(
       delegate: _ToolbarLayout(
         centerMiddle: centerMiddle,
@@ -109,13 +107,12 @@ class _ToolbarLayout extends MultiChildLayoutDelegate {
 
     if (hasChild(_ToolbarSlot.leading)) {
       final BoxConstraints constraints = BoxConstraints(
-        minWidth: 0.0,
         maxWidth: size.width / 3.0, // The leading widget shouldn't take up more than 1/3 of the space.
         minHeight: size.height, // The height should be exactly the height of the bar.
         maxHeight: size.height,
       );
       leadingWidth = layoutChild(_ToolbarSlot.leading, constraints).width;
-      double leadingX;
+      final double leadingX;
       switch (textDirection) {
         case TextDirection.rtl:
           leadingX = size.width - leadingWidth;
@@ -130,7 +127,7 @@ class _ToolbarLayout extends MultiChildLayoutDelegate {
     if (hasChild(_ToolbarSlot.trailing)) {
       final BoxConstraints constraints = BoxConstraints.loose(size);
       final Size trailingSize = layoutChild(_ToolbarSlot.trailing, constraints);
-      double trailingX;
+      final double trailingX;
       switch (textDirection) {
         case TextDirection.rtl:
           trailingX = 0.0;
@@ -162,7 +159,7 @@ class _ToolbarLayout extends MultiChildLayoutDelegate {
           middleStart = middleStartMargin;
       }
 
-      double middleX;
+      final double middleX;
       switch (textDirection) {
         case TextDirection.rtl:
           middleX = size.width - middleSize.width - middleStart;

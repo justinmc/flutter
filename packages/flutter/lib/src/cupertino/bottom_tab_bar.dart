@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/widgets.dart';
@@ -46,6 +44,12 @@ const Color _kDefaultTabBarInactiveColor = CupertinoColors.inactiveGray;
 /// value from the operating system can be retrieved in many ways, such as querying
 /// [MediaQuery.textScaleFactorOf] against [CupertinoApp]'s [BuildContext].
 ///
+/// {@tool dartpad}
+/// This example shows a [CupertinoTabBar] placed in a [CupertinoTabScaffold].
+///
+/// ** See code in examples/api/lib/cupertino/bottom_tab_bar/bottom_tab_bar.0.dart **
+/// {@end-tool}
+///
 /// See also:
 ///
 ///  * [CupertinoTabScaffold], which hosts the [CupertinoTabBar] at the bottom.
@@ -53,19 +57,19 @@ const Color _kDefaultTabBarInactiveColor = CupertinoColors.inactiveGray;
 class CupertinoTabBar extends StatelessWidget implements PreferredSizeWidget {
   /// Creates a tab bar in the iOS style.
   const CupertinoTabBar({
-    Key key,
-    @required this.items,
+    Key? key,
+    required this.items,
     this.onTap,
     this.currentIndex = 0,
     this.backgroundColor,
     this.activeColor,
     this.inactiveColor = _kDefaultTabBarInactiveColor,
     this.iconSize = 30.0,
+    this.height = _kTabBarHeight,
     this.border = const Border(
       top: BorderSide(
         color: _kDefaultTabBarBorderColor,
-        width: 0.0, // One physical pixel.
-        style: BorderStyle.solid,
+        width: 0.0, // 0.0 means one physical pixel
       ),
     ),
   }) : assert(items != null),
@@ -76,6 +80,7 @@ class CupertinoTabBar extends StatelessWidget implements PreferredSizeWidget {
        assert(currentIndex != null),
        assert(0 <= currentIndex && currentIndex < items.length),
        assert(iconSize != null),
+       assert(height != null && height >= 0.0),
        assert(inactiveColor != null),
        super(key: key);
 
@@ -89,7 +94,7 @@ class CupertinoTabBar extends StatelessWidget implements PreferredSizeWidget {
   /// The widget creating the bottom navigation bar needs to keep track of the
   /// current index and call `setState` to rebuild it with the newly provided
   /// index.
-  final ValueChanged<int> onTap;
+  final ValueChanged<int>? onTap;
 
   /// The index into [items] of the current active item.
   ///
@@ -102,13 +107,13 @@ class CupertinoTabBar extends StatelessWidget implements PreferredSizeWidget {
   /// behind it.
   ///
   /// Defaults to [CupertinoTheme]'s `barBackgroundColor` when null.
-  final Color backgroundColor;
+  final Color? backgroundColor;
 
   /// The foreground color of the icon and title for the [BottomNavigationBarItem]
   /// of the selected tab.
   ///
   /// Defaults to [CupertinoTheme]'s `primaryColor` if null.
-  final Color activeColor;
+  final Color? activeColor;
 
   /// The foreground color of the icon and title for the [BottomNavigationBarItem]s
   /// in the unselected state.
@@ -126,13 +131,18 @@ class CupertinoTabBar extends StatelessWidget implements PreferredSizeWidget {
   /// Must not be null.
   final double iconSize;
 
+  /// The height of the [CupertinoTabBar].
+  ///
+  /// Defaults to 50.0. Must not be null.
+  final double height;
+
   /// The border of the [CupertinoTabBar].
   ///
   /// The default value is a one physical pixel top border with grey color.
-  final Border border;
+  final Border? border;
 
   @override
-  Size get preferredSize => const Size.fromHeight(_kTabBarHeight);
+  Size get preferredSize => Size.fromHeight(height);
 
   /// Indicates whether the tab bar is fully opaque or can have contents behind
   /// it show through it.
@@ -144,6 +154,7 @@ class CupertinoTabBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
+    assert(debugCheckHasMediaQuery(context));
     final double bottomPadding = MediaQuery.of(context).padding.bottom;
 
     final Color backgroundColor = CupertinoDynamicColor.resolve(
@@ -158,13 +169,13 @@ class CupertinoTabBar extends StatelessWidget implements PreferredSizeWidget {
     }
 
     // Return the border as is when it's a subclass.
-    final Border resolvedBorder = border == null || border.runtimeType != Border
+    final Border? resolvedBorder = border == null || border.runtimeType != Border
       ? border
       : Border(
-        top: resolveBorderSide(border.top),
-        left: resolveBorderSide(border.left),
-        bottom: resolveBorderSide(border.bottom),
-        right: resolveBorderSide(border.right),
+        top: resolveBorderSide(border!.top),
+        left: resolveBorderSide(border!.left),
+        bottom: resolveBorderSide(border!.bottom),
+        right: resolveBorderSide(border!.right),
       );
 
     final Color inactive = CupertinoDynamicColor.resolve(inactiveColor, context);
@@ -174,7 +185,7 @@ class CupertinoTabBar extends StatelessWidget implements PreferredSizeWidget {
         color: backgroundColor,
       ),
       child: SizedBox(
-        height: _kTabBarHeight + bottomPadding,
+        height: height + bottomPadding,
         child: IconTheme.merge( // Default with the inactive state.
           data: IconThemeData(color: inactive, size: iconSize),
           child: DefaultTextStyle( // Default with the inactive state.
@@ -211,13 +222,6 @@ class CupertinoTabBar extends StatelessWidget implements PreferredSizeWidget {
   List<Widget> _buildTabItems(BuildContext context) {
     final List<Widget> result = <Widget>[];
     final CupertinoLocalizations localizations = CupertinoLocalizations.of(context);
-    assert(
-      localizations != null,
-      'CupertinoTabBar requires a Localizations parent in order to provide an '
-        'appropriate Semantics hint for tab indexing. A CupertinoApp will '
-        'provide the DefaultCupertinoLocalizations, or you can instantiate your '
-        'own Localizations.'
-    );
 
     for (int index = 0; index < items.length; index += 1) {
       final bool active = index == currentIndex;
@@ -233,7 +237,7 @@ class CupertinoTabBar extends StatelessWidget implements PreferredSizeWidget {
               ),
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onTap: onTap == null ? null : () { onTap(index); },
+                onTap: onTap == null ? null : () { onTap!(index); },
                 child: Padding(
                   padding: const EdgeInsets.only(bottom: 4.0),
                   child: Column(
@@ -257,13 +261,12 @@ class CupertinoTabBar extends StatelessWidget implements PreferredSizeWidget {
       Expanded(
         child: Center(child: active ? item.activeIcon : item.icon),
       ),
-      if (item.title != null) item.title,
-      if (item.label != null) Text(item.label),
+      if (item.label != null) Text(item.label!),
     ];
   }
 
   /// Change the active tab item's icon and title colors to active.
-  Widget _wrapActiveItem(BuildContext context, Widget item, { @required bool active }) {
+  Widget _wrapActiveItem(BuildContext context, Widget item, { required bool active }) {
     if (!active)
       return item;
 
@@ -283,15 +286,16 @@ class CupertinoTabBar extends StatelessWidget implements PreferredSizeWidget {
   /// Create a clone of the current [CupertinoTabBar] but with provided
   /// parameters overridden.
   CupertinoTabBar copyWith({
-    Key key,
-    List<BottomNavigationBarItem> items,
-    Color backgroundColor,
-    Color activeColor,
-    Color inactiveColor,
-    double iconSize,
-    Border border,
-    int currentIndex,
-    ValueChanged<int> onTap,
+    Key? key,
+    List<BottomNavigationBarItem>? items,
+    Color? backgroundColor,
+    Color? activeColor,
+    Color? inactiveColor,
+    double? iconSize,
+    double? height,
+    Border? border,
+    int? currentIndex,
+    ValueChanged<int>? onTap,
   }) {
     return CupertinoTabBar(
       key: key ?? this.key,
@@ -300,6 +304,7 @@ class CupertinoTabBar extends StatelessWidget implements PreferredSizeWidget {
       activeColor: activeColor ?? this.activeColor,
       inactiveColor: inactiveColor ?? this.inactiveColor,
       iconSize: iconSize ?? this.iconSize,
+      height: height ?? this.height,
       border: border ?? this.border,
       currentIndex: currentIndex ?? this.currentIndex,
       onTap: onTap ?? this.onTap,

@@ -8,13 +8,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+{{^withFfiPluginHook}}
 import 'package:{{projectName}}/main.dart';
+{{/withFfiPluginHook}}
 
 {{^withPluginHook}}
 void main() {
   testWidgets('Counter increments smoke test', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(MyApp());
+    await tester.pumpWidget(const MyApp());
 
     // Verify that our counter starts at 0.
     expect(find.text('0'), findsOneWidget);
@@ -30,20 +32,20 @@ void main() {
   });
 }
 {{/withPluginHook}}
-{{#withPluginHook}}
+{{#withPlatformChannelPluginHook}}
 void main() {
   testWidgets('Verify Platform version', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(MyApp());
+    await tester.pumpWidget(const MyApp());
 
     // Verify that platform version is retrieved.
     expect(
       find.byWidgetPredicate(
         (Widget widget) => widget is Text &&
-                           widget.data.startsWith('Running on:'),
+                           widget.data!.startsWith('Running on:'),
       ),
       findsOneWidget,
     );
   });
 }
-{{/withPluginHook}}
+{{/withPlatformChannelPluginHook}}

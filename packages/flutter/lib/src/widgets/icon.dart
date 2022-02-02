@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 
 import 'basic.dart';
@@ -30,7 +31,7 @@ import 'icon_theme_data.dart';
 /// sizes. The first [Icon] uses a [semanticLabel] to announce in accessibility
 /// modes like TalkBack and VoiceOver.
 ///
-/// ![A row of icons representing a pink heart, a green musical note, and a blue umbrella](https://flutter.github.io/assets-for-api-docs/assets/widgets/icon.png)
+/// ![The following code snippet would generate a row of icons consisting of a pink heart, a green musical note, and a blue umbrella, each progressively bigger than the last.](https://flutter.github.io/assets-for-api-docs/assets/widgets/icon.png)
 ///
 /// ```dart
 /// Row(
@@ -74,6 +75,7 @@ class Icon extends StatelessWidget {
     this.color,
     this.semanticLabel,
     this.textDirection,
+    this.shadows,
   }) : super(key: key);
 
   /// The icon to display. The available icons are described in [Icons].
@@ -100,21 +102,22 @@ class Icon extends StatelessWidget {
   ///
   /// Defaults to the current [IconTheme] color, if any.
   ///
-  /// The given color will be adjusted by the opacity of the current
+  /// The color (whether specified explicitly here or obtained from the
+  /// [IconTheme]) will be further adjusted by the opacity of the current
   /// [IconTheme], if any.
-  ///
   ///
   /// In material apps, if there is a [Theme] without any [IconTheme]s
   /// specified, icon colors default to white if the theme is dark
   /// and black if the theme is light.
   ///
-  /// If no [IconTheme] and no [Theme] is specified, icons will default to black.
+  /// If no [IconTheme] and no [Theme] is specified, icons will default to
+  /// black.
   ///
   /// See [Theme] to set the current theme and [ThemeData.brightness]
   /// for setting the current theme's brightness.
   ///
   /// {@tool snippet}
-  /// Typically, a material design color will be used, as follows:
+  /// Typically, a Material Design color will be used, as follows:
   ///
   /// ```dart
   /// Icon(
@@ -149,14 +152,25 @@ class Icon extends StatelessWidget {
   /// specified, either directly using this property or using [Directionality].
   final TextDirection? textDirection;
 
+  /// A list of [Shadow]s that will be painted underneath the icon.
+  ///
+  /// Multiple shadows are supported to replicate lighting from multiple light
+  /// sources.
+  ///
+  /// Shadows must be in the same order for [Icon] to be considered as
+  /// equivalent as order produces differing transparency.
+  final List<Shadow>? shadows;
+
   @override
   Widget build(BuildContext context) {
     assert(this.textDirection != null || debugCheckHasDirectionality(context));
-    final TextDirection textDirection = this.textDirection ?? Directionality.of(context)!;
+    final TextDirection textDirection = this.textDirection ?? Directionality.of(context);
 
     final IconThemeData iconTheme = IconTheme.of(context);
 
     final double? iconSize = size ?? iconTheme.size;
+
+    final List<Shadow>? iconShadows = shadows ?? iconTheme.shadows;
 
     if (icon == null) {
       return Semantics(
@@ -181,6 +195,7 @@ class Icon extends StatelessWidget {
           fontSize: iconSize,
           fontFamily: icon!.fontFamily,
           package: icon!.fontPackage,
+          shadows: iconShadows,
         ),
       ),
     );
@@ -220,5 +235,6 @@ class Icon extends StatelessWidget {
     properties.add(IconDataProperty('icon', icon, ifNull: '<empty>', showName: false));
     properties.add(DoubleProperty('size', size, defaultValue: null));
     properties.add(ColorProperty('color', color, defaultValue: null));
+    properties.add(IterableProperty<Shadow>('shadows', shadows, defaultValue: null));
   }
 }

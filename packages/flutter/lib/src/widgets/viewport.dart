@@ -118,17 +118,17 @@ class Viewport extends MultiChildRenderObjectWidget {
   /// The [center] must be the key of a child of the viewport.
   final Key? center;
 
-  /// {@macro flutter.rendering.viewport.cacheExtent}
+  /// {@macro flutter.rendering.RenderViewportBase.cacheExtent}
   ///
   /// See also:
   ///
   ///  * [cacheExtentStyle], which controls the units of the [cacheExtent].
   final double? cacheExtent;
 
-  /// {@macro flutter.rendering.viewport.cacheExtentStyle}
+  /// {@macro flutter.rendering.RenderViewportBase.cacheExtentStyle}
   final CacheExtentStyle cacheExtentStyle;
 
-  /// {@macro flutter.widgets.Clip}
+  /// {@macro flutter.material.Material.clipBehavior}
   ///
   /// Defaults to [Clip.hardEdge].
   final Clip clipBehavior;
@@ -144,19 +144,19 @@ class Viewport extends MultiChildRenderObjectWidget {
       case AxisDirection.up:
         assert(debugCheckHasDirectionality(
           context,
-          why: 'to determine the cross-axis direction when the viewport has an \'up\' axisDirection',
-          alternative: 'Alternatively, consider specifying the \'crossAxisDirection\' argument on the Viewport.',
+          why: "to determine the cross-axis direction when the viewport has an 'up' axisDirection",
+          alternative: "Alternatively, consider specifying the 'crossAxisDirection' argument on the Viewport.",
         ));
-        return textDirectionToAxisDirection(Directionality.of(context)!);
+        return textDirectionToAxisDirection(Directionality.of(context));
       case AxisDirection.right:
         return AxisDirection.down;
       case AxisDirection.down:
         assert(debugCheckHasDirectionality(
           context,
-          why: 'to determine the cross-axis direction when the viewport has a \'down\' axisDirection',
-          alternative: 'Alternatively, consider specifying the \'crossAxisDirection\' argument on the Viewport.',
+          why: "to determine the cross-axis direction when the viewport has a 'down' axisDirection",
+          alternative: "Alternatively, consider specifying the 'crossAxisDirection' argument on the Viewport.",
         ));
-        return textDirectionToAxisDirection(Directionality.of(context)!);
+        return textDirectionToAxisDirection(Directionality.of(context));
       case AxisDirection.left:
         return AxisDirection.down;
     }
@@ -188,7 +188,7 @@ class Viewport extends MultiChildRenderObjectWidget {
   }
 
   @override
-  _ViewportElement createElement() => _ViewportElement(this);
+  MultiChildRenderObjectElement createElement() => _ViewportElement(this);
 
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
@@ -211,6 +211,9 @@ class _ViewportElement extends MultiChildRenderObjectElement {
   /// Creates an element that uses the given widget as its configuration.
   _ViewportElement(Viewport widget) : super(widget);
 
+  bool _doingMountOrUpdate = false;
+  int? _centerSlotIndex;
+
   @override
   Viewport get widget => super.widget as Viewport;
 
@@ -218,26 +221,67 @@ class _ViewportElement extends MultiChildRenderObjectElement {
   RenderViewport get renderObject => super.renderObject as RenderViewport;
 
   @override
-  void mount(Element? parent, dynamic newSlot) {
+  void mount(Element? parent, Object? newSlot) {
+    assert(!_doingMountOrUpdate);
+    _doingMountOrUpdate = true;
     super.mount(parent, newSlot);
     _updateCenter();
+    assert(_doingMountOrUpdate);
+    _doingMountOrUpdate = false;
   }
 
   @override
   void update(MultiChildRenderObjectWidget newWidget) {
+    assert(!_doingMountOrUpdate);
+    _doingMountOrUpdate = true;
     super.update(newWidget);
     _updateCenter();
+    assert(_doingMountOrUpdate);
+    _doingMountOrUpdate = false;
   }
 
   void _updateCenter() {
     // TODO(ianh): cache the keys to make this faster
     if (widget.center != null) {
-      renderObject.center = children.singleWhere(
-        (Element element) => element.widget.key == widget.center
-      ).renderObject as RenderSliver;
+      int elementIndex = 0;
+      for (final Element e in children) {
+        if (e.widget.key == widget.center) {
+          renderObject.center = e.renderObject as RenderSliver?;
+          break;
+        }
+        elementIndex++;
+      }
+      assert(elementIndex < children.length);
+      _centerSlotIndex = elementIndex;
     } else if (children.isNotEmpty) {
-      renderObject.center = children.first.renderObject as RenderSliver;
+      renderObject.center = children.first.renderObject as RenderSliver?;
+      _centerSlotIndex = 0;
     } else {
+      renderObject.center = null;
+      _centerSlotIndex = null;
+    }
+  }
+
+  @override
+  void insertRenderObjectChild(RenderObject child, IndexedSlot<Element?> slot) {
+    super.insertRenderObjectChild(child, slot);
+    // Once [mount]/[update] are done, the `renderObject.center` will be updated
+    // in [_updateCenter].
+    if (!_doingMountOrUpdate && slot.index == _centerSlotIndex) {
+      renderObject.center = child as RenderSliver?;
+    }
+  }
+
+  @override
+  void moveRenderObjectChild(RenderObject child, IndexedSlot<Element?> oldSlot, IndexedSlot<Element?> newSlot) {
+    super.moveRenderObjectChild(child, oldSlot, newSlot);
+    assert(_doingMountOrUpdate);
+  }
+
+  @override
+  void removeRenderObjectChild(RenderObject child, Object? slot) {
+    super.removeRenderObjectChild(child, slot);
+    if (!_doingMountOrUpdate && renderObject.center == child) {
       renderObject.center = null;
     }
   }
@@ -245,7 +289,7 @@ class _ViewportElement extends MultiChildRenderObjectElement {
   @override
   void debugVisitOnstageChildren(ElementVisitor visitor) {
     children.where((Element e) {
-      final RenderSliver renderSliver = e.renderObject as RenderSliver;
+      final RenderSliver renderSliver = e.renderObject! as RenderSliver;
       return renderSliver.geometry!.visible;
     }).forEach(visitor);
   }
@@ -322,7 +366,7 @@ class ShrinkWrappingViewport extends MultiChildRenderObjectWidget {
   /// Typically a [ScrollPosition].
   final ViewportOffset offset;
 
-  /// {@macro flutter.widgets.Clip}
+  /// {@macro flutter.material.Material.clipBehavior}
   ///
   /// Defaults to [Clip.hardEdge].
   final Clip clipBehavior;

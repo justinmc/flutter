@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -13,8 +11,9 @@ void main() {
   test('Haptic feedback control test', () async {
     final List<MethodCall> log = <MethodCall>[];
 
-    SystemChannels.platform.setMockMethodCallHandler((MethodCall methodCall) async {
+    TestDefaultBinaryMessengerBinding.instance!.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (MethodCall methodCall) async {
       log.add(methodCall);
+      return null;
     });
 
     await HapticFeedback.vibrate();
@@ -24,11 +23,12 @@ void main() {
   });
 
   test('Haptic feedback variation tests', () async {
-    Future<void> callAndVerifyHapticFunction(Function hapticFunction, String platformMethodArgument) async {
+    Future<void> callAndVerifyHapticFunction(Future<void> Function() hapticFunction, String platformMethodArgument) async {
       final List<MethodCall> log = <MethodCall>[];
 
-      SystemChannels.platform.setMockMethodCallHandler((MethodCall methodCall) async {
+      TestDefaultBinaryMessengerBinding.instance!.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (MethodCall methodCall) async {
         log.add(methodCall);
+        return null;
       });
 
       await hapticFunction();

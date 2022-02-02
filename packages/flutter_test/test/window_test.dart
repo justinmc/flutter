@@ -5,13 +5,13 @@
 import 'dart:ui' as ui show window;
 import 'dart:ui' show Size, Locale, WindowPadding, AccessibilityFeatures, Brightness;
 
-import 'package:flutter/widgets.dart' show WidgetsBinding;
+import 'package:flutter/widgets.dart' show WidgetsBinding, WidgetsBindingObserver;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:meta/meta.dart';
 
 void main() {
   test('TestWindow can handle new methods without breaking', () {
     final dynamic testWindow = TestWindow(window: ui.window);
+    // ignore: avoid_dynamic_calls
     expect(testWindow.someNewProperty, null);
   });
 
@@ -21,7 +21,7 @@ void main() {
       realValue: ui.window.devicePixelRatio,
       fakeValue: 2.5,
       propertyRetriever: () {
-        return WidgetsBinding.instance.window.devicePixelRatio;
+        return WidgetsBinding.instance!.window.devicePixelRatio;
       },
       propertyFaker: (TestWidgetsFlutterBinding binding, double fakeValue) {
         binding.window.devicePixelRatioTestValue = fakeValue;
@@ -35,7 +35,7 @@ void main() {
       realValue: ui.window.physicalSize,
       fakeValue: const Size(50, 50),
       propertyRetriever: () {
-        return WidgetsBinding.instance.window.physicalSize;
+        return WidgetsBinding.instance!.window.physicalSize;
       },
       propertyFaker: (TestWidgetsFlutterBinding binding, Size fakeValue) {
         binding.window.physicalSizeTestValue = fakeValue;
@@ -49,7 +49,7 @@ void main() {
       realValue: ui.window.viewInsets,
       fakeValue: const FakeWindowPadding(),
       propertyRetriever: () {
-        return WidgetsBinding.instance.window.viewInsets;
+        return WidgetsBinding.instance!.window.viewInsets;
       },
       propertyFaker: (TestWidgetsFlutterBinding binding, WindowPadding fakeValue) {
         binding.window.viewInsetsTestValue = fakeValue;
@@ -63,7 +63,7 @@ void main() {
       realValue: ui.window.padding,
       fakeValue: const FakeWindowPadding(),
       propertyRetriever: () {
-        return WidgetsBinding.instance.window.padding;
+        return WidgetsBinding.instance!.window.padding;
       },
       propertyFaker: (TestWidgetsFlutterBinding binding, WindowPadding fakeValue) {
         binding.window.paddingTestValue = fakeValue;
@@ -77,7 +77,7 @@ void main() {
       realValue: ui.window.locale,
       fakeValue: const Locale('fake_language_code'),
       propertyRetriever: () {
-        return WidgetsBinding.instance.window.locale;
+        return WidgetsBinding.instance!.window.locale;
       },
       propertyFaker: (TestWidgetsFlutterBinding binding, Locale fakeValue) {
         binding.window.localeTestValue = fakeValue;
@@ -91,7 +91,7 @@ void main() {
       realValue: ui.window.locales,
       fakeValue: <Locale>[const Locale('fake_language_code')],
       propertyRetriever: () {
-        return WidgetsBinding.instance.window.locales;
+        return WidgetsBinding.instance!.window.locales;
       },
       propertyFaker: (TestWidgetsFlutterBinding binding, List<Locale> fakeValue) {
         binding.window.localesTestValue = fakeValue;
@@ -105,7 +105,7 @@ void main() {
       realValue: ui.window.textScaleFactor,
       fakeValue: 2.5,
       propertyRetriever: () {
-        return WidgetsBinding.instance.window.textScaleFactor;
+        return WidgetsBinding.instance!.window.textScaleFactor;
       },
       propertyFaker: (TestWidgetsFlutterBinding binding, double fakeValue) {
         binding.window.textScaleFactorTestValue = fakeValue;
@@ -119,7 +119,7 @@ void main() {
       realValue: ui.window.alwaysUse24HourFormat,
       fakeValue: !ui.window.alwaysUse24HourFormat,
       propertyRetriever: () {
-        return WidgetsBinding.instance.window.alwaysUse24HourFormat;
+        return WidgetsBinding.instance!.window.alwaysUse24HourFormat;
       },
       propertyFaker: (TestWidgetsFlutterBinding binding, bool fakeValue) {
         binding.window.alwaysUse24HourFormatTestValue = fakeValue;
@@ -133,7 +133,7 @@ void main() {
       realValue: ui.window.defaultRouteName,
       fakeValue: 'fake_route',
       propertyRetriever: () {
-        return WidgetsBinding.instance.window.defaultRouteName;
+        return WidgetsBinding.instance!.window.defaultRouteName;
       },
       propertyFaker: (TestWidgetsFlutterBinding binding, String fakeValue) {
         binding.window.defaultRouteNameTestValue = fakeValue;
@@ -147,7 +147,7 @@ void main() {
       realValue: ui.window.accessibilityFeatures,
       fakeValue: const FakeAccessibilityFeatures(),
       propertyRetriever: () {
-        return WidgetsBinding.instance.window.accessibilityFeatures;
+        return WidgetsBinding.instance!.window.accessibilityFeatures;
       },
       propertyFaker: (TestWidgetsFlutterBinding binding, AccessibilityFeatures fakeValue) {
         binding.window.accessibilityFeaturesTestValue = fakeValue;
@@ -161,7 +161,7 @@ void main() {
       realValue: Brightness.light,
       fakeValue: Brightness.dark,
       propertyRetriever: () {
-        return WidgetsBinding.instance.window.platformBrightness;
+        return WidgetsBinding.instance!.window.platformBrightness;
       },
       propertyFaker: (TestWidgetsFlutterBinding binding, Brightness fakeValue) {
         binding.window.platformBrightnessTestValue = fakeValue;
@@ -182,20 +182,30 @@ void main() {
     testWindow.clearAllTestValues();
 
     // Verify that the window once again reports real property values.
-    expect(WidgetsBinding.instance.window.devicePixelRatio, originalDevicePixelRatio);
-    expect(WidgetsBinding.instance.window.textScaleFactor, originalTextScaleFactor);
+    expect(WidgetsBinding.instance!.window.devicePixelRatio, originalDevicePixelRatio);
+    expect(WidgetsBinding.instance!.window.textScaleFactor, originalTextScaleFactor);
+  });
+
+  testWidgets('TestWindow sends fake locales when WidgetsBindingObserver notifiers are called', (WidgetTester tester) async {
+    final List<Locale> defaultLocales = WidgetsBinding.instance!.window.locales;
+    final TestObserver observer = TestObserver();
+    retrieveTestBinding(tester).addObserver(observer);
+    final List<Locale> expectedValue = <Locale>[const Locale('fake_language_code')];
+    retrieveTestBinding(tester).window.localesTestValue = expectedValue;
+    expect(observer.locales, equals(expectedValue));
+    retrieveTestBinding(tester).window.localesTestValue = defaultLocales;
   });
 }
 
 void verifyThatTestWindowCanFakeProperty<WindowPropertyType>({
-  @required WidgetTester tester,
-  @required WindowPropertyType realValue,
-  @required WindowPropertyType fakeValue,
-  @required WindowPropertyType Function() propertyRetriever,
-  @required Function(TestWidgetsFlutterBinding, WindowPropertyType fakeValue) propertyFaker,
+  required WidgetTester tester,
+  required WindowPropertyType? realValue,
+  required WindowPropertyType fakeValue,
+  required WindowPropertyType? Function() propertyRetriever,
+  required Function(TestWidgetsFlutterBinding, WindowPropertyType fakeValue) propertyFaker,
 }) {
-  WindowPropertyType propertyBeforeFaking;
-  WindowPropertyType propertyAfterFaking;
+  WindowPropertyType? propertyBeforeFaking;
+  WindowPropertyType? propertyAfterFaking;
 
   propertyBeforeFaking = propertyRetriever();
 
@@ -235,42 +245,12 @@ class FakeWindowPadding implements WindowPadding {
   final double bottom;
 }
 
-class FakeAccessibilityFeatures implements AccessibilityFeatures {
-  const FakeAccessibilityFeatures({
-    this.accessibleNavigation = false,
-    this.invertColors = false,
-    this.disableAnimations = false,
-    this.boldText = false,
-    this.reduceMotion = false,
-    this.highContrast = false,
-  });
+class TestObserver with WidgetsBindingObserver {
+  List<Locale>? locales;
+  Locale? locale;
 
   @override
-  final bool accessibleNavigation;
-
-  @override
-  final bool invertColors;
-
-  @override
-  final bool disableAnimations;
-
-  @override
-  final bool boldText;
-
-  @override
-  final bool reduceMotion;
-
-  @override
-  final bool highContrast;
-
-  /// This gives us some grace time when the dart:ui side adds something to
-  /// [AccessibilityFeatures], and makes things easier when we do rolls to
-  /// give us time to catch up.
-  ///
-  /// If you would like to add to this class, changes must first be made in the
-  /// engine, followed by the framework.
-  @override
-  dynamic noSuchMethod(Invocation invocation) {
-    return null;
+  void didChangeLocales(List<Locale>? locales) {
+    this.locales = locales;
   }
 }

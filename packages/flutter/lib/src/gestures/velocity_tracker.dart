@@ -3,8 +3,6 @@
 // found in the LICENSE file.
 
 
-import 'dart:ui' show Offset;
-
 import 'package:flutter/foundation.dart';
 
 import 'events.dart';
@@ -33,14 +31,12 @@ class Velocity {
 
   /// Return the difference of two velocities.
   Velocity operator -(Velocity other) {
-    return Velocity(
-        pixelsPerSecond: pixelsPerSecond - other.pixelsPerSecond);
+    return Velocity(pixelsPerSecond: pixelsPerSecond - other.pixelsPerSecond);
   }
 
   /// Return the sum of two velocities.
   Velocity operator +(Velocity other) {
-    return Velocity(
-        pixelsPerSecond: pixelsPerSecond + other.pixelsPerSecond);
+    return Velocity(pixelsPerSecond: pixelsPerSecond + other.pixelsPerSecond);
   }
 
   /// Return a velocity whose magnitude has been clamped to [minValue]
@@ -149,7 +145,14 @@ class _PointAtTime {
 /// have been received.
 class VelocityTracker {
   /// Create a new velocity tracker for a pointer [kind].
-  VelocityTracker(this.kind);
+  @Deprecated(
+    'Use VelocityTracker.withKind and provide the PointerDeviceKind associated with the gesture being tracked. '
+    'This feature was deprecated after v1.22.0-12.1.pre.',
+  )
+  VelocityTracker([this.kind = PointerDeviceKind.touch]);
+
+  /// Create a new velocity tracker for a pointer [kind].
+  VelocityTracker.withKind(this.kind);
 
   static const int _assumePointerMoveStoppedMilliseconds = 40;
   static const int _historySize = 20;
@@ -160,7 +163,7 @@ class VelocityTracker {
   final PointerDeviceKind kind;
 
   // Circular buffer; current sample at _index.
-  final List<_PointAtTime?> _samples = List<_PointAtTime?>.filled(_historySize, null, growable: false);
+  final List<_PointAtTime?> _samples = List<_PointAtTime?>.filled(_historySize, null);
   int _index = 0;
 
   /// Adds a position as the given time to the tracker.
@@ -272,7 +275,7 @@ class VelocityTracker {
 /// estimating the velocity are both cheap.
 ///
 /// To obtain a velocity, call [getVelocity] or [getVelocityEstimate]. The
-/// esimated velocity is typically used as the initial flinging velocity of a
+/// estimated velocity is typically used as the initial flinging velocity of a
 /// `Scrollable`, when its drag gesture ends.
 ///
 /// See also:
@@ -281,7 +284,7 @@ class VelocityTracker {
 ///   the iOS method that reports the fling velocity when the touch is released.
 class IOSScrollViewFlingVelocityTracker extends VelocityTracker {
   /// Create a new IOSScrollViewFlingVelocityTracker.
-  IOSScrollViewFlingVelocityTracker(PointerDeviceKind kind) : super(kind);
+  IOSScrollViewFlingVelocityTracker(PointerDeviceKind kind) : super.withKind(kind);
 
   /// The velocity estimation uses at most 4 `_PointAtTime` samples. The extra
   /// samples are there to make the `VelocityEstimate.offset` sufficiently large
@@ -289,7 +292,7 @@ class IOSScrollViewFlingVelocityTracker extends VelocityTracker {
   /// `VerticalDragGestureRecognizer.isFlingGesture`.
   static const int _sampleSize = 20;
 
-  final List<_PointAtTime?> _touchSamples = List<_PointAtTime?>.filled(_sampleSize, null, growable: false);
+  final List<_PointAtTime?> _touchSamples = List<_PointAtTime?>.filled(_sampleSize, null);
 
   @override
   void addPosition(Duration time, Offset position) {
@@ -298,8 +301,8 @@ class IOSScrollViewFlingVelocityTracker extends VelocityTracker {
       if (previousPoint == null || previousPoint.time <= time)
         return true;
       throw FlutterError(
-        'The position being added ($position) has a smaller timestamp ($time)'
-        'than its predecessor: $previousPoint.'
+        'The position being added ($position) has a smaller timestamp ($time) '
+        'than its predecessor: $previousPoint.',
       );
     }());
     _index = (_index + 1) % _sampleSize;
@@ -308,7 +311,7 @@ class IOSScrollViewFlingVelocityTracker extends VelocityTracker {
 
   // Computes the velocity using 2 adjacent points in history. When index = 0,
   // it uses the latest point recorded and the point recorded immediately before
-  // it. The smaller index is, the ealier in history the points used are.
+  // it. The smaller index is, the earlier in history the points used are.
   Offset _previousVelocityAt(int index) {
     final int endIndex = (_index + index) % _sampleSize;
     final int startIndex = (_index + index - 1) % _sampleSize;
@@ -330,7 +333,7 @@ class IOSScrollViewFlingVelocityTracker extends VelocityTracker {
 
   @override
   VelocityEstimate getVelocityEstimate() {
-    // The velocity estimated using this expression is an aproximation of the
+    // The velocity estimated using this expression is an approximation of the
     // scroll velocity of an iOS scroll view at the moment the user touch was
     // released, not the final velocity of the iOS pan gesture recognizer
     // installed on the scroll view would report. Typically in an iOS scroll

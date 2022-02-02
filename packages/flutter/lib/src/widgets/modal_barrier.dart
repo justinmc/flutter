@@ -8,7 +8,6 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
 import 'basic.dart';
-import 'container.dart';
 import 'debug.dart';
 import 'framework.dart';
 import 'gesture_detector.dart';
@@ -35,6 +34,7 @@ class ModalBarrier extends StatelessWidget {
     Key? key,
     this.color,
     this.dismissible = true,
+    this.onDismiss,
     this.semanticsLabel,
     this.barrierSemanticsDismissible = true,
   }) : super(key: key);
@@ -47,13 +47,28 @@ class ModalBarrier extends StatelessWidget {
   ///    [ModalBarrier] built by [ModalRoute] pages.
   final Color? color;
 
-  /// Whether touching the barrier will pop the current route off the [Navigator].
+  /// Specifies if the barrier will be dismissed when the user taps on it.
+  ///
+  /// If true, and [onDismiss] is non-null, [onDismiss] will be called,
+  /// otherwise the current route will be popped from the ambient [Navigator].
+  ///
+  /// If false, tapping on the barrier will do nothing.
   ///
   /// See also:
   ///
   ///  * [ModalRoute.barrierDismissible], which controls this property for the
   ///    [ModalBarrier] built by [ModalRoute] pages.
   final bool dismissible;
+
+  /// Called when the barrier is being dismissed.
+  ///
+  /// If non-null [onDismiss] will be called in place of popping the current
+  /// route. It is up to the callback to handle dismissing the barrier.
+  ///
+  /// If null, the ambient [Navigator]'s current route will be popped.
+  ///
+  /// This field is ignored if [dismissible] is false.
+  final VoidCallback? onDismiss;
 
   /// Whether the modal barrier semantics are included in the semantics tree.
   ///
@@ -77,7 +92,7 @@ class ModalBarrier extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     assert(!dismissible || semanticsLabel == null || debugCheckHasDirectionality(context));
-    bool platformSupportsDismissingBarrier;
+    final bool platformSupportsDismissingBarrier;
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
       case TargetPlatform.fuchsia:
@@ -93,30 +108,36 @@ class ModalBarrier extends StatelessWidget {
     assert(platformSupportsDismissingBarrier != null);
     final bool semanticsDismissible = dismissible && platformSupportsDismissingBarrier;
     final bool modalBarrierSemanticsDismissible = barrierSemanticsDismissible ?? semanticsDismissible;
+
+    void handleDismiss() {
+      if (dismissible) {
+        if (onDismiss != null) {
+          onDismiss!();
+        } else {
+          Navigator.maybePop(context);
+        }
+      } else {
+        SystemSound.play(SystemSoundType.alert);
+      }
+    }
+
     return BlockSemantics(
       child: ExcludeSemantics(
         // On Android, the back button is used to dismiss a modal. On iOS, some
         // modal barriers are not dismissible in accessibility mode.
         excluding: !semanticsDismissible || !modalBarrierSemanticsDismissible,
         child: _ModalBarrierGestureDetector(
-          onDismiss: () {
-            if (dismissible)
-              Navigator.maybePop(context);
-            else
-              SystemSound.play(SystemSoundType.alert);
-          },
+          onDismiss: handleDismiss,
           child: Semantics(
             label: semanticsDismissible ? semanticsLabel : null,
+            onDismiss: semanticsDismissible ? handleDismiss : null,
             textDirection: semanticsDismissible && semanticsLabel != null ? Directionality.of(context) : null,
             child: MouseRegion(
               cursor: SystemMouseCursors.basic,
-              opaque: true,
               child: ConstrainedBox(
                 constraints: const BoxConstraints.expand(),
-                child: color == null ? null : DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: color,
-                  ),
+                child: color == null ? null : ColoredBox(
+                  color: color!,
                 ),
               ),
             ),
@@ -159,7 +180,7 @@ class AnimatedModalBarrier extends AnimatedWidget {
   ///
   ///  * [ModalRoute.barrierColor], which controls this property for the
   ///    [AnimatedModalBarrier] built by [ModalRoute] pages.
-  Animation<Color> get color => listenable as Animation<Color>;
+  Animation<Color?> get color => listenable as Animation<Color?>;
 
   /// Whether touching the barrier will pop the current route off the [Navigator].
   ///
@@ -225,8 +246,7 @@ class _AnyTapGestureRecognizer extends BaseTapGestureRecognizer {
   @protected
   @override
   void handleTapUp({PointerDownEvent? down, PointerUpEvent? up}) {
-    if (onAnyTapUp != null)
-      onAnyTapUp!();
+    onAnyTapUp?.call();
   }
 
   @protected

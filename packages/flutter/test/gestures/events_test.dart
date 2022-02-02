@@ -2,11 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
+import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter/gestures.dart';
 import 'package:vector_math/vector_math_64.dart';
 
 import 'gesture_tester.dart';
@@ -39,23 +37,40 @@ void main() {
   });
 
   test('computed hit slop values are based on pointer device kind', () {
-    expect(computeHitSlop(PointerDeviceKind.mouse), kPrecisePointerHitSlop);
-    expect(computeHitSlop(PointerDeviceKind.stylus), kPrecisePointerHitSlop);
-    expect(computeHitSlop(PointerDeviceKind.invertedStylus), kPrecisePointerHitSlop);
-    expect(computeHitSlop(PointerDeviceKind.touch), kTouchSlop);
-    expect(computeHitSlop(PointerDeviceKind.unknown), kTouchSlop);
+    expect(computeHitSlop(PointerDeviceKind.mouse, null), kPrecisePointerHitSlop);
+    expect(computeHitSlop(PointerDeviceKind.stylus, null), kTouchSlop);
+    expect(computeHitSlop(PointerDeviceKind.invertedStylus, null), kTouchSlop);
+    expect(computeHitSlop(PointerDeviceKind.touch, null), kTouchSlop);
+    expect(computeHitSlop(PointerDeviceKind.unknown, null), kTouchSlop);
 
-    expect(computePanSlop(PointerDeviceKind.mouse), kPrecisePointerPanSlop);
-    expect(computePanSlop(PointerDeviceKind.stylus), kPrecisePointerPanSlop);
-    expect(computePanSlop(PointerDeviceKind.invertedStylus), kPrecisePointerPanSlop);
-    expect(computePanSlop(PointerDeviceKind.touch), kPanSlop);
-    expect(computePanSlop(PointerDeviceKind.unknown), kPanSlop);
+    expect(computePanSlop(PointerDeviceKind.mouse, null), kPrecisePointerPanSlop);
+    expect(computePanSlop(PointerDeviceKind.stylus, null), kPanSlop);
+    expect(computePanSlop(PointerDeviceKind.invertedStylus, null), kPanSlop);
+    expect(computePanSlop(PointerDeviceKind.touch, null), kPanSlop);
+    expect(computePanSlop(PointerDeviceKind.unknown, null), kPanSlop);
 
     expect(computeScaleSlop(PointerDeviceKind.mouse), kPrecisePointerScaleSlop);
-    expect(computeScaleSlop(PointerDeviceKind.stylus), kPrecisePointerScaleSlop);
-    expect(computeScaleSlop(PointerDeviceKind.invertedStylus), kPrecisePointerScaleSlop);
+    expect(computeScaleSlop(PointerDeviceKind.stylus), kScaleSlop);
+    expect(computeScaleSlop(PointerDeviceKind.invertedStylus), kScaleSlop);
     expect(computeScaleSlop(PointerDeviceKind.touch), kScaleSlop);
     expect(computeScaleSlop(PointerDeviceKind.unknown), kScaleSlop);
+  });
+
+  test('computed hit slop values defer to device value when pointer kind is touch', () {
+    const DeviceGestureSettings settings = DeviceGestureSettings(touchSlop: 1);
+
+    expect(computeHitSlop(PointerDeviceKind.mouse, settings), kPrecisePointerHitSlop);
+    expect(computeHitSlop(PointerDeviceKind.stylus, settings), 1);
+    expect(computeHitSlop(PointerDeviceKind.invertedStylus, settings), 1);
+    expect(computeHitSlop(PointerDeviceKind.touch, settings), 1);
+    expect(computeHitSlop(PointerDeviceKind.unknown, settings), 1);
+
+    expect(computePanSlop(PointerDeviceKind.mouse, settings), kPrecisePointerPanSlop);
+    // Pan slop is 2x touch slop
+    expect(computePanSlop(PointerDeviceKind.stylus, settings), 2);
+    expect(computePanSlop(PointerDeviceKind.invertedStylus, settings), 2);
+    expect(computePanSlop(PointerDeviceKind.touch, settings), 2);
+    expect(computePanSlop(PointerDeviceKind.unknown, settings), 2);
   });
 
   group('fromMouseEvent', () {
@@ -481,7 +496,6 @@ void main() {
 
     const PointerScrollEvent scroll = PointerScrollEvent(
       timeStamp: Duration(seconds: 2),
-      kind: PointerDeviceKind.mouse,
       device: 1,
       position: Offset(20, 30),
     );
@@ -801,10 +815,10 @@ void main() {
 }
 
 void _expectTransformedEvent({
-  @required PointerEvent original,
-  @required Matrix4 transform,
-  Offset localDelta,
-  Offset localPosition,
+  required PointerEvent original,
+  required Matrix4 transform,
+  Offset? localDelta,
+  Offset? localPosition,
 }) {
   expect(original.position, original.localPosition);
   expect(original.delta, original.localDelta);

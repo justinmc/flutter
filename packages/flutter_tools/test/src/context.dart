@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// @dart = 2.8
+
 import 'dart:async';
 
 import 'package:flutter_tools/src/android/android_workflow.dart';
@@ -16,30 +18,33 @@ import 'package:flutter_tools/src/base/process.dart';
 import 'package:flutter_tools/src/base/signals.dart';
 import 'package:flutter_tools/src/base/template.dart';
 import 'package:flutter_tools/src/base/terminal.dart';
-import 'package:flutter_tools/src/base/time.dart';
-import 'package:flutter_tools/src/build_runner/mustache_template.dart';
+import 'package:flutter_tools/src/base/version.dart';
 import 'package:flutter_tools/src/cache.dart';
 import 'package:flutter_tools/src/context_runner.dart';
 import 'package:flutter_tools/src/dart/pub.dart';
 import 'package:flutter_tools/src/device.dart';
 import 'package:flutter_tools/src/doctor.dart';
+import 'package:flutter_tools/src/doctor_validator.dart';
+import 'package:flutter_tools/src/globals.dart' as globals;
 import 'package:flutter_tools/src/ios/plist_parser.dart';
 import 'package:flutter_tools/src/ios/simulators.dart';
 import 'package:flutter_tools/src/ios/xcodeproj.dart';
+import 'package:flutter_tools/src/isolated/mustache_template.dart';
 import 'package:flutter_tools/src/persistent_tool_state.dart';
 import 'package:flutter_tools/src/project.dart';
+import 'package:flutter_tools/src/reporting/crash_reporting.dart';
 import 'package:flutter_tools/src/reporting/reporting.dart';
 import 'package:flutter_tools/src/version.dart';
-import 'package:flutter_tools/src/globals.dart' as globals;
 import 'package:meta/meta.dart';
-import 'package:mockito/mockito.dart';
 
 import 'common.dart';
+import 'fake_http_client.dart';
 import 'fake_process_manager.dart';
-import 'mocks.dart';
+import 'fakes.dart';
 import 'throwing_pub.dart';
 
 export 'package:flutter_tools/src/base/context.dart' show Generator;
+
 export 'fake_process_manager.dart' show ProcessManager, FakeProcessManager, FakeCommand;
 
 /// Return the test logger. This assumes that the current Logger is a BufferLogger.
@@ -53,7 +58,7 @@ typedef ContextInitializer = void Function(AppContext testContext);
 @isTest
 void testUsingContext(
   String description,
-  dynamic testMethod(), {
+  dynamic Function() testMethod, {
   Map<Type, Generator> overrides = const <Type, Generator>{},
   bool initializeFlutterRoot = true,
   String testOn,
@@ -80,19 +85,15 @@ void testUsingContext(
     }
   });
   Config buildConfig(FileSystem fs) {
-    configDir ??= globals.fs.systemTempDirectory.createTempSync(
-      'flutter_config_dir_test.',
-    );
+    configDir ??= globals.fs.systemTempDirectory.createTempSync('flutter_config_dir_test.');
     return Config.test(
-      Config.kFlutterSettings,
+      name: Config.kFlutterSettings,
       directory: configDir,
       logger: globals.logger,
     );
   }
   PersistentToolState buildPersistentToolState(FileSystem fs) {
-    configDir ??= globals.fs.systemTempDirectory.createTempSync(
-      'flutter_config_dir_test.',
-    );
+    configDir ??= globals.fs.systemTempDirectory.createTempSync('flutter_config_dir_test.');
     return PersistentToolState.test(
       directory: configDir,
       logger: globals.logger,
@@ -108,34 +109,25 @@ void testUsingContext(
           Config: () => buildConfig(globals.fs),
           DeviceManager: () => FakeDeviceManager(),
           Doctor: () => FakeDoctor(globals.logger),
-          FlutterVersion: () => MockFlutterVersion(),
-          HttpClient: () => MockHttpClient(),
-          IOSSimulatorUtils: () {
-            final MockIOSSimulatorUtils mock = MockIOSSimulatorUtils();
-            when(mock.getAttachedDevices()).thenAnswer((Invocation _) async => <IOSSimulator>[]);
-            return mock;
-          },
+          FlutterVersion: () => FakeFlutterVersion(),
+          HttpClient: () => FakeHttpClient.any(),
+          IOSSimulatorUtils: () => const NoopIOSSimulatorUtils(),
           OutputPreferences: () => OutputPreferences.test(),
-          Logger: () => BufferLogger(
-            terminal: globals.terminal,
-            outputPreferences: globals.outputPreferences,
-          ),
+          Logger: () => BufferLogger.test(),
           OperatingSystemUtils: () => FakeOperatingSystemUtils(),
           PersistentToolState: () => buildPersistentToolState(globals.fs),
-          SimControl: () => MockSimControl(),
-          Usage: () => FakeUsage(),
+          Usage: () => TestUsage(),
           XcodeProjectInterpreter: () => FakeXcodeProjectInterpreter(),
           FileSystem: () => LocalFileSystemBlockingSetCurrentDirectory(),
-          TimeoutConfiguration: () => const TimeoutConfiguration(),
           PlistParser: () => FakePlistParser(),
           Signals: () => FakeSignals(),
           Pub: () => ThrowingPub(), // prevent accidentally using pub.
-          CrashReporter: () => MockCrashReporter(),
+          CrashReporter: () => const NoopCrashReporter(),
           TemplateRenderer: () => const MustacheTemplateRenderer(),
         },
         body: () {
           final String flutterRoot = getFlutterRoot();
-          return runZoned<Future<dynamic>>(() {
+          return runZonedGuarded<Future<dynamic>>(() {
             try {
               return context.run<dynamic>(
                 // Apply the overrides to the test context in the zone since their
@@ -156,9 +148,10 @@ void testUsingContext(
               _printBufferedErrors(context);
               rethrow;
             }
-          }, onError: (Object error, StackTrace stackTrace) { // ignore: deprecated_member_use
-            print(error);
-            print(stackTrace);
+          }, (Object error, StackTrace stackTrace) {
+            // When things fail, it's ok to print to the console!
+            print(error); // ignore: avoid_print
+            print(stackTrace); // ignore: avoid_print
             _printBufferedErrors(context);
             throw error;
           });
@@ -172,16 +165,21 @@ void testUsingContext(
       // If a test needs a BotDetector that does not always return true, it
       // can provide the AlwaysFalseBotDetector in the overrides, or its own
       // BotDetector implementation in the overrides.
-      BotDetector: overrides[BotDetector] ?? () => const AlwaysTrueBotDetector(),
+      BotDetector: overrides[BotDetector] ?? () => const FakeBotDetector(true),
     });
   }, testOn: testOn, skip: skip);
+  // We don't support "timeout"; see ../../dart_test.yaml which
+  // configures all tests to have a 15 minute timeout which should
+  // definitely be enough.
 }
 
 void _printBufferedErrors(AppContext testContext) {
   if (testContext.get<Logger>() is BufferLogger) {
     final BufferLogger bufferLogger = testContext.get<Logger>() as BufferLogger;
     if (bufferLogger.errorText.isNotEmpty) {
-      print(bufferLogger.errorText);
+      // This is where the logger outputting errors is implemented, so it has
+      // to use `print`.
+      print(bufferLogger.errorText); // ignore: avoid_print
     }
     bufferLogger.clear();
   }
@@ -284,95 +282,11 @@ class FakeDoctor extends Doctor {
   }
 }
 
-class MockSimControl extends Mock implements SimControl {
-  MockSimControl() {
-    when(getConnectedDevices()).thenAnswer((Invocation _) async => <SimDevice>[]);
-  }
-}
-
-class FakeOperatingSystemUtils implements OperatingSystemUtils {
-  @override
-  ProcessResult makeExecutable(File file) => null;
+class NoopIOSSimulatorUtils implements IOSSimulatorUtils {
+  const NoopIOSSimulatorUtils();
 
   @override
-  void chmod(FileSystemEntity entity, String mode) { }
-
-  @override
-  File which(String execName) => null;
-
-  @override
-  List<File> whichAll(String execName) => <File>[];
-
-  @override
-  File makePipe(String path) => null;
-
-  @override
-  void zip(Directory data, File zipFile) { }
-
-  @override
-  void unzip(File file, Directory targetDirectory) { }
-
-  @override
-  void unpack(File gzippedTarFile, Directory targetDirectory) { }
-
-  @override
-  Stream<List<int>> gzipLevel1Stream(Stream<List<int>> stream) => stream;
-
-  @override
-  String get name => 'fake OS name and version';
-
-  @override
-  String get pathVarSeparator => ';';
-
-  @override
-  Future<int> findFreePort({bool ipv6 = false}) async => 12345;
-}
-
-class MockIOSSimulatorUtils extends Mock implements IOSSimulatorUtils {}
-
-class FakeUsage implements Usage {
-  @override
-  bool get isFirstRun => false;
-
-  @override
-  bool get suppressAnalytics => false;
-
-  @override
-  set suppressAnalytics(bool value) { }
-
-  @override
-  bool get enabled => true;
-
-  @override
-  set enabled(bool value) { }
-
-  @override
-  String get clientId => '00000000-0000-4000-0000-000000000000';
-
-  @override
-  void sendCommand(String command, { Map<String, String> parameters }) { }
-
-  @override
-  void sendEvent(String category, String parameter, {
-    String label,
-    int value,
-    Map<String, String> parameters,
-  }) { }
-
-  @override
-  void sendTiming(String category, String variableName, Duration duration, { String label }) { }
-
-  @override
-  void sendException(dynamic exception) { }
-
-  @override
-  Stream<Map<String, dynamic>> get onSend => null;
-
-  @override
-  Future<void> ensureAnalyticsSent() => Future<void>.value();
-
-  @override
-  void printWelcome() { }
+  Future<List<IOSSimulator>> getAttachedDevices() async => <IOSSimulator>[];
 }
 
 class FakeXcodeProjectInterpreter implements XcodeProjectInterpreter {
@@ -380,30 +294,30 @@ class FakeXcodeProjectInterpreter implements XcodeProjectInterpreter {
   bool get isInstalled => true;
 
   @override
-  String get versionText => 'Xcode 11.0';
+  String get versionText => 'Xcode 12.3';
 
   @override
-  int get majorVersion => 11;
-
-  @override
-  int get minorVersion => 0;
-
-  @override
-  int get patchVersion => 0;
+  Version get version => Version(12, 3, null);
 
   @override
   Future<Map<String, String>> getBuildSettings(
     String projectPath, {
-    String scheme,
+    XcodeProjectBuildContext buildContext,
     Duration timeout = const Duration(minutes: 1),
   }) async {
     return <String, String>{};
   }
 
   @override
-  Future<void> cleanWorkspace(String workspacePath, String scheme, { bool verbose = false }) {
+  Future<String> pluginsBuildSettingsOutput(
+      Directory podXcodeProject, {
+        Duration timeout = const Duration(minutes: 1),
+      }) async {
     return null;
   }
+
+  @override
+  Future<void> cleanWorkspace(String workspacePath, String scheme, { bool verbose = false }) async { }
 
   @override
   Future<XcodeProjectInfo> getInfo(String projectPath, {String projectFilename}) async {
@@ -414,29 +328,17 @@ class FakeXcodeProjectInterpreter implements XcodeProjectInterpreter {
       BufferLogger.test(),
     );
   }
+
+  @override
+  List<String> xcrunCommand() => <String>['xcrun'];
 }
 
-class MockFlutterVersion extends Mock implements FlutterVersion {
-  MockFlutterVersion({bool isStable = false}) : _isStable = isStable;
-
-  final bool _isStable;
-
-  @override
-  bool get isMaster => !_isStable;
-}
-
-class MockClock extends Mock implements SystemClock {}
-
-class MockHttpClient extends Mock implements HttpClient {}
-
-class MockCrashReporter extends Mock implements CrashReporter {}
-
-class FakePlistParser implements PlistParser {
-  @override
-  Map<String, dynamic> parseFile(String plistFilePath) => const <String, dynamic>{};
+/// Prevent test crashest from being reported to the crash backend.
+class NoopCrashReporter implements CrashReporter {
+  const NoopCrashReporter();
 
   @override
-  String getValueFromFile(String plistFilePath, String key) => null;
+  Future<void> informUser(CrashDetails details, File crashFile) async { }
 }
 
 class LocalFileSystemBlockingSetCurrentDirectory extends LocalFileSystem {

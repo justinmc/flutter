@@ -2,11 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'semantics_tester.dart';
@@ -36,7 +34,11 @@ void main() {
   });
 }
 
-Widget buildTestWidgets({ bool excludeSemantics, String label, bool isSemanticsBoundary }) {
+Widget buildTestWidgets({
+  required bool excludeSemantics,
+  required String label,
+  required bool isSemanticsBoundary,
+}) {
   return Directionality(
     textDirection: TextDirection.ltr,
     child: Semantics(
@@ -65,10 +67,10 @@ Widget buildTestWidgets({ bool excludeSemantics, String label, bool isSemanticsB
 
 class TestWidget extends SingleChildRenderObjectWidget {
   const TestWidget({
-    Key key,
-    Widget child,
-    this.label,
-    this.isSemanticBoundary,
+    Key? key,
+    required Widget child,
+    required this.label,
+    required this.isSemanticBoundary,
   }) : super(key: key, child: child);
 
   final String label;
@@ -90,7 +92,6 @@ class TestWidget extends SingleChildRenderObjectWidget {
 }
 
 class RenderTest extends RenderProxyBox {
-
   @override
   void describeSemanticsConfiguration(SemanticsConfiguration config) {
     super.describeSemanticsConfiguration(config);
@@ -105,6 +106,7 @@ class RenderTest extends RenderProxyBox {
 
   }
 
+  String get label => _label;
   String _label = '<>';
   set label(String value) {
     if (value == _label)
@@ -114,6 +116,7 @@ class RenderTest extends RenderProxyBox {
   }
 
 
+  bool get isSemanticBoundary => _isSemanticBoundary;
   bool _isSemanticBoundary = false;
   set isSemanticBoundary(bool value) {
     if (_isSemanticBoundary == value)

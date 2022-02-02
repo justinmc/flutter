@@ -6,7 +6,6 @@ import 'dart:async';
 
 import '../base/common.dart';
 import '../base/io.dart';
-import '../cache.dart';
 import '../device.dart';
 import '../globals.dart' as globals;
 import '../runner/flutter_command.dart';
@@ -28,13 +27,16 @@ class LogsCommand extends FlutterCommand {
   final String description = 'Show log output for running Flutter apps.';
 
   @override
-  Future<Set<DevelopmentArtifact>> get requiredArtifacts async => const <DevelopmentArtifact>{};
-
-  Device device;
+  final String category = FlutterCommandCategory.tools;
 
   @override
-  Future<FlutterCommandResult> verifyThenRunCommand(String commandPath) async {
-    device = await findTargetDevice();
+  Future<Set<DevelopmentArtifact>> get requiredArtifacts async => const <DevelopmentArtifact>{};
+
+  Device? device;
+
+  @override
+  Future<FlutterCommandResult> verifyThenRunCommand(String? commandPath) async {
+    device = await findTargetDevice(includeUnsupportedDevices: true);
     if (device == null) {
       throwToolExit(null);
     }
@@ -43,11 +45,12 @@ class LogsCommand extends FlutterCommand {
 
   @override
   Future<FlutterCommandResult> runCommand() async {
+    final Device cachedDevice = device!;
     if (boolArg('clear')) {
-      device.clearLogs();
+      cachedDevice.clearLogs();
     }
 
-    final DeviceLogReader logReader = await device.getLogReader();
+    final DeviceLogReader logReader = await cachedDevice.getLogReader();
 
     globals.printStatus('Showing $logReader logs:');
 
@@ -65,12 +68,12 @@ class LogsCommand extends FlutterCommand {
     );
 
     // When terminating, close down the log reader.
-    ProcessSignal.SIGINT.watch().listen((ProcessSignal signal) {
+    ProcessSignal.sigint.watch().listen((ProcessSignal signal) {
       subscription.cancel();
       globals.printStatus('');
       exitCompleter.complete(0);
     });
-    ProcessSignal.SIGTERM.watch().listen((ProcessSignal signal) {
+    ProcessSignal.sigterm.watch().listen((ProcessSignal signal) {
       subscription.cancel();
       exitCompleter.complete(0);
     });

@@ -2,10 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'dart:async';
-
-import 'package:meta/meta.dart';
-
 import '../base/common.dart';
 import '../build_info.dart';
 import '../cache.dart';
@@ -19,7 +15,9 @@ import 'build.dart';
 
 /// A command to build a Fuchsia target.
 class BuildFuchsiaCommand extends BuildSubCommand {
-  BuildFuchsiaCommand({ @required bool verboseHelp }) {
+  BuildFuchsiaCommand({
+    required bool verboseHelp,
+  }) : super(verboseHelp: verboseHelp) {
     addTreeShakeIconsFlag();
     usesTargetOption();
     usesDartDefineOption();
@@ -59,6 +57,9 @@ class BuildFuchsiaCommand extends BuildSubCommand {
   String get description => 'Build the Fuchsia target (Experimental).';
 
   @override
+  bool get supported => globals.platform.isLinux || globals.platform.isMacOS;
+
+  @override
   Future<FlutterCommandResult> runCommand() async {
     if (!featureFlags.isFuchsiaEnabled) {
       throwToolExit(
@@ -66,20 +67,21 @@ class BuildFuchsiaCommand extends BuildSubCommand {
         'information.'
       );
     }
-    final BuildInfo buildInfo = getBuildInfo();
+    final BuildInfo buildInfo = await getBuildInfo();
     final FlutterProject flutterProject = FlutterProject.current();
-    if (!globals.platform.isLinux && !globals.platform.isMacOS) {
+    if (!supported) {
       throwToolExit('"build fuchsia" is only supported on Linux and MacOS hosts.');
     }
     if (!flutterProject.fuchsia.existsSync()) {
       throwToolExit('No Fuchsia project is configured.');
     }
+    displayNullSafetyMode(buildInfo);
     await buildFuchsia(
       fuchsiaProject: flutterProject.fuchsia,
       target: targetFile,
-      targetPlatform: getTargetPlatformForName(stringArg('target-platform')),
+      targetPlatform: getTargetPlatformForName(stringArg('target-platform')!),
       buildInfo: buildInfo,
-      runnerPackageSource: stringArg('runner-source'),
+      runnerPackageSource: stringArg('runner-source')!,
     );
     return FlutterCommandResult.success();
   }

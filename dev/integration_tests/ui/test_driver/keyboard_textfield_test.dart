@@ -2,23 +2,20 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'dart:async';
-
-import 'package:integration_ui/keys.dart' as keys;
 import 'package:flutter_driver/flutter_driver.dart';
-
+import 'package:integration_ui/keys.dart' as keys;
 import 'package:test/test.dart' hide TypeMatcher, isInstanceOf;
 
 void main() {
   group('end-to-end test', () {
-    FlutterDriver driver;
+    late FlutterDriver driver;
 
     setUpAll(() async {
       driver = await FlutterDriver.connect();
     });
 
     tearDownAll(() async {
-      await driver?.close();
+      await driver.close();
     });
 
     test('Textfield scrolls back into view after covered by keyboard', () async {
@@ -27,6 +24,7 @@ void main() {
       final SerializableFinder listViewFinder = find.byValueKey(keys.kListView);
       final SerializableFinder textFieldFinder = find.byValueKey(keys.kDefaultTextField);
       final SerializableFinder offsetFinder = find.byValueKey(keys.kOffsetText);
+      final SerializableFinder keyboardVisibilityIndicatorFinder = find.text('keyboard visible');
 
       // Align TextField with bottom edge to ensure it would be covered when keyboard comes up.
       await driver.waitForAbsent(textFieldFinder);
@@ -41,7 +39,9 @@ void main() {
 
       // Bring up keyboard
       await driver.tap(textFieldFinder);
-      await Future<void>.delayed(const Duration(seconds: 1));
+
+      // TODO(jmagman): Remove timeout once flake has been diagnosed. https://github.com/flutter/flutter/issues/96787
+      await driver.waitFor(keyboardVisibilityIndicatorFinder, timeout: const Duration(seconds: 5));
 
       // Ensure that TextField is visible again
       await driver.waitFor(textFieldFinder);
@@ -49,6 +49,6 @@ void main() {
 
       // Ensure the scroll offset changed appropriately when TextField scrolled back into view.
       expect(scrollOffsetWithKeyboard, greaterThan(scrollOffsetWithoutKeyboard));
-    });
+    }, timeout: Timeout.none);
   });
 }

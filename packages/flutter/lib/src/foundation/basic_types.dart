@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'dart:async';
 import 'dart:collection';
 
 // COMMON SIGNATURES
@@ -114,7 +113,7 @@ class CachingIterable<E> extends IterableBase<E> {
   /// once. If you have an [Iterable], you can pass its [iterator]
   /// field as the argument to this constructor.
   ///
-  /// You can use a `sync*` function with this as follows:
+  /// You can this with an existing `sync*` function as follows:
   ///
   /// ```dart
   /// Iterable<int> range(int start, int end) sync* {
@@ -126,6 +125,10 @@ class CachingIterable<E> extends IterableBase<E> {
   /// print(i.length); // walks the list
   /// print(i.length); // efficient
   /// ```
+  ///
+  /// Beware that this will eagerly evaluate the `range` iterable, and because
+  /// of that it would be better to just implement `range` as something that
+  /// returns a `List` to begin with if possible.
   CachingIterable(this._prefillIterator);
 
   final Iterator<E> _prefillIterator;
@@ -137,18 +140,18 @@ class CachingIterable<E> extends IterableBase<E> {
   }
 
   @override
-  Iterable<T> map<T>(T f(E e)) {
-    return CachingIterable<T>(super.map<T>(f).iterator);
+  Iterable<T> map<T>(T Function(E e) toElement) {
+    return CachingIterable<T>(super.map<T>(toElement).iterator);
   }
 
   @override
-  Iterable<E> where(bool test(E element)) {
+  Iterable<E> where(bool Function(E element) test) {
     return CachingIterable<E>(super.where(test).iterator);
   }
 
   @override
-  Iterable<T> expand<T>(Iterable<T> f(E element)) {
-    return CachingIterable<T>(super.expand<T>(f).iterator);
+  Iterable<T> expand<T>(Iterable<T> Function(E element) toElements) {
+    return CachingIterable<T>(super.expand<T>(toElements).iterator);
   }
 
   @override
@@ -157,7 +160,7 @@ class CachingIterable<E> extends IterableBase<E> {
   }
 
   @override
-  Iterable<E> takeWhile(bool test(E value)) {
+  Iterable<E> takeWhile(bool Function(E value) test) {
     return CachingIterable<E>(super.takeWhile(test).iterator);
   }
 
@@ -167,7 +170,7 @@ class CachingIterable<E> extends IterableBase<E> {
   }
 
   @override
-  Iterable<E> skipWhile(bool test(E value)) {
+  Iterable<E> skipWhile(bool Function(E value) test) {
     return CachingIterable<E>(super.skipWhile(test).iterator);
   }
 
@@ -180,7 +183,7 @@ class CachingIterable<E> extends IterableBase<E> {
   @override
   List<E> toList({ bool growable = true }) {
     _precacheEntireList();
-    return List<E>.from(_results, growable: growable);
+    return List<E>.of(_results, growable: growable);
   }
 
   void _precacheEntireList() {

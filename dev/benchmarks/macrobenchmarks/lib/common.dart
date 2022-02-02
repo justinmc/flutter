@@ -11,6 +11,7 @@ const String kPictureCacheRouteName = '/picture_cache';
 const String kLargeImageChangerRouteName = '/large_image_changer';
 const String kLargeImagesRouteName = '/large_images';
 const String kTextRouteName = '/text';
+const String kFullscreenTextRouteName = '/fullscreen_text';
 const String kAnimatedPlaceholderRouteName = '/animated_placeholder';
 const String kColorFilterAndFadeRouteName = '/color_filter_and_fade';
 const String kFadingChildAnimationRouteName = '/fading_child_animation';
@@ -18,5 +19,24 @@ const String kImageFilteredTransformAnimationRouteName = '/imagefiltered_transfo
 const String kMultiWidgetConstructionRouteName = '/multi_widget_construction';
 const String kHeavyGridViewRouteName = '/heavy_gridview';
 const String kSimpleScrollRouteName = '/simple_scroll';
+const String kStackSizeRouteName = '/stack_size';
+const String kAnimationWithMicrotasksRouteName = '/animation_with_microtasks';
+const String kAnimatedImageRouteName = '/animated_image';
+const String kOpacityPeepholeRouteName = '/opacity_peephole';
+
+const String kOpacityPeepholeOneRectRouteName = '$kOpacityPeepholeRouteName/one_big_rect';
+const String kOpacityPeepholeColumnOfOpacityRouteName = '$kOpacityPeepholeRouteName/column_of_opacity';
+const String kOpacityPeepholeOpacityOfCachedChildRouteName = '$kOpacityPeepholeRouteName/opacity_of_cached_child';
+const String kOpacityPeepholeOpacityOfColumnRouteName = '$kOpacityPeepholeRouteName/opacity_of_column';
+const String kOpacityPeepholeGridOfOpacityRouteName = '$kOpacityPeepholeRouteName/grid_of_opacity';
+const String kOpacityPeepholeOpacityOfGridRouteName = '$kOpacityPeepholeRouteName/opacity_of_grid';
+const String kOpacityPeepholeOpacityOfColOfRowsRouteName = '$kOpacityPeepholeRouteName/opacity_of_col_of_rows';
+const String kOpacityPeepholeFadeTransitionTextRouteName = '$kOpacityPeepholeRouteName/fade_transition_text';
+const String kOpacityPeepholeGridOfRectsWithAlphaRouteName = '$kOpacityPeepholeRouteName/grid_of_rects_with_alpha';
+const String kOpacityPeepholeGridOfAlphaSaveLayerRectsRouteName = '$kOpacityPeepholeRouteName/grid_of_alpha_savelayer_rects';
+const String kOpacityPeepholeColumnOfAlphaSaveLayerRowsOfRectsRouteName = '$kOpacityPeepholeRouteName/column_of_alpha_save_layer_rows_of_rects';
 
 const String kScrollableName = '/macrobenchmark_listview';
+const String kOpacityScrollableName = '$kOpacityPeepholeRouteName/listview';
+
+const String kStackSizeKey = 'stack_size';

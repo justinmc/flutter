@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/painting.dart';
 import 'package:flutter/rendering.dart';
 
 import 'basic.dart';
@@ -11,7 +10,7 @@ import 'framework.dart';
 import 'image.dart';
 
 // Examples can assume:
-// BuildContext context;
+// late BuildContext context;
 
 /// A widget that paints a [Decoration] either before or after its child paints.
 ///
@@ -28,14 +27,14 @@ import 'image.dart';
 /// This sample shows a radial gradient that draws a moon on a night sky:
 ///
 /// ```dart
-/// DecoratedBox(
+/// const DecoratedBox(
 ///   decoration: BoxDecoration(
 ///     gradient: RadialGradient(
-///       center: const Alignment(-0.5, -0.6),
+///       center: Alignment(-0.5, -0.6),
 ///       radius: 0.15,
 ///       colors: <Color>[
-///         const Color(0xFFEEEEEE),
-///         const Color(0xFF111133),
+///         Color(0xFFEEEEEE),
+///         Color(0xFF111133),
 ///       ],
 ///       stops: <double>[0.9, 1.0],
 ///     ),
@@ -95,7 +94,7 @@ class DecoratedBox extends SingleChildRenderObjectWidget {
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
     super.debugFillProperties(properties);
-    String label;
+    final String label;
     switch (position) {
       case DecorationPosition.background:
         label = 'bg';
@@ -105,12 +104,7 @@ class DecoratedBox extends SingleChildRenderObjectWidget {
         break;
     }
     properties.add(EnumProperty<DecorationPosition>('position', position, level: DiagnosticLevel.hidden));
-    properties.add(DiagnosticsProperty<Decoration>(
-      label,
-      decoration,
-      ifNull: 'no decoration',
-      showName: decoration != null,
-    ));
+    properties.add(DiagnosticsProperty<Decoration>(label, decoration));
   }
 }
 
@@ -223,7 +217,7 @@ class DecoratedBox extends SingleChildRenderObjectWidget {
 /// ```dart
 /// Container(
 ///   constraints: BoxConstraints.expand(
-///     height: Theme.of(context).textTheme.headline4.fontSize * 1.1 + 200.0,
+///     height: Theme.of(context).textTheme.headline4!.fontSize! * 1.1 + 200.0,
 ///   ),
 ///   padding: const EdgeInsets.all(8.0),
 ///   color: Colors.blue[600],
@@ -231,7 +225,7 @@ class DecoratedBox extends SingleChildRenderObjectWidget {
 ///   child: Text('Hello World',
 ///     style: Theme.of(context)
 ///         .textTheme
-///         .headline4
+///         .headline4!
 ///         .copyWith(color: Colors.white)),
 ///   transform: Matrix4.rotationZ(0.1),
 /// )
@@ -268,6 +262,7 @@ class Container extends StatelessWidget {
     BoxConstraints? constraints,
     this.margin,
     this.transform,
+    this.transformAlignment,
     this.child,
     this.clipBehavior = Clip.none,
   }) : assert(margin == null || margin.isNonNegative),
@@ -278,7 +273,7 @@ class Container extends StatelessWidget {
        assert(decoration != null || clipBehavior == Clip.none),
        assert(color == null || decoration == null,
          'Cannot provide both a color and a decoration\n'
-         'To provide both, use "decoration: BoxDecoration(color: color)".'
+         'To provide both, use "decoration: BoxDecoration(color: color)".',
        ),
        constraints =
         (width != null || height != null)
@@ -294,7 +289,7 @@ class Container extends StatelessWidget {
   /// the parent provides unbounded constraints, in which case the container
   /// will attempt to be as small as possible.
   ///
-  /// {@macro flutter.widgets.child}
+  /// {@macro flutter.widgets.ProxyWidget.child}
   final Widget? child;
 
   /// Align the [child] within the container.
@@ -356,6 +351,15 @@ class Container extends StatelessWidget {
   /// The transformation matrix to apply before painting the container.
   final Matrix4? transform;
 
+  /// The alignment of the origin, relative to the size of the container, if [transform] is specified.
+  ///
+  /// When [transform] is null, the value of this property is ignored.
+  ///
+  /// See also:
+  ///
+  ///  * [Transform.alignment], which is set by this property.
+  final AlignmentGeometry? transformAlignment;
+
   /// The clip behavior when [Container.decoration] is not null.
   ///
   /// Defaults to [Clip.none]. Must be [Clip.none] if [decoration] is null.
@@ -401,7 +405,7 @@ class Container extends StatelessWidget {
       assert(decoration != null);
       current = ClipPath(
         clipper: _DecorationClipper(
-          textDirection: Directionality.of(context),
+          textDirection: Directionality.maybeOf(context),
           decoration: decoration!,
         ),
         clipBehavior: clipBehavior,
@@ -427,7 +431,7 @@ class Container extends StatelessWidget {
       current = Padding(padding: margin!, child: current);
 
     if (transform != null)
-      current = Transform(transform: transform!, child: current);
+      current = Transform(transform: transform!, alignment: transformAlignment, child: current);
 
     return current!;
   }
@@ -453,7 +457,7 @@ class Container extends StatelessWidget {
 class _DecorationClipper extends CustomClipper<Path> {
   _DecorationClipper({
     TextDirection? textDirection,
-    required this.decoration
+    required this.decoration,
   }) : assert(decoration != null),
        textDirection = textDirection ?? TextDirection.ltr;
 

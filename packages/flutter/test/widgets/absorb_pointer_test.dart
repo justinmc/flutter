@@ -2,10 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 import 'semantics_tester.dart';
 
@@ -21,14 +19,11 @@ void main() {
             ),
           ),
           const Expanded(
-            child: AbsorbPointer(
-              absorbing: true,
-            ),
+            child: AbsorbPointer(),
           ),
         ],
       ),
     );
-
     await tester.tap(find.byType(GestureDetector));
     expect(tapped, true);
   });
@@ -37,15 +32,13 @@ void main() {
     final SemanticsTester semantics = SemanticsTester(tester);
     await tester.pumpWidget(
       AbsorbPointer(
-        absorbing: true,
         child: Semantics(
           label: 'test',
           textDirection: TextDirection.ltr,
         ),
       ),
     );
-    expect(semantics, hasSemantics(
-      TestSemantics.root(), ignoreId: true, ignoreRect: true, ignoreTransform: true));
+    expect(semantics, hasSemantics(TestSemantics.root(), ignoreId: true, ignoreRect: true, ignoreTransform: true));
 
     await tester.pumpWidget(
       AbsorbPointer(
@@ -66,7 +59,10 @@ void main() {
           ),
         ],
       ),
-      ignoreId: true, ignoreRect: true, ignoreTransform: true));
+      ignoreId: true,
+      ignoreRect: true,
+      ignoreTransform: true,
+    ));
     semantics.dispose();
   });
 }

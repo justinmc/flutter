@@ -3,7 +3,8 @@
 // found in the LICENSE file.
 
 import 'dart:math' as math;
-import 'package:meta/meta.dart';
+
+import 'task_result.dart';
 
 const String kBenchmarkTypeKeyName = 'benchmark_type';
 const String kBenchmarkVersionKeyName = 'version';
@@ -39,8 +40,8 @@ class ABTest {
   final String localEngine;
   final String taskName;
   final DateTime runStart;
-  DateTime _runEnd;
-  DateTime get runEnd => _runEnd;
+  DateTime? _runEnd;
+  DateTime? get runEnd => _runEnd;
 
   final Map<String, List<double>> _aResults;
   final Map<String, List<double>> _bResults;
@@ -58,7 +59,7 @@ class ABTest {
   /// The result may contain multiple score keys.
   ///
   /// [result] is expected to be a serialization of [TaskResult].
-  void addAResult(Map<String, dynamic> result) {
+  void addAResult(TaskResult result) {
     if (_runEnd != null) {
       throw StateError('Cannot add results to ABTest after it is finalized');
     }
@@ -70,7 +71,7 @@ class ABTest {
   /// The result may contain multiple score keys.
   ///
   /// [result] is expected to be a serialization of [TaskResult].
-  void addBResult(Map<String, dynamic> result) {
+  void addBResult(TaskResult result) {
     if (_runEnd != null) {
       throw StateError('Cannot add results to ABTest after it is finalized');
     }
@@ -87,15 +88,15 @@ class ABTest {
     kLocalEngineKeyName:       localEngine,
     kTaskNameKeyName:          taskName,
     kRunStartKeyName:          runStart.toIso8601String(),
-    kRunEndKeyName:            runEnd.toIso8601String(),
+    kRunEndKeyName:            runEnd!.toIso8601String(),
     kAResultsKeyName:          _aResults,
     kBResultsKeyName:          _bResults,
   };
 
-  static void updateColumnLengths(List<int> lengths, List<String> results) {
+  static void updateColumnLengths(List<int> lengths, List<String?> results) {
     for (int column = 0; column < lengths.length; column++) {
       if (results[column] != null) {
-        lengths[column] = math.max(lengths[column], results[column].length);
+        lengths[column] = math.max(lengths[column], results[column]?.length ?? 0);
       }
     }
   }
@@ -103,10 +104,10 @@ class ABTest {
   static void formatResult(StringBuffer buffer,
                            List<int> lengths,
                            List<FieldJustification> aligns,
-                           List<String> values) {
+                           List<String?> values) {
     for (int column = 0; column < lengths.length; column++) {
       final int len = lengths[column];
-      String value = values[column];
+      String? value = values[column];
       if (value == null) {
         value = ''.padRight(len);
       } else {
@@ -138,9 +139,9 @@ class ABTest {
     final Map<String, _ScoreSummary> summariesA = _summarize(_aResults);
     final Map<String, _ScoreSummary> summariesB = _summarize(_bResults);
 
-    final List<List<String>> tableRows = <List<String>>[
+    final List<List<String?>> tableRows = <List<String?>>[
       for (final String scoreKey in <String>{...summariesA.keys, ...summariesB.keys})
-        <String>[
+        <String?>[
           scoreKey,
           summariesA[scoreKey]?.averageString, summariesA[scoreKey]?.noiseString,
           summariesB[scoreKey]?.averageString, summariesB[scoreKey]?.noiseString,
@@ -163,7 +164,7 @@ class ABTest {
 
     final List<int> lengths = List<int>.filled(6, 0);
     updateColumnLengths(lengths, titles);
-    for (final List<String> row in tableRows) {
+    for (final List<String?> row in tableRows) {
       updateColumnLengths(lengths, row);
     }
 
@@ -173,7 +174,7 @@ class ABTest {
           FieldJustification.CENTER,
           ...alignments.skip(1),
         ], titles);
-    for (final List<String> row in tableRows) {
+    for (final List<String?> row in tableRows) {
       formatResult(buffer, lengths, alignments, row);
     }
 
@@ -188,7 +189,7 @@ class ABTest {
       buffer.writeln('$scoreKey:');
       buffer.write('  A:\t');
       if (_aResults.containsKey(scoreKey)) {
-        for (final double score in _aResults[scoreKey]) {
+        for (final double score in _aResults[scoreKey]!) {
           buffer.write('${score.toStringAsFixed(2)}\t');
         }
       } else {
@@ -198,7 +199,7 @@ class ABTest {
 
       buffer.write('  B:\t');
       if (_bResults.containsKey(scoreKey)) {
-        for (final double score in _bResults[scoreKey]) {
+        for (final double score in _bResults[scoreKey]!) {
           buffer.write('${score.toStringAsFixed(2)}\t');
         }
       } else {
@@ -228,8 +229,8 @@ class ABTest {
     );
 
     for (final String scoreKey in _allScoreKeys) {
-      final _ScoreSummary summaryA = summariesA[scoreKey];
-      final _ScoreSummary summaryB = summariesB[scoreKey];
+      final _ScoreSummary? summaryA = summariesA[scoreKey];
+      final _ScoreSummary? summaryB = summariesB[scoreKey];
       buffer.write('$scoreKey\t');
 
       if (summaryA != null) {
@@ -257,8 +258,8 @@ class ABTest {
 
 class _ScoreSummary {
   _ScoreSummary({
-    @required this.average,
-    @required this.noise,
+    required this.average,
+    required this.noise,
   });
 
   /// Average (arithmetic mean) of a series of values collected by a benchmark.
@@ -271,16 +272,14 @@ class _ScoreSummary {
   String get averageString => average.toStringAsFixed(2);
   String get noiseString => '(${_ratioToPercent(noise)})';
 
-  String improvementOver(_ScoreSummary other) {
+  String improvementOver(_ScoreSummary? other) {
     return other == null ? '' : '${(average / other.average).toStringAsFixed(2)}x';
   }
 }
 
-void _addResult(Map<String, dynamic> result, Map<String, List<double>> results) {
-  final List<String> scoreKeys = (result['benchmarkScoreKeys'] as List<dynamic>).cast<String>();
-  final Map<String, dynamic> data = result['data'] as Map<String, dynamic>;
-  for (final String scoreKey in scoreKeys) {
-    final double score = (data[scoreKey] as num).toDouble();
+void _addResult(TaskResult result, Map<String, List<double>> results) {
+  for (final String scoreKey in result.benchmarkScoreKeys ?? <String>[]) {
+    final double score = (result.data![scoreKey] as num).toDouble();
     results.putIfAbsent(scoreKey, () => <double>[]).add(score);
   }
 }

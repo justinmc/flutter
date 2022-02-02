@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -25,7 +23,7 @@ void main() {
         '   spacing: 0.0\n'
         '   runAlignment: start\n'
         '   runSpacing: 0.0\n'
-        '   crossAxisAlignment: 0.0\n'
+        '   crossAxisAlignment: 0.0\n',
       ),
     );
   });
@@ -105,7 +103,7 @@ void main() {
             style: TextStyle(fontSize: lineHeight),
           ),
           textDirection: TextDirection.ltr,
-        )
+        ),
       ),
     );
 
@@ -211,13 +209,13 @@ void main() {
     // By default, clipBehavior should be Clip.none
     final RenderWrap defaultWrap = RenderWrap(textDirection: TextDirection.ltr, children: <RenderBox>[box200x200]);
     layout(defaultWrap, constraints: viewport, phase: EnginePhase.composite, onErrors: expectOverflowedErrors);
-    defaultWrap.paint(context, Offset.zero);
+    context.paintChild(defaultWrap, Offset.zero);
     expect(context.clipBehavior, equals(Clip.none));
 
     for (final Clip clip in Clip.values) {
       final RenderWrap wrap = RenderWrap(textDirection: TextDirection.ltr, children: <RenderBox>[box200x200], clipBehavior: clip);
       layout(wrap, constraints: viewport, phase: EnginePhase.composite, onErrors: expectOverflowedErrors);
-      wrap.paint(context, Offset.zero);
+      context.paintChild(wrap, Offset.zero);
       expect(context.clipBehavior, equals(clip));
     }
   });

@@ -12,7 +12,7 @@ class BackgroundProject extends Project {
   final String pubspec = '''
   name: test
   environment:
-    sdk: ">=2.0.0-dev.68.0 <3.0.0"
+    sdk: ">=2.12.0-0 <3.0.0"
 
   dependencies:
     flutter:
@@ -51,7 +51,8 @@ class BackgroundProject extends Project {
 
   void updateTestIsolatePhrase(String message) {
     final String newMainContents = main.replaceFirst('Isolate thread', message);
-    writeFile(fileSystem.path.join(dir.path, 'lib', 'main.dart'), newMainContents);
+    writeFile(fileSystem.path.join(dir.path, 'lib', 'main.dart'), newMainContents,
+        writeFutureModifiedDate: true);
   }
 }
 
@@ -62,7 +63,7 @@ class RepeatingBackgroundProject extends Project {
   final String pubspec = '''
   name: test
   environment:
-    sdk: ">=2.0.0-dev.68.0 <3.0.0"
+    sdk: ">=2.12.0-0 <3.0.0"
 
   dependencies:
     flutter:
@@ -101,6 +102,10 @@ class RepeatingBackgroundProject extends Project {
 
   void updateTestIsolatePhrase(String message) {
     final String newMainContents = main.replaceFirst('Isolate thread', message);
-    writeFile(fileSystem.path.join(dir.path, 'lib', 'main.dart'), newMainContents);
+    writeFile(
+      fileSystem.path.join(dir.path, 'lib', 'main.dart'),
+      newMainContents,
+      writeFutureModifiedDate: true,
+    );
   }
 }

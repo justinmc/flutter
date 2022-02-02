@@ -2,14 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'dart:ui' show window;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter/painting.dart';
 
 import '../rendering/mock_canvas.dart';
 
@@ -60,6 +58,7 @@ void main() {
       rangeValueIndicatorShape: PaddleRangeSliderValueIndicatorShape(),
       showValueIndicator: ShowValueIndicator.always,
       valueIndicatorTextStyle: TextStyle(color: Colors.black),
+      mouseCursor: MaterialStateMouseCursor.clickable,
     ).debugFillProperties(builder);
 
     final List<String> description = builder.properties
@@ -93,6 +92,7 @@ void main() {
       "rangeValueIndicatorShape: Instance of 'PaddleRangeSliderValueIndicatorShape'",
       'showValueIndicator: always',
       'valueIndicatorTextStyle: TextStyle(inherit: true, color: Color(0xff000000))',
+      'mouseCursor: MaterialStateMouseCursor(clickable)'
     ]);
   });
 
@@ -108,7 +108,7 @@ void main() {
     );
 
     await tester.pumpWidget(_buildApp(sliderTheme, value: 0.5, enabled: false));
-    final MaterialInkController material = Material.of(tester.element(find.byType(Slider)));
+    final MaterialInkController material = Material.of(tester.element(find.byType(Slider)))!;
 
     expect(
       material,
@@ -130,7 +130,7 @@ void main() {
     );
 
     await tester.pumpWidget(_buildApp(sliderTheme, value: 0.5, enabled: false));
-    final MaterialInkController material = Material.of(tester.element(find.byType(Slider)));
+    final MaterialInkController material = Material.of(tester.element(find.byType(Slider)))!;
 
     expect(
       material,
@@ -150,7 +150,7 @@ void main() {
       primaryColor: customColor1,
       primaryColorDark: customColor2,
       primaryColorLight: customColor3,
-      valueIndicatorTextStyle: ThemeData.fallback().textTheme.bodyText1.copyWith(color: customColor4),
+      valueIndicatorTextStyle: ThemeData.fallback().textTheme.bodyText1!.copyWith(color: customColor4),
     );
 
     expect(sliderTheme.activeTrackColor, equals(customColor1.withAlpha(0xff)));
@@ -165,7 +165,7 @@ void main() {
     expect(sliderTheme.disabledThumbColor, equals(customColor2.withAlpha(0x52)));
     expect(sliderTheme.overlayColor, equals(customColor1.withAlpha(0x1f)));
     expect(sliderTheme.valueIndicatorColor, equals(customColor1.withAlpha(0xff)));
-    expect(sliderTheme.valueIndicatorTextStyle.color, equals(customColor4));
+    expect(sliderTheme.valueIndicatorTextStyle!.color, equals(customColor4));
   });
 
   testWidgets('SliderThemeData generates correct shapes for fromPrimaryColors', (WidgetTester tester) async {
@@ -178,7 +178,7 @@ void main() {
       primaryColor: customColor1,
       primaryColorDark: customColor2,
       primaryColorLight: customColor3,
-      valueIndicatorTextStyle: ThemeData.fallback().textTheme.bodyText1.copyWith(color: customColor4),
+      valueIndicatorTextStyle: ThemeData.fallback().textTheme.bodyText1!.copyWith(color: customColor4),
     );
 
     expect(sliderTheme.overlayShape, const RoundSliderOverlayShape());
@@ -197,13 +197,13 @@ void main() {
       primaryColor: Colors.black,
       primaryColorDark: Colors.black,
       primaryColorLight: Colors.black,
-      valueIndicatorTextStyle: ThemeData.fallback().textTheme.bodyText1.copyWith(color: Colors.black),
+      valueIndicatorTextStyle: ThemeData.fallback().textTheme.bodyText1!.copyWith(color: Colors.black),
     ).copyWith(trackHeight: 2.0);
     final SliderThemeData sliderThemeWhite = SliderThemeData.fromPrimaryColors(
       primaryColor: Colors.white,
       primaryColorDark: Colors.white,
       primaryColorLight: Colors.white,
-      valueIndicatorTextStyle: ThemeData.fallback().textTheme.bodyText1.copyWith(color: Colors.white),
+      valueIndicatorTextStyle: ThemeData.fallback().textTheme.bodyText1!.copyWith(color: Colors.white),
     ).copyWith(trackHeight: 6.0);
     final SliderThemeData lerp = SliderThemeData.lerp(sliderThemeBlack, sliderThemeWhite, 0.5);
     const Color middleGrey = Color(0xff7f7f7f);
@@ -221,7 +221,7 @@ void main() {
     expect(lerp.disabledThumbColor, equals(middleGrey.withAlpha(0x52)));
     expect(lerp.overlayColor, equals(middleGrey.withAlpha(0x1f)));
     expect(lerp.valueIndicatorColor, equals(middleGrey.withAlpha(0xff)));
-    expect(lerp.valueIndicatorTextStyle.color, equals(middleGrey.withAlpha(0xff)));
+    expect(lerp.valueIndicatorTextStyle!.color, equals(middleGrey.withAlpha(0xff)));
   });
 
   testWidgets('Default slider track draws correctly', (WidgetTester tester) async {
@@ -232,7 +232,7 @@ void main() {
     final SliderThemeData sliderTheme = theme.sliderTheme.copyWith(thumbColor: Colors.red.shade500);
 
     await tester.pumpWidget(_buildApp(sliderTheme, value: 0.25));
-    final MaterialInkController material = Material.of(tester.element(find.byType(Slider)));
+    final MaterialInkController material = Material.of(tester.element(find.byType(Slider)))!;
 
     const Radius radius = Radius.circular(2);
     const Radius activatedRadius = Radius.circular(3);
@@ -266,7 +266,7 @@ void main() {
     final SliderThemeData sliderTheme = theme.sliderTheme.copyWith(thumbColor: Colors.red.shade500);
 
     await tester.pumpWidget(_buildApp(sliderTheme, value: 0.25));
-    final MaterialInkController material = Material.of(tester.element(find.byType(Slider)));
+    final MaterialInkController material = Material.of(tester.element(find.byType(Slider)))!;
 
     // With no touch, paints only the thumb.
     expect(
@@ -327,7 +327,7 @@ void main() {
     final SliderThemeData sliderTheme = theme.sliderTheme.copyWith(thumbColor: Colors.red.shade500);
 
     await tester.pumpWidget(_buildApp(sliderTheme, value: 0.45));
-    final MaterialInkController material = Material.of(tester.element(find.byType(Slider)));
+    final MaterialInkController material = Material.of(tester.element(find.byType(Slider)))!;
 
     expect(material, paints..circle(color: sliderTheme.thumbColor, radius: 10.0));
 
@@ -724,7 +724,7 @@ void main() {
 
     await tester.pumpWidget(_buildApp(sliderTheme, value: 0.25));
 
-    final MaterialInkController material = Material.of(tester.element(find.byType(Slider)));
+    final MaterialInkController material = Material.of(tester.element(find.byType(Slider)))!;
 
     // Top and bottom are centerY (300) + and - trackRadius (8).
     expect(
@@ -756,7 +756,7 @@ void main() {
     );
 
     await tester.pumpWidget(_buildApp(sliderTheme, value: 0.25));
-    final MaterialInkController material = Material.of(tester.element(find.byType(Slider)));
+    final MaterialInkController material = Material.of(tester.element(find.byType(Slider)))!;
 
     expect(
       material,
@@ -780,7 +780,7 @@ void main() {
     );
 
     await tester.pumpWidget(_buildApp(sliderTheme, value: 0.25));
-    final MaterialInkController material = Material.of(tester.element(find.byType(Slider)));
+    final MaterialInkController material = Material.of(tester.element(find.byType(Slider)))!;
 
     expect(
       material,
@@ -806,7 +806,7 @@ void main() {
 
     await tester.pumpWidget(_buildApp(sliderTheme, value: 0.5, divisions: 2));
 
-    final MaterialInkController material = Material.of(tester.element(find.byType(Slider)));
+    final MaterialInkController material = Material.of(tester.element(find.byType(Slider)))!;
 
     expect(
       material,
@@ -842,7 +842,7 @@ void main() {
     await tester.startGesture(center);
     await tester.pumpAndSettle();
 
-    final MaterialInkController material = Material.of(tester.element(find.byType(Slider)));
+    final MaterialInkController material = Material.of(tester.element(find.byType(Slider)))!;
     expect(
       material,
       paints..circle(
@@ -851,6 +851,47 @@ void main() {
         radius: uniqueOverlayRadius,
         color: sliderTheme.overlayColor,
       ),
+    );
+  });
+
+  // Regression test for https://github.com/flutter/flutter/issues/74503
+  testWidgets('The slider track layout correctly when the overlay size is smaller than the thumb size', (WidgetTester tester) async {
+    final SliderThemeData sliderTheme = ThemeData().sliderTheme.copyWith(
+      overlayShape: SliderComponentShape.noOverlay,
+    );
+
+    await tester.pumpWidget(_buildApp(sliderTheme, value: 0.5));
+
+    final MaterialInkController material = Material.of(
+      tester.element(find.byType(Slider)),
+    )!;
+
+    // The track rectangle begins at 10 pixels from the left of the screen and ends 10 pixels from the right
+    // (790 pixels from the left). The main check here it that the track itself should be centered on
+    // the 800 pixel-wide screen.
+    expect(
+      material,
+      paints
+        // active track RRect. Starts 10 pixels from left of screen.
+        ..rrect(rrect: RRect.fromLTRBAndCorners(
+            10.0,
+            297.0,
+            400.0,
+            303.0,
+            topLeft: const Radius.circular(3.0),
+            bottomLeft: const Radius.circular(3.0),
+        ))
+        // inactive track RRect. Ends 10 pixels from right of screen.
+        ..rrect(rrect: RRect.fromLTRBAndCorners(
+            400.0,
+            298.0,
+            790.0,
+            302.0,
+            topRight: const Radius.circular(2.0),
+            bottomRight: const Radius.circular(2.0),
+        ))
+        // The thumb.
+        ..circle(x: 400.0, y: 300.0, radius: 10.0),
     );
   });
 
@@ -875,7 +916,7 @@ void main() {
       divisions: 4,
     ));
 
-    final MaterialInkController material = Material.of(tester.element(find.byType(Slider)));
+    final MaterialInkController material = Material.of(tester.element(find.byType(Slider)))!;
 
     expect(material, paintsExactlyCountTimes(#drawRect, 0));
     expect(material, paintsExactlyCountTimes(#drawCircle, 0));
@@ -895,7 +936,7 @@ void main() {
       divisions: 4,
     ));
 
-    final MaterialInkController material = Material.of(tester.element(find.byType(Slider)));
+    final MaterialInkController material = Material.of(tester.element(find.byType(Slider)))!;
 
     // Only 2 track segments.
     expect(material, paintsExactlyCountTimes(#drawRRect, 2));
@@ -919,7 +960,7 @@ void main() {
       divisions: 4,
     ));
 
-    final MaterialInkController material = Material.of(tester.element(find.byType(Slider)));
+    final MaterialInkController material = Material.of(tester.element(find.byType(Slider)))!;
 
     // Only 5 tick marks.
     expect(material, paintsExactlyCountTimes(#drawRect, 0));
@@ -940,7 +981,7 @@ void main() {
       divisions: 4,
     ));
 
-    final MaterialInkController material = Material.of(tester.element(find.byType(Slider)));
+    final MaterialInkController material = Material.of(tester.element(find.byType(Slider)))!;
 
     // Only 1 thumb.
     expect(material, paintsExactlyCountTimes(#drawRect, 0));
@@ -961,7 +1002,7 @@ void main() {
       divisions: 4,
     ));
 
-    final MaterialInkController material = Material.of(tester.element(find.byType(Slider)));
+    final MaterialInkController material = Material.of(tester.element(find.byType(Slider)))!;
 
     // Tap the center of the track and wait for animations to finish.
     final Offset center = tester.getCenter(find.byType(Slider));
@@ -990,7 +1031,7 @@ void main() {
       divisions: 4,
     ));
 
-    final MaterialInkController material = Material.of(tester.element(find.byType(Slider)));
+    final MaterialInkController material = Material.of(tester.element(find.byType(Slider)))!;
     final RenderBox valueIndicatorBox = tester.renderObject(find.byType(Overlay));
 
     // Tap the center of the track and wait for animations to finish.
@@ -1021,7 +1062,7 @@ void main() {
       divisions: 4,
     ));
 
-    final MaterialInkController material = Material.of(tester.element(find.byType(Slider)));
+    final MaterialInkController material = Material.of(tester.element(find.byType(Slider)))!;
     final RenderBox valueIndicatorBox = tester.renderObject(find.byType(Overlay));
 
     // Tap the center of the track to kick off the animation of the value indicator.
@@ -1098,23 +1139,19 @@ void main() {
         ..rrect(rrect: RRect.fromLTRBAndCorners(
           24.0, 298.0, 24.0, 302.0,
           topLeft: const Radius.circular(2.0),
-          topRight: const Radius.circular(0.0),
-          bottomRight: const Radius.circular(0.0),
           bottomLeft: const Radius.circular(2.0),
         ))
         ..rect(rect: const Rect.fromLTRB(24.0, 297.0, 24.0, 303.0))
         ..rrect(rrect: RRect.fromLTRBAndCorners(
           24.0, 298.0, 776.0, 302.0,
-          topLeft: const Radius.circular(0.0),
           topRight: const Radius.circular(2.0),
           bottomRight: const Radius.circular(2.0),
-          bottomLeft: const Radius.circular(0.0),
         ))
         ..circle(x: 24.0, y: 300.0)
         ..shadow(elevation: 1.0)
         ..circle(x: 24.0, y: 300.0)
         ..shadow(elevation: 6.0)
-        ..circle(x: 24.0, y: 300.0)
+        ..circle(x: 24.0, y: 300.0),
     );
 
     await gesture.up();
@@ -1180,15 +1217,78 @@ void main() {
 
     await gesture.up();
   });
+
+  testWidgets('activeTrackRadius is taken into account when painting the border of the active track', (WidgetTester tester) async {
+    await tester.pumpWidget(_buildApp(
+      ThemeData().sliderTheme.copyWith(
+        trackShape: const RoundedRectSliderTrackShapeWithCustomAdditionalActiveTrackHeight(
+          additionalActiveTrackHeight: 10.0
+        )
+      )
+    ));
+    await tester.pumpAndSettle();
+    final Offset center = tester.getCenter(find.byType(Slider));
+    await tester.startGesture(center);
+    expect(
+      find.byType(Slider),
+      paints
+        ..rrect(rrect: RRect.fromLTRBAndCorners(
+          24.0, 293.0, 24.0, 307.0,
+          topLeft: const Radius.circular(7.0),
+          bottomLeft: const Radius.circular(7.0),
+        ))
+        ..rrect(rrect: RRect.fromLTRBAndCorners(
+          24.0, 298.0, 776.0, 302.0,
+          topRight: const Radius.circular(2.0),
+          bottomRight: const Radius.circular(2.0),
+        )),
+    );
+  });
+
+  testWidgets('The mouse cursor is themeable', (WidgetTester tester) async {
+    await tester.pumpWidget(_buildApp(
+      ThemeData().sliderTheme.copyWith(
+        mouseCursor: MaterialStateProperty.all(SystemMouseCursors.text),
+      )
+    ));
+
+    await tester.pumpAndSettle();
+    final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await gesture.addPointer();
+    addTearDown(gesture.removePointer);
+    await gesture.moveTo(tester.getCenter(find.byType(Slider)));
+    await tester.pumpAndSettle();
+    expect(RendererBinding.instance!.mouseTracker.debugDeviceActiveCursor(1), SystemMouseCursors.text);
+  });
+}
+
+class RoundedRectSliderTrackShapeWithCustomAdditionalActiveTrackHeight extends RoundedRectSliderTrackShape {
+  const RoundedRectSliderTrackShapeWithCustomAdditionalActiveTrackHeight({required this.additionalActiveTrackHeight});
+  final double additionalActiveTrackHeight;
+  @override
+  void paint(
+    PaintingContext context,
+    Offset offset, {
+    required RenderBox parentBox,
+    required SliderThemeData sliderTheme,
+    required Animation<double> enableAnimation,
+    required TextDirection textDirection,
+    required Offset thumbCenter,
+    bool isDiscrete = false,
+    bool isEnabled = false,
+    double additionalActiveTrackHeight = 2.0,
+  }) {
+    super.paint(context, offset, parentBox: parentBox, sliderTheme: sliderTheme, enableAnimation: enableAnimation, textDirection: textDirection, thumbCenter: thumbCenter, additionalActiveTrackHeight: this.additionalActiveTrackHeight);
+  }
 }
 
 Widget _buildApp(
     SliderThemeData sliderTheme, {
       double value = 0.0,
       bool enabled = true,
-      int divisions,
+      int? divisions,
     }) {
-  final ValueChanged<double> onChanged = enabled ? (double d) => value = d : null;
+  final ValueChanged<double>? onChanged = enabled ? (double d) => value = d : null;
   return MaterialApp(
     home: Scaffold(
       body: Center(
@@ -1210,9 +1310,9 @@ Widget _buildRangeApp(
     SliderThemeData sliderTheme, {
       RangeValues values = const RangeValues(0, 0),
       bool enabled = true,
-      int divisions,
+      int? divisions,
     }) {
-  final ValueChanged<RangeValues> onChanged = enabled ? (RangeValues d) => values = d : null;
+  final ValueChanged<RangeValues>? onChanged = enabled ? (RangeValues d) => values = d : null;
   return MaterialApp(
     home: Scaffold(
       body: Center(

@@ -2,13 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'dart:ui' as ui show window;
 
-import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import '../flutter_test_alternative.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 import 'rendering_tester.dart';
 
@@ -20,7 +17,7 @@ class TestLayout {
         additionalConstraints: const BoxConstraints.tightFor(width: 800.0),
         child: RenderCustomPaint(
           painter: TestCallbackPainter(
-            onPaint: () { painted = true; }
+            onPaint: () { painted = true; },
           ),
           child: child = RenderConstrainedBox(
             additionalConstraints: const BoxConstraints.tightFor(height: 10.0, width: 10.0),
@@ -29,15 +26,14 @@ class TestLayout {
       ),
     );
   }
-  RenderBox root;
-  RenderBox child;
+  late RenderBox root;
+  late RenderBox child;
   bool painted = false;
 }
 
 void main() {
   const ViewConfiguration testConfiguration = ViewConfiguration(
     size: Size(800.0, 600.0),
-    devicePixelRatio: 1.0,
   );
 
   test('onscreen layout does not affect offscreen', () {

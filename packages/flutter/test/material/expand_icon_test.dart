@@ -2,12 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-Widget wrap({ Widget child, ThemeData theme }) {
+Widget wrap({ required Widget child, ThemeData? theme }) {
   return MaterialApp(
     theme: theme,
     home: Center(
@@ -26,7 +24,7 @@ void main() {
       child: ExpandIcon(
         onPressed: (bool isExpanded) {
           expanded = !expanded;
-        }
+        },
       ),
     ));
     await tester.pumpAndSettle();
@@ -102,7 +100,6 @@ void main() {
 
     await tester.pumpWidget(wrap(
       child: ExpandIcon(
-        isExpanded: false,
         onPressed: (bool isExpanded) {
           expanded = !expanded;
         },
@@ -142,7 +139,7 @@ void main() {
     );
 
     await tester.pumpWidget(wrap(
-      child: expandIcon
+      child: expandIcon,
     ));
 
     final ExpandIcon icon = tester.firstWidget(find.byWidget(expandIcon));
@@ -156,7 +153,7 @@ void main() {
     );
 
     await tester.pumpWidget(wrap(
-      child: expandIcon
+      child: expandIcon,
     ));
 
     ExpandIcon icon = tester.firstWidget(find.byWidget(expandIcon));
@@ -168,7 +165,7 @@ void main() {
     );
 
     await tester.pumpWidget(wrap(
-      child: expandIcon
+      child: expandIcon,
     ));
 
     icon = tester.firstWidget(find.byWidget(expandIcon));
@@ -196,7 +193,6 @@ void main() {
 
     await tester.pumpWidget(wrap(
       child: ExpandIcon(
-        isExpanded: false,
         onPressed: (bool _) { },
       ),
     ));
@@ -278,7 +274,6 @@ void main() {
 
     await tester.pumpWidget(wrap(
       child: const ExpandIcon(
-        isExpanded: false,
         onPressed: null,
         disabledColor: Colors.cyan,
       ),
@@ -289,7 +284,6 @@ void main() {
 
     await tester.pumpWidget(wrap(
       child: const ExpandIcon(
-        isExpanded: false,
         onPressed: null,
         color: Colors.indigo,
         disabledColor: Colors.cyan,

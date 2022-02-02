@@ -49,15 +49,16 @@ class RenderErrorBox extends RenderBox {
         _paragraph = null;
       }
     } catch (error) {
-      // Intentionally left empty.
+      // If an error happens here we're in a terrible state, so we really should
+      // just forget about it and let the developer deal with the already-reported
+      // errors. It's unlikely that these errors are going to help with that.
     }
   }
 
   /// The message to attempt to display at paint time.
   final String message;
 
-  // TODO(ianh): should be final
-  ui.Paragraph? _paragraph;
+  late final ui.Paragraph? _paragraph;
 
   @override
   double computeMaxIntrinsicWidth(double height) {
@@ -76,8 +77,8 @@ class RenderErrorBox extends RenderBox {
   bool hitTestSelf(Offset position) => true;
 
   @override
-  void performResize() {
-    size = constraints.constrain(const Size(_kMaxWidth, _kMaxHeight));
+  Size computeDryLayout(BoxConstraints constraints) {
+    return constraints.constrain(const Size(_kMaxWidth, _kMaxHeight));
   }
 
   /// The distance to place around the text.
@@ -91,7 +92,7 @@ class RenderErrorBox extends RenderBox {
   /// See also:
   ///
   ///  * [minimumWidth], which controls how wide the box must be before the
-  //     horizontal padding is applied.
+  ///    horizontal padding is applied.
   static EdgeInsets padding = const EdgeInsets.fromLTRB(64.0, 96.0, 64.0, 12.0);
 
   /// The width below which the horizontal padding is not applied.
@@ -162,8 +163,10 @@ class RenderErrorBox extends RenderBox {
         }
         context.canvas.drawParagraph(_paragraph!, offset + Offset(left, top));
       }
-    } catch (e) {
-      // Intentionally left empty.
+    } catch (error) {
+      // If an error happens here we're in a terrible state, so we really should
+      // just forget about it and let the developer deal with the already-reported
+      // errors. It's unlikely that these errors are going to help with that.
     }
   }
 }

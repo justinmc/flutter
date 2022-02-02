@@ -1,9 +1,9 @@
+<!-- when editing this file also update https://github.com/flutter/.github/blob/main/CONTRIBUTING.md -->
+
 Contributing to Flutter
 =======================
 
-[![Build Status](https://api.cirrus-ci.com/github/flutter/flutter.svg)](https://cirrus-ci.org/flutter/flutter)
-
-_See also: [Flutter's code of conduct](CODE_OF_CONDUCT.md)_
+_tl;dr: join [Discord](https://github.com/flutter/flutter/wiki/Chat), be [courteous](CODE_OF_CONDUCT.md), follow the steps below to set up a development environment; if you stick around and contribute, you can [join the team](https://github.com/flutter/flutter/wiki/Contributor-access) and get commit access._
 
 Welcome
 -------
@@ -20,14 +20,16 @@ our trust and demonstrated a commitment to Flutter. For more details
 see the [Contributor access](https://github.com/flutter/flutter/wiki/Contributor-access)
 page on our wiki.
 
-We communicate primarily over GitHub and on [chat channels](https://github.com/flutter/flutter/wiki/Chat).
+We communicate primarily over GitHub and [Discord](https://github.com/flutter/flutter/wiki/Chat).
+
+_See also: [Flutter's code of conduct](CODE_OF_CONDUCT.md)_
 
 Helping out in the issue database
 ---------------------------------
 
 If you want to help us triage, you are very welcome to do so!
 
-1. Join the #hackers-triage [chat](https://github.com/flutter/flutter/wiki/Chat) channel.
+1. Join the #hackers-triage [Discord channel](https://github.com/flutter/flutter/wiki/Chat).
 
 2. Read [our code of conduct](CODE_OF_CONDUCT.md), which stipulates explicitly
    that everyone must be gracious, respectful, and professional. If you're helping out
@@ -95,8 +97,11 @@ presented.
    which should be used when proposing a new technical design.  This is a good
    practice to do before coding more intricate changes.
 
-In addition to the above, there are many pages on [our
-Wiki](https://github.com/flutter/flutter/wiki/) and an article [Contributing to Flutter:
-Getting Started](https://medium.com/@ayushbherwani/contributing-to-flutter-getting-started-a0db68cbcd5b)
+[![How to contribute to Flutter](https://img.youtube.com/vi/4yBgOBAOx_A/0.jpg)](https://www.youtube.com/watch?v=4yBgOBAOx_A)
+
+In addition to the documents, there is a video linked above on **How to contribute to Flutter**
+from the [Flutter](https://youtube.com/c/flutterdev) YouTube channel,
+there are many pages on [our Wiki](https://github.com/flutter/flutter/wiki/),
+and an article [Contributing to Flutter: Getting Started](https://medium.com/@ayushbherwani/contributing-to-flutter-getting-started-a0db68cbcd5b)
 on Medium that may be of interest. For a curated list of pages see the sidebar
 on the wiki's home page. They are more or less listed in order of importance.

@@ -2,50 +2,26 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
-import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter/gestures.dart' show PointerDeviceKind;
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
+import 'package:flutter/gestures.dart' show PointerDeviceKind, kSecondaryButton;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
 
-class MockClipboard {
-  MockClipboard({
-    this.getDataThrows = false,
-  });
-
-  final bool getDataThrows;
-
-  Object _clipboardData = <String, dynamic>{
-    'text': null,
-  };
-
-  Future<dynamic> handleMethodCall(MethodCall methodCall) async {
-    switch (methodCall.method) {
-      case 'Clipboard.getData':
-        if (getDataThrows) {
-          throw Exception();
-        }
-        return _clipboardData;
-      case 'Clipboard.setData':
-        _clipboardData = methodCall.arguments;
-    }
-  }
-}
+import 'clipboard_utils.dart';
 
 void main() {
-  int tapCount;
-  int singleTapUpCount;
-  int singleTapCancelCount;
-  int singleLongTapStartCount;
-  int doubleTapDownCount;
-  int forcePressStartCount;
-  int forcePressEndCount;
-  int dragStartCount;
-  int dragUpdateCount;
-  int dragEndCount;
+  late int tapCount;
+  late int singleTapUpCount;
+  late int singleTapCancelCount;
+  late int singleLongTapStartCount;
+  late int doubleTapDownCount;
+  late int forcePressStartCount;
+  late int forcePressEndCount;
+  late int dragStartCount;
+  late int dragUpdateCount;
+  late int dragEndCount;
   const Offset forcePressOffset = Offset(400.0, 50.0);
 
   void _handleTapDown(TapDownDetails details) { tapCount++; }
@@ -240,10 +216,8 @@ void main() {
 
     await gesture.updateWithCustomEvent(PointerMoveEvent(
       pointer: pointerValue,
-      position: const Offset(0.0, 0.0),
       pressure: 0.5,
       pressureMin: 0,
-      pressureMax: 1,
     ));
     await gesture.up();
     await tester.pumpAndSettle();
@@ -260,10 +234,8 @@ void main() {
     );
     await gesture.updateWithCustomEvent(PointerMoveEvent(
       pointer: pointerValue,
-      position: const Offset(0.0, 0.0),
       pressure: 0.5,
       pressureMin: 0,
-      pressureMax: 1,
     ));
     await gesture.up();
     await tester.pump(const Duration(milliseconds: 20));
@@ -280,10 +252,8 @@ void main() {
     );
     await gesture.updateWithCustomEvent(PointerMoveEvent(
       pointer: pointerValue,
-      position: const Offset(0.0, 0.0),
       pressure: 0.5,
       pressureMin: 0,
-      pressureMax: 1,
     ));
     await gesture.up();
     await tester.pump(const Duration(milliseconds: 20));
@@ -300,10 +270,8 @@ void main() {
     );
     await gesture.updateWithCustomEvent(PointerMoveEvent(
       pointer: pointerValue,
-      position: const Offset(0.0, 0.0),
       pressure: 0.5,
       pressureMin: 0,
-      pressureMax: 1,
     ));
     await gesture.up();
 
@@ -330,10 +298,8 @@ void main() {
     await gesture.updateWithCustomEvent(
       PointerMoveEvent(
         pointer: pointerValue,
-        position: const Offset(0.0, 0.0),
         pressure: 0.0,
         pressureMin: 0,
-        pressureMax: 1,
       ),
     );
     await tester.pump(const Duration(milliseconds: 50));
@@ -352,10 +318,8 @@ void main() {
     );
     await gesture.updateWithCustomEvent(PointerMoveEvent(
       pointer: pointerValue,
-      position: const Offset(0.0, 0.0),
       pressure: 0.5,
       pressureMin: 0,
-      pressureMax: 1,
     ));
     expect(forcePressStartCount, 1);
 
@@ -374,7 +338,6 @@ void main() {
     final TestGesture gesture = await tester.startGesture(
       const Offset(200.0, 200.0),
       pointer: pointerValue,
-      kind: PointerDeviceKind.touch,
     );
     addTearDown(gesture.removePointer);
     await tester.pump(const Duration(seconds: 2));
@@ -412,7 +375,6 @@ void main() {
     final TestGesture gesture = await tester.startGesture(
       const Offset(200.0, 200.0),
       pointer: pointerValue,
-      kind: PointerDeviceKind.touch,
     );
     addTearDown(gesture.removePointer);
     await tester.pump();
@@ -477,7 +439,6 @@ void main() {
     final TestGesture gesture = await tester.startGesture(
       const Offset(200.0, 200.0),
       pointer: 0,
-      kind: PointerDeviceKind.touch,
     );
     addTearDown(gesture.removePointer);
     await tester.pump(const Duration(seconds: 2));
@@ -490,12 +451,54 @@ void main() {
     expect(renderEditable.selectPositionAtCalled, isTrue);
   });
 
+  testWidgets('TextSelectionGestureDetectorBuilder right click', (WidgetTester tester) async {
+    // Regression test for https://github.com/flutter/flutter/issues/80119
+    await pumpTextSelectionGestureDetectorBuilder(tester);
+
+    final FakeRenderEditable renderEditable = tester.renderObject(find.byType(FakeEditable));
+    renderEditable.text = const TextSpan(text: 'one two three four five six seven');
+    await tester.pump();
+
+    final TestGesture gesture = await tester.createGesture(
+      pointer: 0,
+      kind: PointerDeviceKind.mouse,
+      buttons: kSecondaryButton,
+    );
+    addTearDown(gesture.removePointer);
+
+    // Get the location of the 10th character
+    final Offset charLocation = renderEditable
+        .getLocalRectForCaret(const TextPosition(offset: 10)).center;
+    final Offset globalCharLocation = charLocation + tester.getTopLeft(find.byType(FakeEditable));
+
+    // Right clicking on a word should select it
+    await gesture.down(globalCharLocation);
+    await gesture.up();
+    await tester.pump();
+    expect(renderEditable.selectWordCalled, isTrue);
+
+    // Right clicking on a word within a selection shouldn't change the selection
+    renderEditable.selectWordCalled = false;
+    renderEditable.selection = const TextSelection(baseOffset: 3, extentOffset: 20);
+    await gesture.down(globalCharLocation);
+    await gesture.up();
+    await tester.pump();
+    expect(renderEditable.selectWordCalled, isFalse);
+
+    // Right clicking on a word within a reverse (right-to-left) selection shouldn't change the selection
+    renderEditable.selectWordCalled = false;
+    renderEditable.selection = const TextSelection(baseOffset: 20, extentOffset: 3);
+    await gesture.down(globalCharLocation);
+    await gesture.up();
+    await tester.pump();
+    expect(renderEditable.selectWordCalled, isFalse);
+  });
+
   testWidgets('test TextSelectionGestureDetectorBuilder tap', (WidgetTester tester) async {
     await pumpTextSelectionGestureDetectorBuilder(tester);
     final TestGesture gesture = await tester.startGesture(
       const Offset(200.0, 200.0),
       pointer: 0,
-      kind: PointerDeviceKind.touch,
     );
     addTearDown(gesture.removePointer);
     await gesture.up();
@@ -504,15 +507,26 @@ void main() {
     final FakeEditableTextState state = tester.state(find.byType(FakeEditableText));
     final FakeRenderEditable renderEditable = tester.renderObject(find.byType(FakeEditable));
     expect(state.showToolbarCalled, isFalse);
-    expect(renderEditable.selectWordEdgeCalled, isTrue);
-  });
+
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.iOS:
+      case TargetPlatform.macOS:
+        expect(renderEditable.selectWordEdgeCalled, isTrue);
+        break;
+      case TargetPlatform.android:
+      case TargetPlatform.fuchsia:
+      case TargetPlatform.linux:
+      case TargetPlatform.windows:
+        expect(renderEditable.selectPositionAtCalled, isTrue);
+        break;
+    }
+  }, variant: TargetPlatformVariant.all());
 
   testWidgets('test TextSelectionGestureDetectorBuilder double tap', (WidgetTester tester) async {
     await pumpTextSelectionGestureDetectorBuilder(tester);
     final TestGesture gesture = await tester.startGesture(
       const Offset(200.0, 200.0),
       pointer: 0,
-      kind: PointerDeviceKind.touch,
     );
     addTearDown(gesture.removePointer);
     await tester.pump(const Duration(milliseconds: 50));
@@ -535,7 +549,6 @@ void main() {
     await gesture.downWithCustomEvent(
       const Offset(200.0, 200.0),
       const PointerDownEvent(
-        pointer: 0,
         position: Offset(200.0, 200.0),
         pressure: 3.0,
         pressureMax: 6.0,
@@ -544,9 +557,7 @@ void main() {
     );
     await gesture.updateWithCustomEvent(
       const PointerUpEvent(
-        pointer: 0,
         position: Offset(200.0, 200.0),
-        pressure: 0.0,
         pressureMax: 6.0,
         pressureMin: 0.0,
       ),
@@ -559,12 +570,74 @@ void main() {
     expect(renderEditable.selectWordsInRangeCalled, isTrue);
   });
 
+  testWidgets('Mouse drag does not show handles nor toolbar', (WidgetTester tester) async {
+    // Regressing test for https://github.com/flutter/flutter/issues/69001
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: SelectableText('I love Flutter!'),
+        ),
+      ),
+    );
+
+    final Offset textFieldStart = tester.getTopLeft(find.byType(SelectableText));
+
+    final TestGesture gesture = await tester.startGesture(textFieldStart, kind: PointerDeviceKind.mouse);
+    addTearDown(gesture.removePointer);
+    await tester.pump();
+    await gesture.moveTo(textFieldStart + const Offset(50.0, 0));
+    await tester.pump();
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    final EditableTextState editableText = tester.state(find.byType(EditableText));
+    expect(editableText.selectionOverlay!.handlesAreVisible, isFalse);
+    expect(editableText.selectionOverlay!.toolbarIsVisible, isFalse);
+  });
+
+  testWidgets('test TextSelectionGestureDetectorBuilder drag with RenderEditable viewport offset change', (WidgetTester tester) async {
+    await pumpTextSelectionGestureDetectorBuilder(tester);
+    final FakeRenderEditable renderEditable = tester.renderObject(find.byType(FakeEditable));
+
+    // Reconfigure the RenderEditable for multi-line.
+    renderEditable.maxLines = null;
+    renderEditable.offset = ViewportOffset.fixed(20.0);
+    renderEditable.layout(const BoxConstraints.tightFor(width: 400, height: 300.0));
+    await tester.pumpAndSettle();
+
+    final TestGesture gesture = await tester.startGesture(
+      const Offset(200.0, 200.0),
+      kind: PointerDeviceKind.mouse,
+    );
+    addTearDown(gesture.removePointer);
+    await tester.pumpAndSettle();
+    expect(renderEditable.selectPositionAtCalled, isFalse);
+
+    await gesture.moveTo(const Offset(300.0, 200.0));
+    await tester.pumpAndSettle();
+    expect(renderEditable.selectPositionAtCalled, isTrue);
+    expect(renderEditable.selectPositionAtFrom, const Offset(200.0, 200.0));
+    expect(renderEditable.selectPositionAtTo, const Offset(300.0, 200.0));
+
+    // Move the viewport offset (scroll).
+    renderEditable.offset = ViewportOffset.fixed(150.0);
+    renderEditable.layout(const BoxConstraints.tightFor(width: 400, height: 300.0));
+    await tester.pumpAndSettle();
+
+    await gesture.moveTo(const Offset(300.0, 400.0));
+    await tester.pumpAndSettle();
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(renderEditable.selectPositionAtCalled, isTrue);
+    expect(renderEditable.selectPositionAtFrom, const Offset(200.0, 70.0));
+    expect(renderEditable.selectPositionAtTo, const Offset(300.0, 400.0));
+  });
+
   testWidgets('test TextSelectionGestureDetectorBuilder selection disabled', (WidgetTester tester) async {
     await pumpTextSelectionGestureDetectorBuilder(tester, selectionEnabled: false);
     final TestGesture gesture = await tester.startGesture(
       const Offset(200.0, 200.0),
       pointer: 0,
-      kind: PointerDeviceKind.touch,
     );
     addTearDown(gesture.removePointer);
     await tester.pump(const Duration(seconds: 2));
@@ -577,6 +650,23 @@ void main() {
     expect(renderEditable.selectWordsInRangeCalled, isFalse);
   });
 
+  testWidgets('test TextSelectionGestureDetectorBuilder mouse drag disabled', (WidgetTester tester) async {
+    await pumpTextSelectionGestureDetectorBuilder(tester, selectionEnabled: false);
+    final TestGesture gesture = await tester.startGesture(
+      Offset.zero,
+      kind: PointerDeviceKind.mouse,
+    );
+    addTearDown(gesture.removePointer);
+    await tester.pump();
+    await gesture.moveTo(const Offset(50.0, 0));
+    await tester.pump();
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    final FakeRenderEditable renderEditable = tester.renderObject(find.byType(FakeEditable));
+    expect(renderEditable.selectPositionAtCalled, isFalse);
+  });
+
   testWidgets('test TextSelectionGestureDetectorBuilder forcePress disabled', (WidgetTester tester) async {
     await pumpTextSelectionGestureDetectorBuilder(tester, forcePressEnabled: false);
     final TestGesture gesture = await tester.createGesture();
@@ -584,7 +674,6 @@ void main() {
     await gesture.downWithCustomEvent(
       const Offset(200.0, 200.0),
       const PointerDownEvent(
-        pointer: 0,
         position: Offset(200.0, 200.0),
         pressure: 3.0,
         pressureMax: 6.0,
@@ -632,17 +721,17 @@ void main() {
 
     expect(hitRect.size.width, lessThan(textFieldRect.size.width));
     expect(hitRect.size.height, lessThan(textFieldRect.size.height));
-  }, variant: const TargetPlatformVariant(<TargetPlatform>{ TargetPlatform.iOS,  TargetPlatform.macOS }));
+  }, variant: const TargetPlatformVariant(<TargetPlatform>{ TargetPlatform.iOS }));
 
   group('ClipboardStatusNotifier', () {
     group('when Clipboard fails', () {
       setUp(() {
-        final MockClipboard mockClipboard = MockClipboard(getDataThrows: true);
-        SystemChannels.platform.setMockMethodCallHandler(mockClipboard.handleMethodCall);
+        final MockClipboard mockClipboard = MockClipboard(hasStringsThrows: true);
+        TestDefaultBinaryMessengerBinding.instance!.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, mockClipboard.handleMethodCall);
       });
 
       tearDown(() {
-        SystemChannels.platform.setMockMethodCallHandler(null);
+        TestDefaultBinaryMessengerBinding.instance!.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null);
       });
 
       test('Clipboard API failure is gracefully recovered from', () async {
@@ -658,11 +747,11 @@ void main() {
       final MockClipboard mockClipboard = MockClipboard();
 
       setUp(() {
-        SystemChannels.platform.setMockMethodCallHandler(mockClipboard.handleMethodCall);
+        TestDefaultBinaryMessengerBinding.instance!.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, mockClipboard.handleMethodCall);
       });
 
       tearDown(() {
-        SystemChannels.platform.setMockMethodCallHandler(null);
+        TestDefaultBinaryMessengerBinding.instance!.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null);
       });
 
       test('update sets value based on clipboard contents', () async {
@@ -683,13 +772,35 @@ void main() {
       });
     });
   });
+
+  group('TextSelectionControls', () {
+    test('ClipboardStatusNotifier is updated on handleCut', () async {
+      final FakeClipboardStatusNotifier clipboardStatus = FakeClipboardStatusNotifier();
+      final FakeTextSelectionDelegate delegate = FakeTextSelectionDelegate();
+      final CustomTextSelectionControls textSelectionControls = CustomTextSelectionControls();
+
+      expect(clipboardStatus.updateCalled, false);
+      textSelectionControls.handleCut(delegate, clipboardStatus);
+      expect(clipboardStatus.updateCalled, true);
+    });
+
+    test('ClipboardStatusNotifier is updated on handleCopy', () async {
+      final FakeClipboardStatusNotifier clipboardStatus = FakeClipboardStatusNotifier();
+      final FakeTextSelectionDelegate delegate = FakeTextSelectionDelegate();
+      final CustomTextSelectionControls textSelectionControls = CustomTextSelectionControls();
+
+      expect(clipboardStatus.updateCalled, false);
+      textSelectionControls.handleCopy(delegate, clipboardStatus);
+      expect(clipboardStatus.updateCalled, true);
+    });
+  });
 }
 
 class FakeTextSelectionGestureDetectorBuilderDelegate implements TextSelectionGestureDetectorBuilderDelegate {
   FakeTextSelectionGestureDetectorBuilderDelegate({
-    this.editableTextKey,
-    this.forcePressEnabled,
-    this.selectionEnabled,
+    required this.editableTextKey,
+    required this.forcePressEnabled,
+    required this.selectionEnabled,
   });
 
   @override
@@ -703,7 +814,7 @@ class FakeTextSelectionGestureDetectorBuilderDelegate implements TextSelectionGe
 }
 
 class FakeEditableText extends EditableText {
-  FakeEditableText({Key key}): super(
+  FakeEditableText({Key? key}): super(
     key: key,
     controller: TextEditingController(),
     focusNode: FocusNode(),
@@ -721,7 +832,7 @@ class FakeEditableTextState extends EditableTextState {
   bool showToolbarCalled = false;
 
   @override
-  RenderEditable get renderEditable => _editableKey.currentContext.findRenderObject() as RenderEditable;
+  RenderEditable get renderEditable => _editableKey.currentContext!.findRenderObject()! as RenderEditable;
 
   @override
   bool showToolbar() {
@@ -739,7 +850,7 @@ class FakeEditableTextState extends EditableTextState {
 class FakeEditable extends LeafRenderObjectWidget {
   const FakeEditable(
     this.delegate, {
-    Key key,
+    Key? key,
   }) : super(key: key);
   final EditableTextState delegate;
 
@@ -757,6 +868,7 @@ class FakeRenderEditable extends RenderEditable {
     ),
     startHandleLayerLink: LayerLink(),
     endHandleLayerLink: LayerLink(),
+    ignorePointer: true,
     textAlign: TextAlign.start,
     textDirection: TextDirection.ltr,
     locale: const Locale('en', 'US'),
@@ -769,25 +881,81 @@ class FakeRenderEditable extends RenderEditable {
 
   bool selectWordsInRangeCalled = false;
   @override
-  void selectWordsInRange({ @required Offset from, Offset to, @required SelectionChangedCause cause }) {
+  void selectWordsInRange({ required Offset from, Offset? to, required SelectionChangedCause cause }) {
     selectWordsInRangeCalled = true;
   }
 
   bool selectWordEdgeCalled = false;
   @override
-  void selectWordEdge({ @required SelectionChangedCause cause }) {
+  void selectWordEdge({ required SelectionChangedCause cause }) {
     selectWordEdgeCalled = true;
   }
 
   bool selectPositionAtCalled = false;
+  Offset? selectPositionAtFrom;
+  Offset? selectPositionAtTo;
   @override
-  void selectPositionAt({ @required Offset from, Offset to, @required SelectionChangedCause cause }) {
+  void selectPositionAt({ required Offset from, Offset? to, required SelectionChangedCause cause }) {
     selectPositionAtCalled = true;
+    selectPositionAtFrom = from;
+    selectPositionAtTo = to;
   }
 
   bool selectWordCalled = false;
   @override
-  void selectWord({ @required SelectionChangedCause cause }) {
+  void selectWord({ required SelectionChangedCause cause }) {
     selectWordCalled = true;
   }
+}
+
+class CustomTextSelectionControls extends TextSelectionControls {
+  @override
+  Widget buildHandle(BuildContext context, TextSelectionHandleType type, double textLineHeight, [VoidCallback? onTap, double? startGlyphHeight, double? endGlyphHeight]) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Widget buildToolbar(
+    BuildContext context,
+    Rect globalEditableRegion,
+    double textLineHeight,
+    Offset position,
+    List<TextSelectionPoint> endpoints,
+    TextSelectionDelegate delegate,
+    ClipboardStatusNotifier clipboardStatus,
+    Offset? lastSecondaryTapDownPosition,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Offset getHandleAnchor(TextSelectionHandleType type, double textLineHeight, [double? startGlyphHeight, double? endGlyphHeight]) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Size getHandleSize(double textLineHeight) {
+    throw UnimplementedError();
+  }
+}
+
+class FakeClipboardStatusNotifier extends ClipboardStatusNotifier {
+  FakeClipboardStatusNotifier() : super(value: ClipboardStatus.unknown);
+
+  @override
+  bool get disposed => false;
+
+  bool updateCalled = false;
+  @override
+  Future<void> update() async {
+    updateCalled = true;
+  }
+}
+
+class FakeTextSelectionDelegate extends Fake implements TextSelectionDelegate {
+  @override
+  void cutSelection(SelectionChangedCause cause) { }
+
+  @override
+  void copySelection(SelectionChangedCause cause) { }
 }

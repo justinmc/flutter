@@ -8,6 +8,8 @@ import 'dart:ui' show lerpDouble, hashValues;
 import 'package:flutter/foundation.dart';
 
 import 'box.dart';
+import 'layer.dart';
+import 'layout_helper.dart';
 import 'object.dart';
 
 /// An immutable 2D, axis-aligned, floating-point rectangle whose coordinates
@@ -268,10 +270,14 @@ enum StackFit {
   passthrough,
 }
 
-// TODO(liyuqian): Deprecate and remove `Overflow` once its usages are removed from Google.
-
 /// Whether overflowing children should be clipped, or their overflow be
 /// visible.
+///
+/// Deprecated. Use [Stack.clipBehavior] instead.
+@Deprecated(
+  'Use clipBehavior instead. See the migration guide in flutter.dev/go/clip-behavior. '
+  'This feature was deprecated after v1.22.0-12.0.pre.',
+)
 enum Overflow {
   /// Overflowing children will be visible.
   ///
@@ -415,7 +421,7 @@ class RenderStack extends RenderBox
     }
   }
 
-  /// {@macro flutter.widgets.Clip}
+  /// {@macro flutter.material.Material.clipBehavior}
   ///
   /// Defaults to [Clip.hardEdge], and must not be null.
   Clip get clipBehavior => _clipBehavior;
@@ -430,11 +436,11 @@ class RenderStack extends RenderBox
   }
 
   /// Helper function for calculating the intrinsics metrics of a Stack.
-  static double getIntrinsicDimension(RenderBox? firstChild, double mainChildSizeGetter(RenderBox child)) {
+  static double getIntrinsicDimension(RenderBox? firstChild, double Function(RenderBox child) mainChildSizeGetter) {
     double extent = 0.0;
     RenderBox? child = firstChild;
     while (child != null) {
-      final StackParentData childParentData = child.parentData as StackParentData;
+      final StackParentData childParentData = child.parentData! as StackParentData;
       if (!childParentData.isPositioned)
         extent = math.max(extent, mainChildSizeGetter(child));
       assert(child.parentData == childParentData);
@@ -490,7 +496,7 @@ class RenderStack extends RenderBox
 
     child.layout(childConstraints, parentUsesSize: true);
 
-    late final double x;
+    final double x;
     if (childParentData.left != null) {
       x = childParentData.left!;
     } else if (childParentData.right != null) {
@@ -502,7 +508,7 @@ class RenderStack extends RenderBox
     if (x < 0.0 || x + child.size.width > size.width)
       hasVisualOverflow = true;
 
-    late final double y;
+    final double y;
     if (childParentData.top != null) {
       y = childParentData.top!;
     } else if (childParentData.bottom != null) {
@@ -520,22 +526,26 @@ class RenderStack extends RenderBox
   }
 
   @override
-  void performLayout() {
-    final BoxConstraints constraints = this.constraints;
+  Size computeDryLayout(BoxConstraints constraints) {
+    return _computeSize(
+      constraints: constraints,
+      layoutChild: ChildLayoutHelper.dryLayoutChild,
+    );
+  }
+
+  Size _computeSize({required BoxConstraints constraints, required ChildLayouter layoutChild}) {
     _resolve();
     assert(_resolvedAlignment != null);
-    _hasVisualOverflow = false;
     bool hasNonPositionedChildren = false;
     if (childCount == 0) {
-      size = constraints.biggest;
-      assert(size.isFinite);
-      return;
+      assert(constraints.biggest.isFinite);
+      return constraints.biggest;
     }
 
     double width = constraints.minWidth;
     double height = constraints.minHeight;
 
-    BoxConstraints nonPositionedConstraints;
+    final BoxConstraints nonPositionedConstraints;
     assert(fit != null);
     switch (fit) {
       case StackFit.loose:
@@ -552,14 +562,13 @@ class RenderStack extends RenderBox
 
     RenderBox? child = firstChild;
     while (child != null) {
-      final StackParentData childParentData = child.parentData as StackParentData;
+      final StackParentData childParentData = child.parentData! as StackParentData;
 
       if (!childParentData.isPositioned) {
         hasNonPositionedChildren = true;
 
-        child.layout(nonPositionedConstraints, parentUsesSize: true);
+        final Size childSize = layoutChild(child, nonPositionedConstraints);
 
-        final Size childSize = child.size;
         width = math.max(width, childSize.width);
         height = math.max(height, childSize.height);
       }
@@ -567,6 +576,7 @@ class RenderStack extends RenderBox
       child = childParentData.nextSibling;
     }
 
+    final Size size;
     if (hasNonPositionedChildren) {
       size = Size(width, height);
       assert(size.width == constraints.constrainWidth(width));
@@ -576,10 +586,23 @@ class RenderStack extends RenderBox
     }
 
     assert(size.isFinite);
+    return size;
+  }
 
-    child = firstChild;
+  @override
+  void performLayout() {
+    final BoxConstraints constraints = this.constraints;
+    _hasVisualOverflow = false;
+
+    size = _computeSize(
+      constraints: constraints,
+      layoutChild: ChildLayoutHelper.layoutChild,
+    );
+
+    assert(_resolvedAlignment != null);
+    RenderBox? child = firstChild;
     while (child != null) {
-      final StackParentData childParentData = child.parentData as StackParentData;
+      final StackParentData childParentData = child.parentData! as StackParentData;
 
       if (!childParentData.isPositioned) {
         childParentData.offset = _resolvedAlignment!.alongOffset(size - child.size as Offset);
@@ -609,10 +632,26 @@ class RenderStack extends RenderBox
   @override
   void paint(PaintingContext context, Offset offset) {
     if (clipBehavior != Clip.none && _hasVisualOverflow) {
-      context.pushClipRect(needsCompositing, offset, Offset.zero & size, paintStack, clipBehavior: clipBehavior);
+      _clipRectLayer.layer = context.pushClipRect(
+        needsCompositing,
+        offset,
+        Offset.zero & size,
+        paintStack,
+        clipBehavior: clipBehavior,
+        oldLayer: _clipRectLayer.layer,
+      );
     } else {
+      _clipRectLayer.layer = null;
       paintStack(context, offset);
     }
+  }
+
+  final LayerHandle<ClipRectLayer> _clipRectLayer = LayerHandle<ClipRectLayer>();
+
+  @override
+  void dispose() {
+    _clipRectLayer.layer = null;
+    super.dispose();
   }
 
   @override
@@ -670,7 +709,7 @@ class RenderIndexedStack extends RenderStack {
     RenderBox? child = firstChild;
     int i = 0;
     while (child != null && i < index!) {
-      final StackParentData childParentData = child.parentData as StackParentData;
+      final StackParentData childParentData = child.parentData! as StackParentData;
       child = childParentData.nextSibling;
       i += 1;
     }
@@ -685,13 +724,13 @@ class RenderIndexedStack extends RenderStack {
       return false;
     assert(position != null);
     final RenderBox child = _childAtIndex();
-    final StackParentData childParentData = child.parentData as StackParentData;
+    final StackParentData childParentData = child.parentData! as StackParentData;
     return result.addWithPaintOffset(
       offset: childParentData.offset,
       position: position,
-      hitTest: (BoxHitTestResult result, Offset? transformed) {
+      hitTest: (BoxHitTestResult result, Offset transformed) {
         assert(transformed == position - childParentData.offset);
-        return child.hitTest(result, position: transformed!);
+        return child.hitTest(result, position: transformed);
       },
     );
   }
@@ -701,7 +740,7 @@ class RenderIndexedStack extends RenderStack {
     if (firstChild == null || index == null)
       return;
     final RenderBox child = _childAtIndex();
-    final StackParentData childParentData = child.parentData as StackParentData;
+    final StackParentData childParentData = child.parentData! as StackParentData;
     context.paintChild(child, childParentData.offset + offset);
   }
 

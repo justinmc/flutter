@@ -2,18 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
-import '../flutter_test_alternative.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('$AnnotatedRegion find', () {
     test('finds the first value in a OffsetLayer when sized', () {
       final ContainerLayer containerLayer = ContainerLayer();
       final List<OffsetLayer> layers = <OffsetLayer>[
-        OffsetLayer(offset: Offset.zero),
+        OffsetLayer(),
         OffsetLayer(offset: const Offset(0.0, 100.0)),
         OffsetLayer(offset: const Offset(0.0, 200.0)),
       ];
@@ -131,18 +129,18 @@ void main() {
       final TransformLayer parent = TransformLayer(transform: Matrix4.diagonal3Values(0.0, 1.0, 1.0));
       parent.append(child);
 
-      expect(parent.find<int>(const Offset(0.0, 0.0)), null);
+      expect(parent.find<int>(Offset.zero), null);
 
       parent.transform = Matrix4.diagonal3Values(1.0, 1.0, 1.0);
 
-      expect(parent.find<int>(const Offset(0.0, 0.0)), 1);
+      expect(parent.find<int>(Offset.zero), 1);
     });
   });
   group('$AnnotatedRegion findAllAnnotations', () {
     test('finds the first value in a OffsetLayer when sized', () {
       final ContainerLayer containerLayer = ContainerLayer();
       final List<OffsetLayer> layers = <OffsetLayer>[
-        OffsetLayer(offset: Offset.zero),
+        OffsetLayer(),
         OffsetLayer(offset: const Offset(0.0, 100.0)),
         OffsetLayer(offset: const Offset(0.0, 200.0)),
       ];
@@ -239,7 +237,7 @@ void main() {
         parent.append(layer);
       }
 
-      expect(parent.findAllAnnotations<int>(const Offset(0.0, 0.0)).annotations.toList(), equals(<int>[3, 1, 2, 0,]));
+      expect(parent.findAllAnnotations<int>(Offset.zero).annotations.toList(), equals(<int>[3, 1, 2, 0,]));
     });
 
     test('looks for child AnnotatedRegions before parents', () {
@@ -281,11 +279,11 @@ void main() {
       final TransformLayer parent = TransformLayer(transform: Matrix4.diagonal3Values(0.0, 1.0, 1.0));
       parent.append(child);
 
-      expect(parent.findAllAnnotations<int>(const Offset(0.0, 0.0)).annotations.toList(), equals(<int>[]));
+      expect(parent.findAllAnnotations<int>(Offset.zero).annotations.toList(), equals(<int>[]));
 
       parent.transform = Matrix4.diagonal3Values(1.0, 1.0, 1.0);
 
-      expect(parent.findAllAnnotations<int>(const Offset(0.0, 0.0)).annotations.toList(), equals(<int>[1]));
+      expect(parent.findAllAnnotations<int>(Offset.zero).annotations.toList(), equals(<int>[1]));
     });
   });
 }

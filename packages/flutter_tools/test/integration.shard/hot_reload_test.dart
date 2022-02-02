@@ -2,12 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// @dart = 2.8
+
 import 'dart:async';
 
 import 'package:file/file.dart';
 import 'package:flutter_tools/src/base/common.dart';
 import 'package:vm_service/vm_service.dart';
-import 'package:vm_service/vm_service_io.dart';
 
 import '../src/common.dart';
 import 'test_data/hot_reload_project.dart';
@@ -82,73 +83,6 @@ void main() {
     }
   });
 
-  testWithoutContext('fastReassemble behavior triggers hot reload behavior with evaluation of expression', () async {
-    final Completer<void> tick1 = Completer<void>();
-    final Completer<void> tick2 = Completer<void>();
-    final Completer<void> tick3 = Completer<void>();
-    final StreamSubscription<String> subscription = flutter.stdout.listen((String line) {
-      if (line.contains('TICK 1')) {
-        tick1.complete();
-      }
-      if (line.contains('TICK 2')) {
-        tick2.complete();
-      }
-      if (line.contains('TICK 3')) {
-        tick3.complete();
-      }
-    });
-    await flutter.run(withDebugger: true);
-
-    final int port = flutter.vmServicePort;
-    final VmService vmService = await vmServiceConnectUri('ws://localhost:$port/ws');
-    await tick1.future;
-    try {
-      // Since the single-widget reload feature is not yet implemented, manually
-      // evaluate the expression for the reload.
-      final Isolate isolate = await waitForExtension(vmService);
-      final LibraryRef targetRef = isolate.libraries.firstWhere((LibraryRef libraryRef) {
-        return libraryRef.uri == 'package:test/main.dart';
-      });
-      await vmService.evaluate(
-        isolate.id,
-        targetRef.id,
-        '((){debugFastReassembleMethod=(Object x) => x is MyApp})()',
-      );
-
-      final Response fastReassemble1 = await vmService
-        .callServiceExtension('ext.flutter.fastReassemble', isolateId: isolate.id);
-
-      // _extensionType indicates success.
-      expect(fastReassemble1.type, '_extensionType');
-      await tick2.future;
-
-      // verify evaluation did not produce invalidat type by checking with dart:core
-      // type.
-      await vmService.evaluate(
-        isolate.id,
-        targetRef.id,
-        '((){debugFastReassembleMethod=(Object x) => x is bool})()',
-      );
-
-      final Response fastReassemble2 = await vmService
-        .callServiceExtension('ext.flutter.fastReassemble', isolateId: isolate.id);
-
-      // _extensionType indicates success.
-      expect(fastReassemble2.type, '_extensionType');
-      unawaited(tick3.future.whenComplete(() {
-        fail('Should not complete');
-      }));
-
-      // Invocation without evaluation leads to runtime error.
-      expect(vmService
-        .callServiceExtension('ext.flutter.fastReassemble', isolateId: isolate.id),
-        throwsA(isA<Exception>())
-      );
-    } finally {
-      await subscription.cancel();
-    }
-  });
-
   testWithoutContext('hot restart works without error', () async {
     await flutter.run();
     await flutter.hotRestart();
@@ -174,8 +108,14 @@ void main() {
     await flutter.resume(); // we start paused so we can set up our TICK 1 listener before the app starts
     unawaited(sawTick1.future.timeout(
       const Duration(seconds: 5),
-      onTimeout: () { print('The test app is taking longer than expected to print its synchronization line...'); },
+      onTimeout: () {
+        // This print is useful for people debugging this test. Normally we would avoid printing in
+        // a test but this is an exception because it's useful ambient information.
+        // ignore: avoid_print
+        print('The test app is taking longer than expected to print its synchronization line...');
+      },
     ));
+    printOnFailure('waiting for synchronization line...');
     await sawTick1.future; // after this, app is in steady state
     await flutter.addBreakpoint(
       project.scheduledBreakpointUri,
@@ -192,19 +132,19 @@ void main() {
     );
     bool reloaded = false;
     final Future<void> reloadFuture = flutter.hotReload().then((void value) { reloaded = true; });
-    print('waiting for pause...');
+    printOnFailure('waiting for pause...');
     isolate = await flutter.waitForPause();
     expect(isolate.pauseEvent.kind, equals(EventKind.kPauseBreakpoint));
-    print('waiting for debugger message...');
+    printOnFailure('waiting for debugger message...');
     await sawDebuggerPausedMessage.future;
     expect(reloaded, isFalse);
-    print('waiting for resume...');
+    printOnFailure('waiting for resume...');
     await flutter.resume();
-    print('waiting for reload future...');
+    printOnFailure('waiting for reload future...');
     await reloadFuture;
     expect(reloaded, isTrue);
     reloaded = false;
-    print('subscription cancel...');
+    printOnFailure('subscription cancel...');
     await subscription.cancel();
   });
 
@@ -214,7 +154,7 @@ void main() {
     final Completer<void> sawDebuggerPausedMessage2 = Completer<void>();
     final StreamSubscription<String> subscription = flutter.stdout.listen(
       (String line) {
-        print('[LOG]:"$line"');
+        printOnFailure('[LOG]:"$line"');
         if (line.contains('(((TICK 1)))')) {
           expect(sawTick1.isCompleted, isFalse);
           sawTick1.complete();
@@ -256,6 +196,6 @@ bool _isHotReloadCompletionEvent(Map<String, dynamic> event) {
   return event != null &&
       event['event'] == 'app.progress' &&
       event['params'] != null &&
-      event['params']['progressId'] == 'hot.reload' &&
-      event['params']['finished'] == true;
+      (event['params'] as Map<String, dynamic>)['progressId'] == 'hot.reload' &&
+      (event['params'] as Map<String, dynamic>)['finished'] == true;
 }

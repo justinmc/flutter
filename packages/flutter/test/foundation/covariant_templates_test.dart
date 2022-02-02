@@ -2,16 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'package:flutter_test/flutter_test.dart';
 
-class X {}
+class X { }
 
-class Y extends X {}
+class Y extends X { }
 
 class A<U extends X> {
-  U u;
+  U? u;
 }
 
 void main() {

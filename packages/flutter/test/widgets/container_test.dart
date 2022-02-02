@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
+// This file is run as part of a reduced test set in CI on Mac and Windows
+// machines.
+@Tags(<String>['reduced-test-set'])
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter/widgets.dart';
 
-import '../flutter_test_alternative.dart' show Fake;
 import '../rendering/mock_canvas.dart';
 
 void main() {
@@ -96,7 +96,7 @@ void main() {
         '           │ parentData: offset=Offset(7.0, 7.0) (can use size)\n'
         '           │ constraints: BoxConstraints(w=39.0, h=64.0)\n'
         '           │ size: Size(39.0, 64.0)\n'
-        '           │ alignment: bottomRight\n'
+        '           │ alignment: Alignment.bottomRight\n'
         '           │ widthFactor: expand\n'
         '           │ heightFactor: expand\n'
         '           │\n'
@@ -119,7 +119,7 @@ void main() {
     );
 
     expect(
-      box.toStringDeep(minLevel: DiagnosticLevel.debug),
+      box.toStringDeep(),
       equalsIgnoringHashCodes(
         'RenderPadding#00000 relayoutBoundary=up1\n'
         ' │ creator: Padding ← Container ← Align ← [root]\n'
@@ -169,7 +169,7 @@ void main() {
         '           │ parentData: offset=Offset(7.0, 7.0) (can use size)\n'
         '           │ constraints: BoxConstraints(w=39.0, h=64.0)\n'
         '           │ size: Size(39.0, 64.0)\n'
-        '           │ alignment: bottomRight\n'
+        '           │ alignment: Alignment.bottomRight\n'
         '           │ widthFactor: expand\n'
         '           │ heightFactor: expand\n'
         '           │\n'
@@ -192,7 +192,7 @@ void main() {
         '                   color: Color(0xffffff00)\n'
         '                 configuration: ImageConfiguration(bundle:\n'
         '                   PlatformAssetBundle#00000(), devicePixelRatio: 1.0, platform:\n'
-        '                   android)\n'
+        '                   android)\n',
       ),
     );
 
@@ -267,7 +267,7 @@ void main() {
         '           │ layer: null\n'
         '           │ semantics node: null\n'
         '           │ size: Size(39.0, 64.0)\n'
-        '           │ alignment: bottomRight\n'
+        '           │ alignment: Alignment.bottomRight\n'
         '           │ textDirection: null\n'
         '           │ widthFactor: expand\n'
         '           │ heightFactor: expand\n'
@@ -301,7 +301,7 @@ void main() {
         '                   shape: rectangle\n'
         '                 configuration: ImageConfiguration(bundle:\n'
         '                   PlatformAssetBundle#00000(), devicePixelRatio: 1.0, platform:\n'
-        '                   android)\n'
+        '                   android)\n',
       ),
     );
 
@@ -394,7 +394,7 @@ void main() {
         '           │ isBlockingSemanticsOfPreviouslyPaintedNodes: false\n'
         '           │ isSemanticBoundary: false\n'
         '           │ size: Size(39.0, 64.0)\n'
-        '           │ alignment: bottomRight\n'
+        '           │ alignment: Alignment.bottomRight\n'
         '           │ textDirection: null\n'
         '           │ widthFactor: expand\n'
         '           │ heightFactor: expand\n'
@@ -440,9 +440,9 @@ void main() {
 
     final RenderBox decoratedBox = tester.renderObject(find.byType(DecoratedBox).last);
     final PaintingContext context = _MockPaintingContext();
-    FlutterError error;
+    late FlutterError error;
     try {
-      decoratedBox.paint(context, const Offset(0, 0));
+      decoratedBox.paint(context, Offset.zero);
     } on FlutterError catch (e) {
       error = e;
     }
@@ -457,7 +457,7 @@ void main() {
       '   The decoration was:\n'
       '     BoxDecoration(color: Color(0xffffff00))\n'
       '   The painter was:\n'
-      '     BoxPainter for BoxDecoration(color: Color(0xffffff00))\n'
+      '     BoxPainter for BoxDecoration(color: Color(0xffffff00))\n',
     );
   });
 
@@ -470,11 +470,58 @@ void main() {
     );
   });
 
+  testWidgets('Container transformAlignment', (WidgetTester tester) async {
+    final Key key = UniqueKey();
+
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: Stack(
+          children: <Widget>[
+            Positioned(
+              top: 100.0,
+              left: 100.0,
+              child: Container(
+                width: 100.0,
+                height: 100.0,
+                color: const Color(0xFF0000FF),
+              ),
+            ),
+            Positioned(
+              top: 100.0,
+              left: 100.0,
+              child: Container(
+                width: 100.0,
+                height: 100.0,
+                key: key,
+                transform: Matrix4.diagonal3Values(0.5, 0.5, 1.0),
+                transformAlignment: Alignment.centerRight,
+                child: Container(
+                  color: const Color(0xFF00FFFF),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    final Finder finder = find.byKey(key);
+
+    expect(tester.getSize(finder), equals(const Size(100, 100)));
+
+    expect(tester.getTopLeft(finder), equals(const Offset(100, 100)));
+    expect(tester.getTopRight(finder), equals(const Offset(200, 100)));
+
+    expect(tester.getBottomLeft(finder), equals(const Offset(100, 200)));
+    expect(tester.getBottomRight(finder), equals(const Offset(200, 200)));
+  });
+
   testWidgets('giving clipBehaviour Clip.None, will not add a ClipPath to the tree', (WidgetTester tester) async {
-    await tester.pumpWidget(Container(
-      clipBehavior: Clip.none,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(1),
+    await tester.pumpWidget(
+      Container(
+        decoration: const BoxDecoration(
+        borderRadius: BorderRadius.all(Radius.circular(1)),
       ),
       child: const SizedBox(),
     ));
@@ -488,8 +535,8 @@ void main() {
   testWidgets('giving clipBehaviour not a Clip.None, will add a ClipPath to the tree', (WidgetTester tester) async {
     final Container container = Container(
       clipBehavior: Clip.hardEdge,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(1),
+      decoration: const BoxDecoration(
+        borderRadius: BorderRadius.all(Radius.circular(1)),
       ),
       child: const SizedBox(),
     );
@@ -582,24 +629,24 @@ void main() {
       ),
     ));
 
-    await tester.tap(find.byType(Container));
+    await tester.tap(find.byType(Container), warnIfMissed: false);
     expect(tapped, false);
   });
 
   testWidgets('using clipBehaviour and shadow, should not clip the shadow', (WidgetTester tester) async {
     final Container container = Container(
       clipBehavior: Clip.hardEdge,
-      decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(30),
-          color: Colors.red,
-          boxShadow: const <BoxShadow>[
-            BoxShadow(
-              color: Colors.blue,
-              offset: Offset.zero,
-              spreadRadius: 10,
-              blurRadius: 20.0,
-            ),
-          ]),
+      decoration: const BoxDecoration(
+        borderRadius: BorderRadius.all(Radius.circular(30)),
+        color: Colors.red,
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: Colors.blue,
+            spreadRadius: 10,
+            blurRadius: 20.0,
+          ),
+        ],
+      ),
       child: const SizedBox(width: 50, height: 50),
     );
 
@@ -608,7 +655,8 @@ void main() {
         child: Padding(
           padding: const EdgeInsets.all(30.0),
           child: container,
-      )),
+        ),
+      ),
     );
 
     await expectLater(

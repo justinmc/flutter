@@ -2,12 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'dart:async';
-import 'dart:io';
-
-import 'package:path/path.dart' as path;
-import '../framework/adb.dart';
+import '../framework/devices.dart';
 import '../framework/framework.dart';
+import '../framework/task_result.dart';
 import '../framework/utils.dart';
 
 TaskFunction createChannelsIntegrationTest() {
@@ -28,6 +25,14 @@ TaskFunction createFlavorsTest() {
   return DriverTest(
     '${flutterDirectory.path}/dev/integration_tests/flavors',
     'lib/main.dart',
+    extraOptions: <String>['--flavor', 'paid'],
+  );
+}
+
+TaskFunction createIntegrationTestFlavorsTest() {
+  return IntegrationTest(
+    '${flutterDirectory.path}/dev/integration_tests/flavors',
+    'integration_test/integration_test.dart',
     extraOptions: <String>['--flavor', 'paid'],
   );
 }
@@ -74,56 +79,62 @@ TaskFunction createAndroidSemanticsIntegrationTest() {
   );
 }
 
-TaskFunction createCodegenerationIntegrationTest() {
-  return DriverTest(
-    '${flutterDirectory.path}/dev/integration_tests/codegen',
-    'lib/main.dart',
-  );
-}
-
-TaskFunction createImageLoadingIntegrationTest() {
-  return DriverTest(
-    '${flutterDirectory.path}/dev/integration_tests/image_loading',
-    'lib/main.dart',
-  );
-}
-
-TaskFunction createFlutterCreateOfflineTest() {
-  return () async {
-    final Directory tempDir = Directory.systemTemp.createTempSync('flutter_create_test.');
-    String output;
-    await inDirectory(tempDir, () async {
-      output = await eval(path.join(flutterDirectory.path, 'bin', 'flutter'), <String>['create', '--offline', 'flutter_create_test']);
-    });
-    if (output.contains(RegExp('building flutter tool', caseSensitive: false))) {
-      return TaskResult.failure('`flutter create --offline` should not rebuild flutter tool');
-    } else if (!output.contains('All done!')) {
-      return TaskResult.failure('`flutter create` failed');
-    }
-    return TaskResult.success(null);
-  };
-}
-
-TaskFunction createAndroidSplashScreenKitchenSinkTest() {
-  return DriverTest(
-    '${flutterDirectory.path}/dev/integration_tests/android_splash_screens/splash_screen_kitchen_sink',
-    'test_driver/main.dart',
-  );
-}
-
-/// Executes a driver test that takes a screenshot and compares it against a golden image.
-/// The golden image is served by Flutter Gold (https://flutter-gold.skia.org/).
-TaskFunction createFlutterDriverScreenshotTest() {
-  return DriverTest(
-    '${flutterDirectory.path}/dev/integration_tests/flutter_driver_screenshot_test',
-    'lib/main.dart',
-  );
-}
-
 TaskFunction createIOSPlatformViewTests() {
   return DriverTest(
     '${flutterDirectory.path}/dev/integration_tests/ios_platform_view_tests',
     'lib/main.dart',
+  );
+}
+
+TaskFunction createEndToEndKeyboardTest() {
+  return DriverTest(
+    '${flutterDirectory.path}/dev/integration_tests/ui',
+    'lib/keyboard_resize.dart',
+  );
+}
+
+TaskFunction createEndToEndFrameNumberTest() {
+  return DriverTest(
+    '${flutterDirectory.path}/dev/integration_tests/ui',
+    'lib/frame_number.dart',
+  );
+}
+
+TaskFunction createEndToEndDriverTest() {
+  return DriverTest(
+    '${flutterDirectory.path}/dev/integration_tests/ui',
+    'lib/driver.dart',
+  );
+}
+
+TaskFunction createEndToEndScreenshotTest() {
+  return DriverTest(
+    '${flutterDirectory.path}/dev/integration_tests/ui',
+    'lib/screenshot.dart',
+  );
+}
+
+TaskFunction createEndToEndKeyboardTextfieldTest() {
+  return DriverTest(
+    '${flutterDirectory.path}/dev/integration_tests/ui',
+    'lib/keyboard_textfield.dart',
+  );
+}
+
+TaskFunction dartDefinesTask() {
+  return DriverTest(
+    '${flutterDirectory.path}/dev/integration_tests/ui',
+    'lib/defines.dart', extraOptions: <String>[
+    '--dart-define=test.valueA=Example,A',
+    '--dart-define=test.valueB=Value',
+    ],
+  );
+}
+
+TaskFunction createEndToEndIntegrationTest() {
+  return IntegrationTest(
+    '${flutterDirectory.path}/dev/integration_tests/ui',
+    'integration_test/integration_test.dart',
   );
 }
 
@@ -132,14 +143,47 @@ class DriverTest {
     this.testDirectory,
     this.testTarget, {
       this.extraOptions = const <String>[],
-      this.environment =  const <String, String>{},
     }
   );
 
   final String testDirectory;
   final String testTarget;
   final List<String> extraOptions;
-  final Map<String, String> environment;
+
+  Future<TaskResult> call() {
+    return inDirectory<TaskResult>(testDirectory, () async {
+      final Device device = await devices.workingDevice;
+      await device.unlock();
+      final String deviceId = device.deviceId;
+      await flutter('packages', options: <String>['get']);
+
+      final List<String> options = <String>[
+        '--no-android-gradle-daemon',
+        '-v',
+        '-t',
+        testTarget,
+        '-d',
+        deviceId,
+        ...extraOptions,
+      ];
+      await flutter('drive', options: options);
+
+      return TaskResult.success(null);
+    });
+  }
+}
+
+class IntegrationTest {
+  IntegrationTest(
+    this.testDirectory,
+    this.testTarget, {
+      this.extraOptions = const <String>[],
+    }
+  );
+
+  final String testDirectory;
+  final String testTarget;
+  final List<String> extraOptions;
 
   Future<TaskResult> call() {
     return inDirectory<TaskResult>(testDirectory, () async {
@@ -150,13 +194,12 @@ class DriverTest {
 
       final List<String> options = <String>[
         '-v',
-        '-t',
-        testTarget,
         '-d',
         deviceId,
+        testTarget,
         ...extraOptions,
       ];
-      await flutter('drive', options: options, environment: Map<String, String>.from(environment));
+      await flutter('test', options: options);
 
       return TaskResult.success(null);
     });

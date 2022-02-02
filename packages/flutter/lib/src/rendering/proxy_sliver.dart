@@ -80,7 +80,7 @@ abstract class RenderProxySliver extends RenderSliver with RenderObjectWithChild
   @override
   void applyPaintTransform(RenderObject child, Matrix4 transform) {
     assert(child != null);
-    final SliverPhysicalParentData childParentData = child.parentData as SliverPhysicalParentData;
+    final SliverPhysicalParentData childParentData = child.parentData! as SliverPhysicalParentData;
     childParentData.applyPaintTransform(transform);
   }
 }
@@ -112,7 +112,7 @@ class RenderSliverOpacity extends RenderProxySliver {
   }
 
   @override
-  bool get alwaysNeedsCompositing => child != null && (_alpha != 0 && _alpha != 255);
+  bool get alwaysNeedsCompositing => child != null && (_alpha > 0);
 
   int _alpha;
 
@@ -166,18 +166,12 @@ class RenderSliverOpacity extends RenderProxySliver {
         layer = null;
         return;
       }
-      if (_alpha == 255) {
-        // No need to keep the layer. We'll create a new one if necessary.
-        layer = null;
-        context.paintChild(child!, offset);
-        return;
-      }
       assert(needsCompositing);
       layer = context.pushOpacity(
         offset,
         _alpha,
         super.paint,
-        oldLayer: layer as OpacityLayer,
+        oldLayer: layer as OpacityLayer?,
       );
     }
   }
@@ -317,11 +311,7 @@ class RenderSliverOffstage extends RenderProxySliver {
     if (!offstage)
       geometry = child!.geometry;
     else
-      geometry = const SliverGeometry(
-        scrollExtent: 0.0,
-        visible: false,
-        maxPaintExtent: 0.0,
-      );
+      geometry = SliverGeometry.zero;
   }
 
   @override
@@ -382,7 +372,7 @@ class RenderSliverOffstage extends RenderProxySliver {
 ///
 /// This is a variant of [RenderSliverOpacity] that uses an [Animation<double>]
 /// rather than a [double] to control the opacity.
-class RenderSliverAnimatedOpacity extends RenderProxySliver with RenderAnimatedOpacityMixin<RenderSliver>{
+class RenderSliverAnimatedOpacity extends RenderProxySliver with RenderAnimatedOpacityMixin<RenderSliver> {
   /// Creates a partially transparent render object.
   ///
   /// The [opacity] argument must not be null.

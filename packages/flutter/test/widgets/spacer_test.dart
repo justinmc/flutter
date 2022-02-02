@@ -2,10 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   testWidgets('Spacer takes up space.', (WidgetTester tester) async {
@@ -23,7 +21,7 @@ void main() {
 
   testWidgets('Spacer takes up space proportional to flex.', (WidgetTester tester) async {
     const Spacer spacer1 = Spacer();
-    const Spacer spacer2 = Spacer(flex: 1);
+    const Spacer spacer2 = Spacer();
     const Spacer spacer3 = Spacer(flex: 2);
     const Spacer spacer4 = Spacer(flex: 4);
     await tester.pumpWidget(Row(

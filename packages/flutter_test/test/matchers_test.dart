@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// flutter_ignore_for_file: golden_tag (see analyze.dart)
+
 import 'dart:typed_data';
 import 'dart:ui';
 
@@ -11,9 +13,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 /// Class that makes it easy to mock common toStringDeep behavior.
 class _MockToStringDeep {
-  _MockToStringDeep(String str) {
+  _MockToStringDeep(String str) : _lines = <String>[] {
     final List<String> lines = str.split('\n');
-    _lines = <String>[];
     for (int i = 0; i < lines.length - 1; ++i)
       _lines.add('${lines[i]}\n');
 
@@ -29,7 +30,7 @@ class _MockToStringDeep {
   /// Lines in the message to display when [toStringDeep] is called.
   /// For correct toStringDeep behavior, each line should be terminated with a
   /// line break.
-  List<String> _lines;
+  final List<String> _lines;
 
   String toStringDeep({ String prefixLineOne = '', String prefixOtherLines = '' }) {
     final StringBuffer sb = StringBuffer();
@@ -217,7 +218,7 @@ void main() {
     expect(const Color(0x00000000), within<Color>(distance: 1, from: const Color(0x01010101)));
     expect(const Color(0x00000000), isNot(within<Color>(distance: 1, from: const Color(0x02000000))));
 
-    expect(const Offset(1.0, 0.0), within(distance: 1.0, from: const Offset(0.0, 0.0)));
+    expect(const Offset(1.0, 0.0), within(distance: 1.0, from: Offset.zero));
     expect(const Offset(1.0, 0.0), isNot(within(distance: 1.0, from: const Offset(-1.0, 0.0))));
 
     expect(const Rect.fromLTRB(0.0, 1.0, 2.0, 3.0), within<Rect>(distance: 4.0, from: const Rect.fromLTRB(1.0, 3.0, 5.0, 7.0)));
@@ -338,7 +339,7 @@ void main() {
   });
 
   group('matchesGoldenFile', () {
-    _FakeComparator comparator;
+    late _FakeComparator comparator;
 
     Widget boilerplate(Widget child) {
       return Directionality(
@@ -353,13 +354,26 @@ void main() {
     });
 
     group('matches', () {
-
       testWidgets('if comparator succeeds', (WidgetTester tester) async {
         await tester.pumpWidget(boilerplate(const Text('hello')));
         final Finder finder = find.byType(Text);
         await expectLater(finder, matchesGoldenFile('foo.png'));
         expect(comparator.invocation, _ComparatorInvocation.compare);
         expect(comparator.imageBytes, hasLength(greaterThan(0)));
+        expect(comparator.golden, Uri.parse('foo.png'));
+      });
+
+      testWidgets('list of integers', (WidgetTester tester) async {
+        await expectLater(<int>[1, 2], matchesGoldenFile('foo.png'));
+        expect(comparator.invocation, _ComparatorInvocation.compare);
+        expect(comparator.imageBytes, equals(<int>[1, 2]));
+        expect(comparator.golden, Uri.parse('foo.png'));
+      });
+
+      testWidgets('future list of integers', (WidgetTester tester) async {
+        await expectLater(Future<List<int>>.value(<int>[1, 2]), matchesGoldenFile('foo.png'));
+        expect(comparator.invocation, _ComparatorInvocation.compare);
+        expect(comparator.imageBytes, equals(<int>[1, 2]));
         expect(comparator.golden, Uri.parse('foo.png'));
       });
     });
@@ -369,38 +383,44 @@ void main() {
         comparator.behavior = _ComparatorBehavior.returnFalse;
         await tester.pumpWidget(boilerplate(const Text('hello')));
         final Finder finder = find.byType(Text);
-        try {
-          await expectLater(finder, matchesGoldenFile('foo.png'));
-          fail('TestFailure expected but not thrown');
-        } on TestFailure catch (error) {
-          expect(comparator.invocation, _ComparatorInvocation.compare);
-          expect(error.message, contains('does not match'));
-        }
+        await expectLater(
+          () => expectLater(finder, matchesGoldenFile('foo.png')),
+          throwsA(isA<TestFailure>().having(
+            (TestFailure error) => error.message,
+            'message',
+            contains('does not match'),
+          )),
+        );
+        expect(comparator.invocation, _ComparatorInvocation.compare);
       });
 
       testWidgets('if comparator throws', (WidgetTester tester) async {
         comparator.behavior = _ComparatorBehavior.throwTestFailure;
         await tester.pumpWidget(boilerplate(const Text('hello')));
         final Finder finder = find.byType(Text);
-        try {
-          await expectLater(finder, matchesGoldenFile('foo.png'));
-          fail('TestFailure expected but not thrown');
-        } on TestFailure catch (error) {
-          expect(comparator.invocation, _ComparatorInvocation.compare);
-          expect(error.message, contains('fake message'));
-        }
+        await expectLater(
+          () => expectLater(finder, matchesGoldenFile('foo.png')),
+          throwsA(isA<TestFailure>().having(
+            (TestFailure error) => error.message,
+            'message',
+            contains('fake message'),
+          )),
+        );
+        expect(comparator.invocation, _ComparatorInvocation.compare);
       });
 
       testWidgets('if finder finds no widgets', (WidgetTester tester) async {
         await tester.pumpWidget(boilerplate(Container()));
         final Finder finder = find.byType(Text);
-        try {
-          await expectLater(finder, matchesGoldenFile('foo.png'));
-          fail('TestFailure expected but not thrown');
-        } on TestFailure catch (error) {
-          expect(comparator.invocation, isNull);
-          expect(error.message, contains('no widget was found'));
-        }
+        await expectLater(
+          () => expectLater(finder, matchesGoldenFile('foo.png')),
+          throwsA(isA<TestFailure>().having(
+            (TestFailure error) => error.message,
+            'message',
+            contains('no widget was found'),
+          )),
+        );
+        expect(comparator.invocation, isNull);
       });
 
       testWidgets('if finder finds multiple widgets', (WidgetTester tester) async {
@@ -408,13 +428,15 @@ void main() {
           children: const <Widget>[Text('hello'), Text('world')],
         )));
         final Finder finder = find.byType(Text);
-        try {
-          await expectLater(finder, matchesGoldenFile('foo.png'));
-          fail('TestFailure expected but not thrown');
-        } on TestFailure catch (error) {
-          expect(comparator.invocation, isNull);
-          expect(error.message, contains('too many widgets'));
-        }
+        await expectLater(
+          () => expectLater(finder, matchesGoldenFile('foo.png')),
+          throwsA(isA<TestFailure>().having(
+            (TestFailure error) => error.message,
+            'message',
+            contains('too many widgets'),
+          )),
+        );
+        expect(comparator.invocation, isNull);
       });
     });
 
@@ -539,11 +561,11 @@ void main() {
       final SemanticsData data = SemanticsData(
         flags: flags,
         actions: actions,
-        label: 'a',
-        increasedValue: 'b',
-        value: 'c',
-        decreasedValue: 'd',
-        hint: 'e',
+        attributedLabel: AttributedString('a'),
+        attributedIncreasedValue: AttributedString('b'),
+        attributedValue: AttributedString('c'),
+        attributedDecreasedValue: AttributedString('d'),
+        attributedHint: AttributedString('e'),
         textDirection: TextDirection.ltr,
         rect: const Rect.fromLTRB(0.0, 0.0, 10.0, 10.0),
         elevation: 3.0,
@@ -559,8 +581,7 @@ void main() {
         currentValueLength: 10,
         maxValueLength: 15,
       );
-      final _FakeSemanticsNode node = _FakeSemanticsNode();
-      node.data = data;
+      final _FakeSemanticsNode node = _FakeSemanticsNode(data);
 
       expect(node, matchesSemantics(
          rect: const Rect.fromLTRB(0.0, 0.0, 10.0, 10.0),
@@ -575,6 +596,8 @@ void main() {
          isChecked: true,
          isSelected: true,
          isButton: true,
+         isSlider: true,
+         isKeyboardKey: true,
          isLink: true,
          isTextField: true,
          isReadOnly: true,
@@ -609,6 +632,7 @@ void main() {
          hasMoveCursorBackwardByCharacterAction: true,
          hasMoveCursorForwardByWordAction: true,
          hasMoveCursorBackwardByWordAction: true,
+         hasSetTextAction: true,
          hasSetSelectionAction: true,
          hasCopyAction: true,
          hasCutAction: true,
@@ -664,9 +688,9 @@ enum _ComparatorInvocation {
 
 class _FakeComparator implements GoldenFileComparator {
   _ComparatorBehavior behavior = _ComparatorBehavior.returnTrue;
-  _ComparatorInvocation invocation;
-  Uint8List imageBytes;
-  Uri golden;
+  _ComparatorInvocation? invocation;
+  Uint8List? imageBytes;
+  Uri? golden;
 
   @override
   Future<bool> compare(Uint8List imageBytes, Uri golden) {
@@ -679,9 +703,8 @@ class _FakeComparator implements GoldenFileComparator {
       case _ComparatorBehavior.returnFalse:
         return Future<bool>.value(false);
       case _ComparatorBehavior.throwTestFailure:
-        throw TestFailure('fake message');
+        fail('fake message');
     }
-    return Future<bool>.value(false);
   }
 
   @override
@@ -693,12 +716,14 @@ class _FakeComparator implements GoldenFileComparator {
   }
 
   @override
-  Uri getTestUri(Uri key, int version) {
+  Uri getTestUri(Uri key, int? version) {
     return key;
   }
 }
 
 class _FakeSemanticsNode extends SemanticsNode {
+  _FakeSemanticsNode(this.data);
+
   SemanticsData data;
   @override
   SemanticsData getSemanticsData() => data;
@@ -707,7 +732,7 @@ class _FakeSemanticsNode extends SemanticsNode {
 @immutable
 class _CustomColor extends Color {
   const _CustomColor(int value, {this.isEqual}) : super(value);
-  final bool isEqual;
+  final bool? isEqual;
 
   @override
   bool operator ==(Object other) => isEqual ?? super == other;

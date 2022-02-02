@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 
 import 'box.dart';
+import 'layer.dart';
 import 'object.dart';
 import 'shifted_box.dart';
 
@@ -81,10 +82,13 @@ class RenderAnimatedSize extends RenderAligningShiftedBox {
     AlignmentGeometry alignment = Alignment.center,
     TextDirection? textDirection,
     RenderBox? child,
+    Clip clipBehavior = Clip.hardEdge,
   }) : assert(vsync != null),
        assert(duration != null),
        assert(curve != null),
+       assert(clipBehavior != null),
        _vsync = vsync,
+       _clipBehavior = clipBehavior,
        super(child: child, alignment: alignment, textDirection: textDirection) {
     _controller = AnimationController(
       vsync: vsync,
@@ -137,6 +141,20 @@ class RenderAnimatedSize extends RenderAligningShiftedBox {
     if (value == _animation.curve)
       return;
     _animation.curve = value;
+  }
+
+  /// {@macro flutter.material.Material.clipBehavior}
+  ///
+  /// Defaults to [Clip.hardEdge], and must not be null.
+  Clip get clipBehavior => _clipBehavior;
+  Clip _clipBehavior = Clip.hardEdge;
+  set clipBehavior(Clip value) {
+    assert(value != null);
+    if (value != _clipBehavior) {
+      _clipBehavior = value;
+      markNeedsPaint();
+      markNeedsSemanticsUpdate();
+    }
   }
 
   /// Whether the size is being currently animated towards the child's size.
@@ -203,6 +221,38 @@ class RenderAnimatedSize extends RenderAligningShiftedBox {
     if (size.width < _sizeTween.end!.width ||
         size.height < _sizeTween.end!.height)
       _hasVisualOverflow = true;
+  }
+
+  @override
+  Size computeDryLayout(BoxConstraints constraints) {
+    if (child == null || constraints.isTight) {
+      return constraints.smallest;
+    }
+
+    // This simplified version of performLayout only calculates the current
+    // size without modifying global state. See performLayout for comments
+    // explaining the rational behind the implementation.
+    final Size childSize = child!.getDryLayout(constraints);
+    assert(_state != null);
+    switch (_state) {
+      case RenderAnimatedSizeState.start:
+        return constraints.constrain(childSize);
+      case RenderAnimatedSizeState.stable:
+        if (_sizeTween.end != childSize) {
+          return constraints.constrain(size);
+        } else if (_controller.value == _controller.upperBound) {
+          return constraints.constrain(childSize);
+        }
+        break;
+      case RenderAnimatedSizeState.unstable:
+      case RenderAnimatedSizeState.changed:
+        if (_sizeTween.end != childSize) {
+          return constraints.constrain(childSize);
+        }
+        break;
+    }
+
+    return constraints.constrain(_animatedSize!);
   }
 
   void _restartAnimation() {
@@ -275,11 +325,27 @@ class RenderAnimatedSize extends RenderAligningShiftedBox {
 
   @override
   void paint(PaintingContext context, Offset offset) {
-    if (child != null && _hasVisualOverflow) {
+    if (child != null && _hasVisualOverflow && clipBehavior != Clip.none) {
       final Rect rect = Offset.zero & size;
-      context.pushClipRect(needsCompositing, offset, rect, super.paint);
+      _clipRectLayer.layer = context.pushClipRect(
+        needsCompositing,
+        offset,
+        rect,
+        super.paint,
+        clipBehavior: clipBehavior,
+        oldLayer: _clipRectLayer.layer,
+      );
     } else {
+      _clipRectLayer.layer = null;
       super.paint(context, offset);
     }
+  }
+
+  final LayerHandle<ClipRectLayer> _clipRectLayer = LayerHandle<ClipRectLayer>();
+
+  @override
+  void dispose() {
+    _clipRectLayer.layer = null;
+    super.dispose();
   }
 }

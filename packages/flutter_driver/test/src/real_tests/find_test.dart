@@ -3,13 +3,11 @@
 // found in the LICENSE file.
 
 import 'package:flutter_driver/flutter_driver.dart';
-import 'package:flutter_driver/src/common/find.dart';
-import 'package:mockito/mockito.dart';
 
 import '../../common.dart';
 
 void main() {
-  final MockDeserialize mockDeserialize = MockDeserialize();
+  final FakeDeserialize fakeDeserialize = FakeDeserialize();
 
   test('Ancestor finder serialize', () {
     const SerializableFinder of = ByType('Text');
@@ -39,7 +37,7 @@ void main() {
       'firstMatchOnly': 'true',
     };
 
-    final Ancestor a = Ancestor.deserialize(serialized, mockDeserialize);
+    final Ancestor a = Ancestor.deserialize(serialized, fakeDeserialize);
     expect(a.of, isA<ByType>());
     expect(a.matching, isA<ByValueKey>());
     expect(a.matchRoot, isTrue);
@@ -74,7 +72,7 @@ void main() {
       'firstMatchOnly': 'true',
     };
 
-    final Descendant a = Descendant.deserialize(serialized, mockDeserialize);
+    final Descendant a = Descendant.deserialize(serialized, fakeDeserialize);
     expect(a.of, isA<ByType>());
     expect(a.matching, isA<ByValueKey>());
     expect(a.matchRoot, isTrue);
@@ -82,4 +80,4 @@ void main() {
   });
 }
 
-class MockDeserialize with Mock, DeserializeFinderFactory { }
+class FakeDeserialize extends Fake with DeserializeFinderFactory { }

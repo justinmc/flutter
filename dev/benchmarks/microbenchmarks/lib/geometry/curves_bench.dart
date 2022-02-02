@@ -9,7 +9,7 @@ import '../common.dart';
 
 const int _kNumIters = 10000;
 
-void _testCurve(Curve curve, {String name, String description, BenchmarkResultPrinter printer}) {
+void _testCurve(Curve curve, {required String name, required String description, required BenchmarkResultPrinter printer}) {
   final Stopwatch watch = Stopwatch();
   print('$description benchmark...');
   watch.start();
@@ -48,7 +48,7 @@ void main() {
     Offset(0.70, 0.04),
     Offset(0.78, 0.98),
     Offset(0.88, -0.00),
-  ], tension: 0.00);
+  ]);
   _testCurve(
     catmullRomCurve,
     name: 'catmullrom_transform_iteration',

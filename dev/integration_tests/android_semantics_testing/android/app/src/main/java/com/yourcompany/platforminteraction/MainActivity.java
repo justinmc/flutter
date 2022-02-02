@@ -16,13 +16,16 @@ import android.os.Bundle;
 import android.util.DisplayMetrics;
 import android.view.WindowManager;
 import android.content.Context;
+import androidx.annotation.NonNull;
 
-import io.flutter.app.FlutterActivity;
+import io.flutter.embedding.android.FlutterActivity;
+import io.flutter.embedding.engine.FlutterEngine;
+import io.flutter.embedding.android.FlutterActivity;
+import io.flutter.embedding.android.FlutterView;
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugins.GeneratedPluginRegistrant;
-import io.flutter.view.FlutterView;
 
 import android.view.accessibility.AccessibilityManager;
 import android.view.accessibility.AccessibilityNodeProvider;
@@ -30,10 +33,10 @@ import android.view.accessibility.AccessibilityNodeInfo;
 
 public class MainActivity extends FlutterActivity {
   @Override
-  protected void onCreate(Bundle savedInstanceState) {
-      super.onCreate(savedInstanceState);
-      GeneratedPluginRegistrant.registerWith(this);
-      new MethodChannel(getFlutterView(), "semantics").setMethodCallHandler(new SemanticsTesterMethodHandler());
+  public void configureFlutterEngine(@NonNull FlutterEngine flutterEngine) {
+      GeneratedPluginRegistrant.registerWith(flutterEngine);
+      new MethodChannel(flutterEngine.getDartExecutor().getBinaryMessenger(), "semantics")
+              .setMethodCallHandler(new SemanticsTesterMethodHandler());
   }
 
   class SemanticsTesterMethodHandler implements MethodCallHandler {
@@ -41,7 +44,7 @@ public class MainActivity extends FlutterActivity {
 
     @Override
     public void onMethodCall(MethodCall methodCall, MethodChannel.Result result) {
-        FlutterView flutterView = getFlutterView();
+        FlutterView flutterView = findViewById(FLUTTER_VIEW_ID);
         AccessibilityNodeProvider provider = flutterView.getAccessibilityNodeProvider();
         DisplayMetrics displayMetrics = new DisplayMetrics();
         WindowManager wm = (WindowManager) getApplicationContext().getSystemService(Context.WINDOW_SERVICE);
@@ -78,7 +81,9 @@ public class MainActivity extends FlutterActivity {
         result.put("contentDescription", node.getContentDescription());
         flags.put("isChecked", node.isChecked());
         flags.put("isCheckable", node.isCheckable());
-        flags.put("isDismissable", node.isDismissable());
+        // This is not a typo.
+        // See: https://developer.android.com/reference/android/view/accessibility/AccessibilityNodeInfo#isDismissable()
+        flags.put("isDismissible", node.isDismissable());
         flags.put("isEditable", node.isEditable());
         flags.put("isEnabled", node.isEnabled());
         flags.put("isFocusable", node.isFocusable());

@@ -5,15 +5,14 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:path/path.dart' as path;
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as path;
 
 import '../test_utils.dart';
 
-final String rootDirectoryPath = Directory.current.parent.path;
+final String rootDirectoryPath = Directory.current.path;
 
 void main() {
   for (final String language in kCupertinoSupportedLanguages) {
@@ -145,7 +144,7 @@ void main() {
 
 
     if (noCupertinoArbFile.existsSync() && !nbCupertinoArbFile.existsSync()) {
-      Locale locale = const Locale.fromSubtags(languageCode: 'no', scriptCode: null, countryCode: null);
+      Locale locale = const Locale.fromSubtags(languageCode: 'no');
       expect(GlobalCupertinoLocalizations.delegate.isSupported(locale), isTrue);
       CupertinoLocalizations localizations = await GlobalCupertinoLocalizations.delegate.load(locale);
       expect(localizations, isA<CupertinoLocalizationNo>());
@@ -154,7 +153,7 @@ void main() {
       final String copyButtonLabelNo = localizations.copyButtonLabel;
       final String cutButtonLabelNo = localizations.cutButtonLabel;
 
-      locale = const Locale.fromSubtags(languageCode: 'nb', scriptCode: null, countryCode: null);
+      locale = const Locale.fromSubtags(languageCode: 'nb');
       expect(GlobalCupertinoLocalizations.delegate.isSupported(locale), isTrue);
       localizations = await GlobalCupertinoLocalizations.delegate.load(locale);
       expect(localizations, isA<CupertinoLocalizationNb>());

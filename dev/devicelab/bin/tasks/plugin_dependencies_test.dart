@@ -2,13 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_devicelab/framework/framework.dart';
+import 'package:flutter_devicelab/framework/task_result.dart';
 import 'package:flutter_devicelab/framework/utils.dart';
 import 'package:path/path.dart' as path;
+
+final String platformLineSep = Platform.isWindows ? '\r\n': '\n';
 
 /// Tests that a plugin A can depend on platform code from a plugin B
 /// as long as plugin B is defined as a pub dependency of plugin A.
@@ -20,7 +22,7 @@ Future<void> main() async {
 
     section('Find Java');
 
-    final String javaHome = await findJavaHome();
+    final String? javaHome = await findJavaHome();
     if (javaHome == null) {
       return TaskResult.failure('Could not find Java');
     }
@@ -100,7 +102,7 @@ dependencies:
 
 environment:
   sdk: ">=2.0.0-dev.28.0 <3.0.0"
-  flutter: ">=1.5.0 <2.0.0"
+  flutter: ">=1.5.0"
 ''', flush: true);
 
       section('Create plugin D without ios/ directory');
@@ -151,14 +153,14 @@ public class DummyPluginBClass {
       final File pluginApubspec = File(path.join(pluginADirectory.path, 'pubspec.yaml'));
       String pluginApubspecContent = await pluginApubspec.readAsString();
       pluginApubspecContent = pluginApubspecContent.replaceFirst(
-        '\ndependencies:\n',
-        '\ndependencies:\n'
-        '  plugin_b:\n'
-        '    path: ${pluginBDirectory.path}\n'
-        '  plugin_c:\n'
-        '    path: ${pluginCDirectory.path}\n'
-        '  plugin_d:\n'
-        '    path: ${pluginDDirectory.path}\n',
+        '${platformLineSep}dependencies:$platformLineSep',
+        '${platformLineSep}dependencies:$platformLineSep'
+        '  plugin_b:$platformLineSep'
+        '    path: ${pluginBDirectory.path}$platformLineSep'
+        '  plugin_c:$platformLineSep'
+        '    path: ${pluginCDirectory.path}$platformLineSep'
+        '  plugin_d:$platformLineSep'
+        '    path: ${pluginDDirectory.path}$platformLineSep',
       );
       await pluginApubspec.writeAsString(pluginApubspecContent, flush: true);
 

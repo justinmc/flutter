@@ -2,15 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'dart:typed_data';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../painting/image_data.dart';
+import '../image_data.dart';
 import '../widgets/semantics_tester.dart';
 
 Future<void> pumpWidgetWithBoilerplate(WidgetTester tester, Widget widget) async {
@@ -32,20 +30,21 @@ Future<void> pumpWidgetWithBoilerplate(WidgetTester tester, Widget widget) async
 Future<void> main() async {
 
   testWidgets('Need at least 2 tabs', (WidgetTester tester) async {
-    try {
-      await pumpWidgetWithBoilerplate(tester, CupertinoTabBar(
+    await expectLater(
+      () => pumpWidgetWithBoilerplate(tester, CupertinoTabBar(
         items: <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: ImageIcon(MemoryImage(Uint8List.fromList(kTransparentImage))),
-            title: const Text('Tab 1'),
+            label: 'Tab 1',
           ),
         ],
-      ));
-      fail('Should not be possible to create a tab bar with just one item');
-    } on AssertionError catch (e) {
-      expect(e.toString(), contains('items.length'));
-      // Exception expected.
-    }
+      )),
+      throwsA(isAssertionError.having(
+        (AssertionError error) => error.toString(),
+        '.toString()',
+        contains('items.length'),
+      )),
+    );
   });
 
   testWidgets('Active and inactive colors', (WidgetTester tester) async {
@@ -55,11 +54,11 @@ Future<void> main() async {
         items: <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: ImageIcon(MemoryImage(Uint8List.fromList(kTransparentImage))),
-            title: const Text('Tab 1'),
+            label: 'Tab 1',
           ),
           BottomNavigationBarItem(
             icon: ImageIcon(MemoryImage(Uint8List.fromList(kTransparentImage))),
-            title: const Text('Tab 2'),
+            label: 'Tab 2',
           ),
         ],
         currentIndex: 1,
@@ -72,13 +71,13 @@ Future<void> main() async {
       of: find.text('Tab 1'),
       matching: find.byType(RichText),
     ));
-    expect(actualInactive.text.style.color, const Color(0xFF654321));
+    expect(actualInactive.text.style!.color, const Color(0xFF654321));
 
     final RichText actualActive = tester.widget(find.descendant(
       of: find.text('Tab 2'),
       matching: find.byType(RichText),
     ));
-    expect(actualActive.text.style.color, const Color(0xFF123456));
+    expect(actualActive.text.style!.color, const Color(0xFF123456));
   });
 
 
@@ -121,11 +120,11 @@ Future<void> main() async {
         items: <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: ImageIcon(MemoryImage(Uint8List.fromList(kTransparentImage))),
-            title: const Text('Tab 1'),
+            label: 'Tab 1',
           ),
           BottomNavigationBarItem(
             icon: ImageIcon(MemoryImage(Uint8List.fromList(kTransparentImage))),
-            title: const Text('Tab 2'),
+            label: 'Tab 2',
           ),
         ],
         currentIndex: 1,
@@ -138,13 +137,13 @@ Future<void> main() async {
       of: find.text('Tab 1'),
       matching: find.byType(RichText),
     ));
-    expect(actualInactive.text.style.color.value, 0xFF000002);
+    expect(actualInactive.text.style!.color!.value, 0xFF000002);
 
     RichText actualActive = tester.widget(find.descendant(
       of: find.text('Tab 2'),
       matching: find.byType(RichText),
     ));
-    expect(actualActive.text.style.color.value, 0xFF000000);
+    expect(actualActive.text.style!.color!.value, 0xFF000000);
 
     final RenderDecoratedBox renderDecoratedBox = tester.renderObject(find.descendant(
       of: find.byType(BackdropFilter),
@@ -153,7 +152,7 @@ Future<void> main() async {
 
     // Border color is resolved correctly.
     final BoxDecoration decoration1 = renderDecoratedBox.decoration as BoxDecoration;
-    expect(decoration1.border.top.color.value, 0x4C000000);
+    expect(decoration1.border!.top.color.value, 0x4C000000);
 
     // Switch to dark mode.
     await pumpWidgetWithBoilerplate(tester, MediaQuery(
@@ -162,11 +161,11 @@ Future<void> main() async {
           items: <BottomNavigationBarItem>[
             BottomNavigationBarItem(
               icon: ImageIcon(MemoryImage(Uint8List.fromList(kTransparentImage))),
-              title: const Text('Tab 1'),
+              label: 'Tab 1',
             ),
             BottomNavigationBarItem(
               icon: ImageIcon(MemoryImage(Uint8List.fromList(kTransparentImage))),
-              title: const Text('Tab 2'),
+              label: 'Tab 2',
             ),
           ],
           currentIndex: 1,
@@ -179,17 +178,17 @@ Future<void> main() async {
         of: find.text('Tab 1'),
         matching: find.byType(RichText),
     ));
-    expect(actualInactive.text.style.color.value, 0xFF000003);
+    expect(actualInactive.text.style!.color!.value, 0xFF000003);
 
     actualActive = tester.widget(find.descendant(
         of: find.text('Tab 2'),
         matching: find.byType(RichText),
     ));
-    expect(actualActive.text.style.color.value, 0xFF000001);
+    expect(actualActive.text.style!.color!.value, 0xFF000001);
 
     // Border color is resolved correctly.
     final BoxDecoration decoration2 = renderDecoratedBox.decoration as BoxDecoration;
-    expect(decoration2.border.top.color.value, 0x29000000);
+    expect(decoration2.border!.top.color.value, 0x29000000);
   });
 
   testWidgets('Tabs respects themes', (WidgetTester tester) async {
@@ -199,11 +198,11 @@ Future<void> main() async {
           items: <BottomNavigationBarItem>[
             BottomNavigationBarItem(
               icon: ImageIcon(MemoryImage(Uint8List.fromList(kTransparentImage))),
-              title: const Text('Tab 1'),
+              label: 'Tab 1',
             ),
             BottomNavigationBarItem(
               icon: ImageIcon(MemoryImage(Uint8List.fromList(kTransparentImage))),
-              title: const Text('Tab 2'),
+              label: 'Tab 2',
             ),
           ],
           currentIndex: 1,
@@ -215,13 +214,13 @@ Future<void> main() async {
       of: find.text('Tab 1'),
       matching: find.byType(RichText),
     ));
-    expect(actualInactive.text.style.color.value, 0xFF999999);
+    expect(actualInactive.text.style!.color!.value, 0xFF999999);
 
     RichText actualActive = tester.widget(find.descendant(
       of: find.text('Tab 2'),
       matching: find.byType(RichText),
     ));
-    expect(actualActive.text.style.color, CupertinoColors.activeBlue);
+    expect(actualActive.text.style!.color, CupertinoColors.activeBlue);
 
     await tester.pumpWidget(
       CupertinoApp(
@@ -230,11 +229,11 @@ Future<void> main() async {
           items: <BottomNavigationBarItem>[
             BottomNavigationBarItem(
               icon: ImageIcon(MemoryImage(Uint8List.fromList(kTransparentImage))),
-              title: const Text('Tab 1'),
+              label: 'Tab 1',
             ),
             BottomNavigationBarItem(
               icon: ImageIcon(MemoryImage(Uint8List.fromList(kTransparentImage))),
-              title: const Text('Tab 2'),
+              label: 'Tab 2',
             ),
           ],
           currentIndex: 1,
@@ -246,18 +245,18 @@ Future<void> main() async {
       of: find.text('Tab 1'),
       matching: find.byType(RichText),
     ));
-    expect(actualInactive.text.style.color.value, 0xFF757575);
+    expect(actualInactive.text.style!.color!.value, 0xFF757575);
 
     actualActive = tester.widget(find.descendant(
       of: find.text('Tab 2'),
       matching: find.byType(RichText),
     ));
 
-    expect(actualActive.text.style.color, isSameColorAs(CupertinoColors.activeBlue.darkColor));
+    expect(actualActive.text.style!.color, isSameColorAs(CupertinoColors.activeBlue.darkColor));
   });
 
   testWidgets('Use active icon', (WidgetTester tester) async {
-    final MemoryImage activeIcon = MemoryImage(Uint8List.fromList(kBlueSquare));
+    final MemoryImage activeIcon = MemoryImage(Uint8List.fromList(kBlueSquarePng));
     final MemoryImage inactiveIcon = MemoryImage(Uint8List.fromList(kTransparentImage));
 
     await pumpWidgetWithBoilerplate(tester, MediaQuery(
@@ -266,12 +265,12 @@ Future<void> main() async {
         items: <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: ImageIcon(MemoryImage(Uint8List.fromList(kTransparentImage))),
-            title: const Text('Tab 1'),
+            label: 'Tab 1',
           ),
           BottomNavigationBarItem(
             icon: ImageIcon(inactiveIcon),
             activeIcon: ImageIcon(activeIcon),
-            title: const Text('Tab 2'),
+            label: 'Tab 2',
           ),
         ],
         currentIndex: 1,
@@ -294,11 +293,11 @@ Future<void> main() async {
       items: <BottomNavigationBarItem>[
         BottomNavigationBarItem(
           icon: ImageIcon(MemoryImage(Uint8List.fromList(kTransparentImage))),
-          title: const Text('Aka'),
+          label: 'Aka',
         ),
         BottomNavigationBarItem(
           icon: ImageIcon(MemoryImage(Uint8List.fromList(kTransparentImage))),
-          title: const Text('Shiro'),
+          label: 'Shiro',
         ),
       ],
     );
@@ -328,6 +327,49 @@ Future<void> main() async {
     expect(tester.getSize(find.byType(CupertinoTabBar)).height, 90.0);
   });
 
+  testWidgets('Set custom height', (WidgetTester tester) async {
+    // Regression test for https://github.com/flutter/flutter/issues/51704
+    const double tabBarHeight = 56.0;
+    final CupertinoTabBar tabBar = CupertinoTabBar(
+      height: tabBarHeight,
+      items: <BottomNavigationBarItem>[
+        BottomNavigationBarItem(
+          icon: ImageIcon(MemoryImage(Uint8List.fromList(kTransparentImage))),
+          label: 'Aka',
+        ),
+        BottomNavigationBarItem(
+          icon: ImageIcon(MemoryImage(Uint8List.fromList(kTransparentImage))),
+          label: 'Shiro',
+        ),
+      ],
+    );
+
+    // Verify height with no bottom padding.
+    await pumpWidgetWithBoilerplate(tester, MediaQuery(
+      data: const MediaQueryData(),
+      child: CupertinoTabScaffold(
+        tabBar: tabBar,
+        tabBuilder: (BuildContext context, int index) {
+          return const Placeholder();
+        },
+      ),
+    ));
+    expect(tester.getSize(find.byType(CupertinoTabBar)).height, tabBarHeight);
+
+    // Verify height with bottom padding.
+    const double bottomPadding = 40.0;
+    await pumpWidgetWithBoilerplate(tester, MediaQuery(
+      data: const MediaQueryData(padding: EdgeInsets.only(bottom: bottomPadding)),
+      child: CupertinoTabScaffold(
+        tabBar: tabBar,
+        tabBuilder: (BuildContext context, int index) {
+          return const Placeholder();
+        },
+      ),
+    ));
+    expect(tester.getSize(find.byType(CupertinoTabBar)).height, tabBarHeight + bottomPadding);
+  });
+
   testWidgets('Opaque background does not add blur effects', (WidgetTester tester) async {
     await pumpWidgetWithBoilerplate(tester, MediaQuery(
       data: const MediaQueryData(),
@@ -335,11 +377,11 @@ Future<void> main() async {
         items: <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: ImageIcon(MemoryImage(Uint8List.fromList(kTransparentImage))),
-            title: const Text('Tab 1'),
+            label: 'Tab 1',
           ),
           BottomNavigationBarItem(
             icon: ImageIcon(MemoryImage(Uint8List.fromList(kTransparentImage))),
-            title: const Text('Tab 2'),
+            label: 'Tab 2',
           ),
         ],
       ),
@@ -353,11 +395,11 @@ Future<void> main() async {
         items: <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: ImageIcon(MemoryImage(Uint8List.fromList(kTransparentImage))),
-            title: const Text('Tab 1'),
+            label: 'Tab 1',
           ),
           BottomNavigationBarItem(
             icon: ImageIcon(MemoryImage(Uint8List.fromList(kTransparentImage))),
-            title: const Text('Tab 2'),
+            label: 'Tab 2',
           ),
         ],
         backgroundColor: const Color(0xFFFFFFFF), // Opaque white.
@@ -368,7 +410,7 @@ Future<void> main() async {
   });
 
   testWidgets('Tap callback', (WidgetTester tester) async {
-    int callbackTab;
+    late int callbackTab;
 
     await pumpWidgetWithBoilerplate(tester, MediaQuery(
       data: const MediaQueryData(),
@@ -376,11 +418,11 @@ Future<void> main() async {
         items: <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: ImageIcon(MemoryImage(Uint8List.fromList(kTransparentImage))),
-            title: const Text('Tab 1'),
+            label: 'Tab 1',
           ),
           BottomNavigationBarItem(
             icon: ImageIcon(MemoryImage(Uint8List.fromList(kTransparentImage))),
-            title: const Text('Tab 2'),
+            label: 'Tab 2',
           ),
         ],
         currentIndex: 1,
@@ -390,6 +432,9 @@ Future<void> main() async {
 
     await tester.tap(find.text('Tab 1'));
     expect(callbackTab, 0);
+
+    await tester.tap(find.text('Tab 2'));
+    expect(callbackTab, 1);
   });
 
   testWidgets('tabs announce semantics', (WidgetTester tester) async {
@@ -401,11 +446,11 @@ Future<void> main() async {
         items: <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: ImageIcon(MemoryImage(Uint8List.fromList(kTransparentImage))),
-            title: const Text('Tab 1'),
+            label: 'Tab 1',
           ),
           BottomNavigationBarItem(
             icon: ImageIcon(MemoryImage(Uint8List.fromList(kTransparentImage))),
-            title: const Text('Tab 2'),
+            label: 'Tab 2',
           ),
         ],
       ),
@@ -427,36 +472,38 @@ Future<void> main() async {
     semantics.dispose();
   });
 
-  testWidgets('Title of items should be nullable', (WidgetTester tester) async {
+  testWidgets('Label of items should be nullable', (WidgetTester tester) async {
     final MemoryImage iconProvider = MemoryImage(Uint8List.fromList(kTransparentImage));
     final List<int> itemsTapped = <int>[];
 
     await pumpWidgetWithBoilerplate(
-        tester,
-        MediaQuery(
-          data: const MediaQueryData(),
-          child: CupertinoTabBar(
-            items: <BottomNavigationBarItem>[
-              BottomNavigationBarItem(
-                icon: ImageIcon(
-                  MemoryImage(Uint8List.fromList(kTransparentImage)),
-                ),
-                title: const Text('Tab 1'),
+      tester,
+      MediaQuery(
+        data: const MediaQueryData(),
+        child: CupertinoTabBar(
+          items: <BottomNavigationBarItem>[
+            BottomNavigationBarItem(
+              icon: ImageIcon(
+                MemoryImage(Uint8List.fromList(kTransparentImage)),
               ),
-              BottomNavigationBarItem(
-                icon: ImageIcon(
-                  iconProvider,
-                ),
+              label: 'Tab 1',
+            ),
+            BottomNavigationBarItem(
+              icon: ImageIcon(
+                iconProvider,
               ),
-            ],
-            onTap: (int index) => itemsTapped.add(index),
-          ),
-        ));
+            ),
+          ],
+          onTap: (int index) => itemsTapped.add(index),
+        ),
+      ),
+    );
 
     expect(find.text('Tab 1'), findsOneWidget);
 
     final Finder finder = find.byWidgetPredicate(
-        (Widget widget) => widget is Image && widget.image == iconProvider);
+      (Widget widget) => widget is Image && widget.image == iconProvider,
+    );
 
     await tester.tap(finder);
     expect(itemsTapped, <int>[1]);
@@ -464,54 +511,56 @@ Future<void> main() async {
 
   testWidgets('Hide border hides the top border of the tabBar', (WidgetTester tester) async {
     await pumpWidgetWithBoilerplate(
-        tester,
-        MediaQuery(
-          data: const MediaQueryData(),
-          child: CupertinoTabBar(
-            items: <BottomNavigationBarItem>[
-              BottomNavigationBarItem(
-                icon: ImageIcon(
-                  MemoryImage(Uint8List.fromList(kTransparentImage)),
-                ),
-                title: const Text('Tab 1'),
+      tester,
+      MediaQuery(
+        data: const MediaQueryData(),
+        child: CupertinoTabBar(
+          items: <BottomNavigationBarItem>[
+            BottomNavigationBarItem(
+              icon: ImageIcon(
+                MemoryImage(Uint8List.fromList(kTransparentImage)),
               ),
-              BottomNavigationBarItem(
-                icon: ImageIcon(
-                  MemoryImage(Uint8List.fromList(kTransparentImage)),
-                ),
-                title: const Text('Tab 2'),
+              label: 'Tab 1',
+            ),
+            BottomNavigationBarItem(
+              icon: ImageIcon(
+                MemoryImage(Uint8List.fromList(kTransparentImage)),
               ),
-            ],
-          ),
-        ));
+              label: 'Tab 2',
+            ),
+          ],
+        ),
+      ),
+    );
 
     final DecoratedBox decoratedBox = tester.widget(find.byType(DecoratedBox));
     final BoxDecoration boxDecoration = decoratedBox.decoration as BoxDecoration;
     expect(boxDecoration.border, isNotNull);
 
     await pumpWidgetWithBoilerplate(
-        tester,
-        MediaQuery(
-          data: const MediaQueryData(),
-          child: CupertinoTabBar(
-            items: <BottomNavigationBarItem>[
-              BottomNavigationBarItem(
-                icon: ImageIcon(
-                  MemoryImage(Uint8List.fromList(kTransparentImage)),
-                ),
-                title: const Text('Tab 1'),
+      tester,
+      MediaQuery(
+        data: const MediaQueryData(),
+        child: CupertinoTabBar(
+          items: <BottomNavigationBarItem>[
+            BottomNavigationBarItem(
+              icon: ImageIcon(
+                MemoryImage(Uint8List.fromList(kTransparentImage)),
               ),
-              BottomNavigationBarItem(
-                icon: ImageIcon(
-                  MemoryImage(Uint8List.fromList(kTransparentImage)),
-                ),
-                title: const Text('Tab 2'),
+              label: 'Tab 1',
+            ),
+            BottomNavigationBarItem(
+              icon: ImageIcon(
+                MemoryImage(Uint8List.fromList(kTransparentImage)),
               ),
-            ],
-            backgroundColor: const Color(0xFFFFFFFF), // Opaque white.
-            border: null,
-          ),
-        ));
+              label: 'Tab 2',
+            ),
+          ],
+          backgroundColor: const Color(0xFFFFFFFF), // Opaque white.
+          border: null,
+        ),
+      ),
+    );
 
     final DecoratedBox decoratedBoxHiddenBorder =
         tester.widget(find.byType(DecoratedBox));

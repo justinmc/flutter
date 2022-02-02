@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -11,22 +9,13 @@ void main() {
   test('BorderSide - asserts when constructed incorrectly', () {
     expect(
       const BorderSide(),
-      const BorderSide(
-        color: Color(0xFF000000),
-        width: 1.0,
-        style: BorderStyle.solid,
-      ),
+      const BorderSide(),
     );
-    expect(() => BorderSide(color: nonconst(null)), throwsAssertionError);
-    expect(() => BorderSide(width: nonconst(null)), throwsAssertionError);
-    expect(() => BorderSide(style: nonconst(null)), throwsAssertionError);
     expect(() => BorderSide(width: nonconst(-1.0)), throwsAssertionError);
     expect(
       const BorderSide(width: -0.0),
       const BorderSide(
-        color: Color(0xFF000000),
         width: 0.0,
-        style: BorderStyle.solid,
       ),
     );
   });
@@ -43,7 +32,7 @@ void main() {
     const BorderSide side2 = BorderSide(width: 2.0);
     const BorderSide side3 = BorderSide(width: 3.0);
     const BorderSide side5 = BorderSide(width: 5.0);
-    const BorderSide solid = BorderSide(style: BorderStyle.solid);
+    const BorderSide solid = BorderSide();
     const BorderSide yellowNone = BorderSide(style: BorderStyle.none, color: Color(0xFFFFFF00), width: 0.0);
     // canMerge
     expect(      BorderSide.canMerge(BorderSide.none, BorderSide.none), isTrue);
@@ -56,11 +45,8 @@ void main() {
     expect(      BorderSide.canMerge(none3, BorderSide.none), isTrue);
     expect(      BorderSide.canMerge(none3, side2), isFalse);
     expect(      BorderSide.canMerge(none3, yellowNone), isTrue);
-    expect(() => BorderSide.canMerge(null, null), throwsAssertionError);
-    expect(() => BorderSide.canMerge(null, side2), throwsAssertionError);
     expect(      BorderSide.canMerge(side2, BorderSide.none), isTrue);
     expect(      BorderSide.canMerge(side2, none3), isFalse);
-    expect(() => BorderSide.canMerge(side2, null), throwsAssertionError);
     expect(      BorderSide.canMerge(side2, side3), isTrue);
     expect(      BorderSide.canMerge(side2, yellowNone), isTrue);
     expect(      BorderSide.canMerge(side3, side2), isTrue);
@@ -78,11 +64,8 @@ void main() {
     expect(      BorderSide.merge(none3, BorderSide.none), none3);
     expect(() => BorderSide.merge(none3, side2), throwsAssertionError);
     expect(      BorderSide.merge(none3, yellowNone), none3);
-    expect(() => BorderSide.merge(null, null), throwsAssertionError);
-    expect(() => BorderSide.merge(null, side2), throwsAssertionError);
     expect(      BorderSide.merge(side2, BorderSide.none), side2);
     expect(() => BorderSide.merge(side2, none3), throwsAssertionError);
-    expect(() => BorderSide.merge(side2, null), throwsAssertionError);
     expect(      BorderSide.merge(side2, side3), side5);
     expect(      BorderSide.merge(side2, yellowNone), side2);
     expect(      BorderSide.merge(side3, side2), side5);
@@ -112,7 +95,7 @@ void main() {
     expect(none.scale(2.0), none);
   });
   test('BorderSide - toPaint', () {
-    final Paint paint1 = const BorderSide(width: 2.5, color: Color(0xFFFFFF00), style: BorderStyle.solid).toPaint();
+    final Paint paint1 = const BorderSide(width: 2.5, color: Color(0xFFFFFF00)).toPaint();
     expect(paint1.strokeWidth, 2.5);
     expect(paint1.style, PaintingStyle.stroke);
     expect(paint1.color, const Color(0xFFFFFF00));
@@ -125,7 +108,7 @@ void main() {
   });
   test("BorderSide - won't lerp into negative widths", () {
     const BorderSide side0 = BorderSide(width: 0.0);
-    const BorderSide side1 = BorderSide(width: 1.0);
+    const BorderSide side1 = BorderSide();
     const BorderSide side2 = BorderSide(width: 2.0);
     expect(BorderSide.lerp(side2, side1, 10.0), BorderSide.none);
     expect(BorderSide.lerp(side1, side2, -10.0), BorderSide.none);

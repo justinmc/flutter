@@ -2,10 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'package:flutter/foundation.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
 import 'bottom_app_bar_theme.dart';
@@ -15,7 +12,7 @@ import 'scaffold.dart';
 import 'theme.dart';
 
 // Examples can assume:
-// Widget bottomAppBarContents;
+// late Widget bottomAppBarContents;
 
 /// A container that is typically used with [Scaffold.bottomNavigationBar], and
 /// can have a notch along the top that makes room for an overlapping
@@ -30,9 +27,17 @@ import 'theme.dart';
 ///     color: Colors.white,
 ///     child: bottomAppBarContents,
 ///   ),
-///   floatingActionButton: FloatingActionButton(onPressed: null),
+///   floatingActionButton: const FloatingActionButton(onPressed: null),
 /// )
 /// ```
+/// {@end-tool}
+///
+/// {@tool dartpad}
+/// This example shows the [BottomAppBar], which can be configured to have a notch using the
+/// [BottomAppBar.shape] property. This also includes an optional [FloatingActionButton], which illustrates
+/// the [FloatingActionButtonLocation]s in relation to the [BottomAppBar].
+///
+/// ** See code in examples/api/lib/material/bottom_app_bar/bottom_app_bar.1.dart **
 /// {@end-tool}
 ///
 /// See also:
@@ -50,7 +55,7 @@ class BottomAppBar extends StatefulWidget {
   /// If the corresponding [BottomAppBarTheme] property is null, then the default
   /// specified in the property's documentation will be used.
   const BottomAppBar({
-    Key key,
+    Key? key,
     this.color,
     this.elevation,
     this.shape,
@@ -64,18 +69,18 @@ class BottomAppBar extends StatefulWidget {
 
   /// The widget below this widget in the tree.
   ///
-  /// {@macro flutter.widgets.child}
+  /// {@macro flutter.widgets.ProxyWidget.child}
   ///
   /// Typically this the child will be a [Row], with the first child
   /// being an [IconButton] with the [Icons.menu] icon.
-  final Widget child;
+  final Widget? child;
 
   /// The bottom app bar's background color.
   ///
   /// If this property is null then [BottomAppBarTheme.color] of
   /// [ThemeData.bottomAppBarTheme] is used. If that's null then
   /// [ThemeData.bottomAppBarColor] is used.
-  final Color color;
+  final Color? color;
 
   /// The z-coordinate at which to place this bottom app bar relative to its
   /// parent.
@@ -86,16 +91,16 @@ class BottomAppBar extends StatefulWidget {
   /// If this property is null then [BottomAppBarTheme.elevation] of
   /// [ThemeData.bottomAppBarTheme] is used. If that's null, the default value
   /// is 8.
-  final double elevation;
+  final double? elevation;
 
   /// The notch that is made for the floating action button.
   ///
   /// If this property is null then [BottomAppBarTheme.shape] of
   /// [ThemeData.bottomAppBarTheme] is used. If that's null then the shape will
   /// be rectangular with no notch.
-  final NotchedShape shape;
+  final NotchedShape? shape;
 
-  /// {@macro flutter.widgets.Clip}
+  /// {@macro flutter.material.Material.clipBehavior}
   ///
   /// Defaults to [Clip.none], and must not be null.
   final Clip clipBehavior;
@@ -111,7 +116,8 @@ class BottomAppBar extends StatefulWidget {
 }
 
 class _BottomAppBarState extends State<BottomAppBar> {
-  ValueListenable<ScaffoldGeometry> geometryListenable;
+  late ValueListenable<ScaffoldGeometry> geometryListenable;
+  final GlobalKey materialKey = GlobalKey();
   static const double _defaultElevation = 8.0;
 
   @override
@@ -123,13 +129,14 @@ class _BottomAppBarState extends State<BottomAppBar> {
   @override
   Widget build(BuildContext context) {
     final BottomAppBarTheme babTheme = BottomAppBarTheme.of(context);
-    final NotchedShape notchedShape = widget.shape ?? babTheme.shape;
+    final NotchedShape? notchedShape = widget.shape ?? babTheme.shape;
     final CustomClipper<Path> clipper = notchedShape != null
       ? _BottomAppBarClipper(
-        geometry: geometryListenable,
-        shape: notchedShape,
-        notchMargin: widget.notchMargin,
-      )
+          geometry: geometryListenable,
+          shape: notchedShape,
+          materialKey: materialKey,
+          notchMargin: widget.notchMargin,
+        )
       : const ShapeBorderClipper(shape: RoundedRectangleBorder());
     final double elevation = widget.elevation ?? babTheme.elevation ?? _defaultElevation;
     final Color color = widget.color ?? babTheme.color ?? Theme.of(context).bottomAppBarColor;
@@ -140,10 +147,11 @@ class _BottomAppBarState extends State<BottomAppBar> {
       color: effectiveColor,
       clipBehavior: widget.clipBehavior,
       child: Material(
+        key: materialKey,
         type: MaterialType.transparency,
         child: widget.child == null
           ? null
-          : SafeArea(child: widget.child),
+          : SafeArea(child: widget.child!),
       ),
     );
   }
@@ -151,9 +159,10 @@ class _BottomAppBarState extends State<BottomAppBar> {
 
 class _BottomAppBarClipper extends CustomClipper<Path> {
   const _BottomAppBarClipper({
-    @required this.geometry,
-    @required this.shape,
-    @required this.notchMargin,
+    required this.geometry,
+    required this.shape,
+    required this.materialKey,
+    required this.notchMargin,
   }) : assert(geometry != null),
        assert(shape != null),
        assert(notchMargin != null),
@@ -161,17 +170,28 @@ class _BottomAppBarClipper extends CustomClipper<Path> {
 
   final ValueListenable<ScaffoldGeometry> geometry;
   final NotchedShape shape;
+  final GlobalKey materialKey;
   final double notchMargin;
+
+  // Returns the top of the BottomAppBar in global coordinates.
+  //
+  // If the Scaffold's bottomNavigationBar was specified, then we can use its
+  // geometry value, otherwise we compute the location based on the AppBar's
+  // Material widget.
+  double get bottomNavigationBarTop {
+    final double? bottomNavigationBarTop = geometry.value.bottomNavigationBarTop;
+    if (bottomNavigationBarTop != null)
+      return bottomNavigationBarTop;
+    final RenderBox? box = materialKey.currentContext?.findRenderObject() as RenderBox?;
+    return box?.localToGlobal(Offset.zero).dy ?? 0;
+  }
 
   @override
   Path getClip(Size size) {
     // button is the floating action button's bounding rectangle in the
     // coordinate system whose origin is at the appBar's top left corner,
     // or null if there is no floating action button.
-    final Rect button = geometry.value.floatingActionButtonArea?.translate(
-      0.0,
-      geometry.value.bottomNavigationBarTop * -1.0,
-    );
+    final Rect? button = geometry.value.floatingActionButtonArea?.translate(0.0, bottomNavigationBarTop * -1.0);
     return shape.getOuterPath(Offset.zero & size, button?.inflate(notchMargin));
   }
 

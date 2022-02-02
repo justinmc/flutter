@@ -2,12 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
+// This file is run as part of a reduced test set in CI on Mac and Windows
+// machines.
+@Tags(<String>['reduced-test-set'])
 
-@TestOn('!chrome') // Flaky on web
-import 'package:flutter_test/flutter_test.dart';
+@TestOn('!chrome')
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   testWidgets('Centered text', (WidgetTester tester) async {
@@ -78,7 +79,7 @@ void main() {
             style: TextStyle(
               foreground: Paint()
                 ..color = black
-                ..shader = linearGradient
+                ..shader = linearGradient,
             ),
           ),
         ),
@@ -100,7 +101,7 @@ void main() {
               foreground: Paint()
                 ..color = black
                 ..style = PaintingStyle.stroke
-                ..strokeWidth = 2.0
+                ..strokeWidth = 2.0,
             ),
           ),
         ),
@@ -123,7 +124,7 @@ void main() {
                 ..color = black
                 ..style = PaintingStyle.stroke
                 ..strokeWidth = 2.0
-                ..shader = linearGradient
+                ..shader = linearGradient,
             ),
           ),
         ),
@@ -530,7 +531,7 @@ void main() {
                   color: Color(0xff00ff00),
                 ),
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(minWidth: 0, maxWidth: 200, minHeight: 0, maxHeight: 100),
+                  constraints: const BoxConstraints(maxWidth: 200, maxHeight: 100),
                   child: const Text.rich(
                     TextSpan(
                       text: 'C ',
@@ -567,7 +568,7 @@ void main() {
                             ),
                           ),
                         ),
-                        TextSpan(text: 'hello world! sieze the day!'),
+                        TextSpan(text: 'hello world! seize the day!'),
                         WidgetSpan(
                           child: Checkbox(value: false, onChanged: null),
                         ),
@@ -623,7 +624,7 @@ void main() {
                   color: Color(0xff00ff00),
                 ),
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(minWidth: 0, maxWidth: 200, minHeight: 0, maxHeight: 100),
+                  constraints: const BoxConstraints(maxWidth: 200, maxHeight: 100),
                   child: const Text.rich(
                     TextSpan(
                       text: 'My name is: ',
@@ -669,7 +670,7 @@ void main() {
                   color: Color(0xff00ff00),
                 ),
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(minWidth: 0, maxWidth: 200, minHeight: 0, maxHeight: 100),
+                  constraints: const BoxConstraints(maxWidth: 200, maxHeight: 100),
                   child: const Text.rich(
                     TextSpan(
                       text: 'outer',
@@ -798,7 +799,7 @@ void main() {
                   color: Color(0xff00ff00),
                 ),
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(minWidth: 0, maxWidth: 200, minHeight: 0, maxHeight: 100),
+                  constraints: const BoxConstraints(maxWidth: 200, maxHeight: 100),
                   child: const Text.rich(
                     TextSpan(
                       text: 'C ',
@@ -839,7 +840,7 @@ void main() {
                             ),
                           ),
                         ),
-                        TextSpan(text: 'hello world! sieze the day!'),
+                        TextSpan(text: 'hello world! seize the day!'),
                         WidgetSpan(
                           alignment: PlaceholderAlignment.baseline,
                           baseline: TextBaseline.alphabetic,
@@ -905,7 +906,7 @@ void main() {
                   color: Color(0xff00ff00),
                 ),
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(minWidth: 0, maxWidth: 200, minHeight: 0, maxHeight: 100),
+                  constraints: const BoxConstraints(maxWidth: 200, maxHeight: 100),
                   child: const Text.rich(
                     TextSpan(
                       text: 'C ',
@@ -946,7 +947,7 @@ void main() {
                             ),
                           ),
                         ),
-                        TextSpan(text: 'hello world! sieze the day!'),
+                        TextSpan(text: 'hello world! seize the day!'),
                         WidgetSpan(
                           alignment: PlaceholderAlignment.aboveBaseline,
                           baseline: TextBaseline.alphabetic,
@@ -1012,7 +1013,7 @@ void main() {
                   color: Color(0xff00ff00),
                 ),
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(minWidth: 0, maxWidth: 200, minHeight: 0, maxHeight: 100),
+                  constraints: const BoxConstraints(maxWidth: 200, maxHeight: 100),
                   child: const Text.rich(
                     TextSpan(
                       text: 'C ',
@@ -1053,7 +1054,7 @@ void main() {
                             ),
                           ),
                         ),
-                        TextSpan(text: 'hello world! sieze the day!'),
+                        TextSpan(text: 'hello world! seize the day!'),
                         WidgetSpan(
                           alignment: PlaceholderAlignment.belowBaseline,
                           baseline: TextBaseline.alphabetic,
@@ -1119,7 +1120,7 @@ void main() {
                   color: Color(0xff00ff00),
                 ),
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(minWidth: 0, maxWidth: 200, minHeight: 0, maxHeight: 100),
+                  constraints: const BoxConstraints(maxWidth: 200, maxHeight: 100),
                   child: const Text.rich(
                     TextSpan(
                       text: 'C ',
@@ -1160,7 +1161,7 @@ void main() {
                             ),
                           ),
                         ),
-                        TextSpan(text: 'hello world! sieze the day!'),
+                        TextSpan(text: 'hello world! seize the day!'),
                         WidgetSpan(
                           alignment: PlaceholderAlignment.top,
                           baseline: TextBaseline.alphabetic,
@@ -1226,7 +1227,7 @@ void main() {
                   color: Color(0xff00ff00),
                 ),
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(minWidth: 0, maxWidth: 200, minHeight: 0, maxHeight: 100),
+                  constraints: const BoxConstraints(maxWidth: 200, maxHeight: 100),
                   child: const Text.rich(
                     TextSpan(
                       text: 'C ',
@@ -1267,7 +1268,7 @@ void main() {
                             ),
                           ),
                         ),
-                        TextSpan(text: 'hello world! sieze the day!'),
+                        TextSpan(text: 'hello world! seize the day!'),
                         WidgetSpan(
                           alignment: PlaceholderAlignment.middle,
                           baseline: TextBaseline.alphabetic,
@@ -1333,11 +1334,11 @@ void main() {
               children: const <Widget>[
                 Text('Hello\nLine 2\nLine 3',
                   textDirection: TextDirection.ltr,
-                  style: TextStyle(height: 5,),
+                  style: TextStyle(height: 5),
                 ),
                 Text('Hello\nLine 2\nLine 3',
                   textDirection: TextDirection.ltr,
-                  style: TextStyle(height: 5,),
+                  style: TextStyle(height: 5),
                   textHeightBehavior: TextHeightBehavior(
                     applyHeightToFirstAscent: false,
                     applyHeightToLastDescent: false,
@@ -1345,7 +1346,7 @@ void main() {
                 ),
                 Text('Hello',
                   textDirection: TextDirection.ltr,
-                  style: TextStyle(height: 5,),
+                  style: TextStyle(height: 5),
                   textHeightBehavior: TextHeightBehavior(
                     applyHeightToFirstAscent: false,
                   ),

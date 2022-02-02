@@ -4,11 +4,10 @@
 
 import 'dart:math' as math;
 
-import 'package:flutter/gestures.dart';
-import 'package:flutter/painting.dart';
 import 'package:vector_math/vector_math_64.dart';
 
 import 'box.dart';
+import 'layer.dart';
 import 'object.dart';
 
 const double _kQuarterTurnsInRadians = math.pi / 2.0;
@@ -41,7 +40,7 @@ class RenderRotatedBox extends RenderBox with RenderObjectWithChildMixin<RenderB
     markNeedsLayout();
   }
 
-  bool get _isVertical => quarterTurns % 2 == 1;
+  bool get _isVertical => quarterTurns.isOdd;
 
   @override
   double computeMinIntrinsicWidth(double height) {
@@ -74,6 +73,15 @@ class RenderRotatedBox extends RenderBox with RenderObjectWithChildMixin<RenderB
   Matrix4? _paintTransform;
 
   @override
+  Size computeDryLayout(BoxConstraints constraints) {
+    if (child == null) {
+      return constraints.smallest;
+    }
+    final Size childSize = child!.getDryLayout(_isVertical ? constraints.flipped : constraints);
+    return _isVertical ? Size(childSize.height, childSize.width) : childSize;
+  }
+
+  @override
   void performLayout() {
     _paintTransform = null;
     if (child != null) {
@@ -84,7 +92,7 @@ class RenderRotatedBox extends RenderBox with RenderObjectWithChildMixin<RenderB
         ..rotateZ(_kQuarterTurnsInRadians * (quarterTurns % 4))
         ..translate(-child!.size.width / 2.0, -child!.size.height / 2.0);
     } else {
-      performResize();
+      size = constraints.smallest;
     }
   }
 
@@ -96,8 +104,8 @@ class RenderRotatedBox extends RenderBox with RenderObjectWithChildMixin<RenderB
     return result.addWithPaintTransform(
       transform: _paintTransform,
       position: position,
-      hitTest: (BoxHitTestResult result, Offset? position) {
-        return child!.hitTest(result, position: position!);
+      hitTest: (BoxHitTestResult result, Offset position) {
+        return child!.hitTest(result, position: position);
       },
     );
   }
@@ -108,8 +116,25 @@ class RenderRotatedBox extends RenderBox with RenderObjectWithChildMixin<RenderB
 
   @override
   void paint(PaintingContext context, Offset offset) {
-    if (child != null)
-      context.pushTransform(needsCompositing, offset, _paintTransform!, _paintChild);
+    if (child != null) {
+      _transformLayer.layer = context.pushTransform(
+        needsCompositing,
+        offset,
+        _paintTransform!,
+        _paintChild,
+        oldLayer: _transformLayer.layer,
+      );
+    } else {
+      _transformLayer.layer = null;
+    }
+  }
+
+  final LayerHandle<TransformLayer> _transformLayer = LayerHandle<TransformLayer>();
+
+  @override
+  void dispose() {
+    _transformLayer.layer = null;
+    super.dispose();
   }
 
   @override

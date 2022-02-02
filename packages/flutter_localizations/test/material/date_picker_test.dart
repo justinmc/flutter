@@ -2,19 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:intl/intl.dart' as intl;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/intl.dart' as intl;
 
 void main() {
-  DateTime firstDate;
-  DateTime lastDate;
-  DateTime initialDate;
+  late DateTime firstDate;
+  late DateTime lastDate;
+  late DateTime initialDate;
 
   setUp(() {
-    firstDate = DateTime(2001, DateTime.january, 1);
+    firstDate = DateTime(2001);
     lastDate = DateTime(2031, DateTime.december, 31);
     initialDate = DateTime(2016, DateTime.january, 15);
   });
@@ -53,10 +52,10 @@ void main() {
 
     for (final Locale locale in testLocales.keys) {
       testWidgets('shows dates for $locale', (WidgetTester tester) async {
-        final List<String> expectedDaysOfWeek = testLocales[locale]['expectedDaysOfWeek'] as List<String>;
-        final List<String> expectedDaysOfMonth = testLocales[locale]['expectedDaysOfMonth'] as List<String>;
-        final String expectedMonthYearHeader = testLocales[locale]['expectedMonthYearHeader'] as String;
-        final TextDirection textDirection = testLocales[locale]['textDirection'] as TextDirection;
+        final List<String> expectedDaysOfWeek = testLocales[locale]!['expectedDaysOfWeek'] as List<String>;
+        final List<String> expectedDaysOfMonth = testLocales[locale]!['expectedDaysOfMonth'] as List<String>;
+        final String expectedMonthYearHeader = testLocales[locale]!['expectedMonthYearHeader'] as String;
+        final TextDirection textDirection = testLocales[locale]!['textDirection'] as TextDirection;
         final DateTime baseDate = DateTime(2017, 9, 27);
 
         await _pumpBoilerplate(tester, CalendarDatePicker(
@@ -72,7 +71,7 @@ void main() {
           expect(find.text(dayOfWeek), findsWidgets);
         }
 
-        Offset previousCellOffset;
+        Offset? previousCellOffset;
         for (final String dayOfMonth in expectedDaysOfMonth) {
           final Finder dayCell = find.descendant(of: find.byType(GridView), matching: find.text(dayOfMonth));
           expect(dayCell, findsOneWidget);
@@ -141,9 +140,6 @@ void main() {
   testWidgets('textDirection parameter overrides ambient textDirection', (WidgetTester tester) async {
     await tester.pumpWidget(MaterialApp(
       locale: const Locale('en', 'US'),
-      supportedLocales: const <Locale>[
-        Locale('en', 'US'),
-      ],
       home: Material(
         child: Builder(
           builder: (BuildContext context) {

@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'dart:typed_data';
 import 'dart:ui' as ui show Gradient, Image, ImageFilter;
 
@@ -11,7 +9,7 @@ import 'package:flutter/animation.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
-import '../flutter_test_alternative.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 import 'rendering_tester.dart';
 
@@ -19,14 +17,13 @@ void main() {
   test('RenderFittedBox handles applying paint transform and hit-testing with empty size', () {
     final RenderFittedBox fittedBox = RenderFittedBox(
       child: RenderCustomPaint(
-        preferredSize: Size.zero,
         painter: TestCallbackPainter(onPaint: () {}),
       ),
     );
 
     layout(fittedBox, phase: EnginePhase.flushSemantics);
     final Matrix4 transform = Matrix4.identity();
-    fittedBox.applyPaintTransform(fittedBox.child, transform);
+    fittedBox.applyPaintTransform(fittedBox.child!, transform);
     expect(transform, Matrix4.zero());
 
     final BoxHitTestResult hitTestResult = BoxHitTestResult();
@@ -198,18 +195,22 @@ void main() {
     boundary = RenderRepaintBoundary();
     final RenderStack stack = RenderStack()..alignment = Alignment.topLeft;
     final RenderDecoratedBox blackBox = RenderDecoratedBox(
-        decoration: const BoxDecoration(color: Color(0xff000000)),
-        child: RenderConstrainedBox(
-          additionalConstraints: BoxConstraints.tight(const Size.square(20.0)),
-        ));
-    stack.add(RenderOpacity()
-      ..opacity = 0.5
-      ..child = blackBox);
+      decoration: const BoxDecoration(color: Color(0xff000000)),
+      child: RenderConstrainedBox(
+        additionalConstraints: BoxConstraints.tight(const Size.square(20.0)),
+      ),
+    );
+    stack.add(
+      RenderOpacity()
+        ..opacity = 0.5
+        ..child = blackBox,
+    );
     final RenderDecoratedBox whiteBox = RenderDecoratedBox(
-        decoration: const BoxDecoration(color: Color(0xffffffff)),
-        child: RenderConstrainedBox(
-          additionalConstraints: BoxConstraints.tight(const Size.square(10.0)),
-        ));
+      decoration: const BoxDecoration(color: Color(0xffffffff)),
+      child: RenderConstrainedBox(
+        additionalConstraints: BoxConstraints.tight(const Size.square(10.0)),
+      ),
+    );
     final RenderPositionedBox positioned = RenderPositionedBox(
       widthFactor: 2.0,
       heightFactor: 2.0,
@@ -223,7 +224,7 @@ void main() {
     image = await boundary.toImage();
     expect(image.width, equals(20));
     expect(image.height, equals(20));
-    ByteData data = await image.toByteData();
+    ByteData data = (await image.toByteData())!;
 
     int getPixel(int x, int y) => data.getUint32((x + y * image.width) * 4);
 
@@ -232,12 +233,12 @@ void main() {
     expect(getPixel(0, 0), equals(0x00000080));
     expect(getPixel(image.width - 1, 0 ), equals(0xffffffff));
 
-    final OffsetLayer layer = boundary.debugLayer as OffsetLayer;
+    final OffsetLayer layer = boundary.debugLayer! as OffsetLayer;
 
     image = await layer.toImage(Offset.zero & const Size(20.0, 20.0));
     expect(image.width, equals(20));
     expect(image.height, equals(20));
-    data = await image.toByteData();
+    data = (await image.toByteData())!;
     expect(getPixel(0, 0), equals(0x00000080));
     expect(getPixel(image.width - 1, 0 ), equals(0xffffffff));
 
@@ -245,7 +246,7 @@ void main() {
     image = await layer.toImage(const Offset(-10.0, -10.0) & const Size(30.0, 30.0));
     expect(image.width, equals(30));
     expect(image.height, equals(30));
-    data = await image.toByteData();
+    data = (await image.toByteData())!;
     expect(getPixel(0, 0), equals(0x00000000));
     expect(getPixel(10, 10), equals(0x00000080));
     expect(getPixel(image.width - 1, 0), equals(0x00000000));
@@ -255,12 +256,12 @@ void main() {
     image = await layer.toImage(const Offset(-10.0, -10.0) & const Size(30.0, 30.0), pixelRatio: 2.0);
     expect(image.width, equals(60));
     expect(image.height, equals(60));
-    data = await image.toByteData();
+    data = (await image.toByteData())!;
     expect(getPixel(0, 0), equals(0x00000000));
     expect(getPixel(20, 20), equals(0x00000080));
     expect(getPixel(image.width - 1, 0), equals(0x00000000));
     expect(getPixel(image.width - 1, 20), equals(0xffffffff));
-  }, skip: isBrowser); // https://github.com/flutter/flutter/issues/42767
+  }, skip: isBrowser); // https://github.com/flutter/flutter/issues/49857
 
   test('RenderOpacity does not composite if it is transparent', () {
     final RenderOpacity renderOpacity = RenderOpacity(
@@ -272,14 +273,13 @@ void main() {
     expect(renderOpacity.needsCompositing, false);
   });
 
-  test('RenderOpacity does not composite if it is opaque', () {
+  test('RenderOpacity does composite if it is opaque', () {
     final RenderOpacity renderOpacity = RenderOpacity(
-      opacity: 1.0,
       child: RenderSizedBox(const Size(1.0, 1.0)), // size doesn't matter
     );
 
     layout(renderOpacity, phase: EnginePhase.composite);
-    expect(renderOpacity.needsCompositing, false);
+    expect(renderOpacity.needsCompositing, true);
   });
 
   test('RenderOpacity reuses its layer', () {
@@ -295,7 +295,6 @@ void main() {
     )..value = 0.0;
 
     final RenderAnimatedOpacity renderAnimatedOpacity = RenderAnimatedOpacity(
-      alwaysIncludeSemantics: false,
       opacity: opacityAnimation,
       child: RenderSizedBox(const Size(1.0, 1.0)), // size doesn't matter
     );
@@ -304,19 +303,18 @@ void main() {
     expect(renderAnimatedOpacity.needsCompositing, false);
   });
 
-  test('RenderAnimatedOpacity does not composite if it is opaque', () {
+  test('RenderAnimatedOpacity does composite if it is opaque', () {
     final Animation<double> opacityAnimation = AnimationController(
       vsync: FakeTickerProvider(),
     )..value = 1.0;
 
     final RenderAnimatedOpacity renderAnimatedOpacity = RenderAnimatedOpacity(
-      alwaysIncludeSemantics: false,
       opacity: opacityAnimation,
       child: RenderSizedBox(const Size(1.0, 1.0)), // size doesn't matter
     );
 
     layout(renderAnimatedOpacity, phase: EnginePhase.composite);
-    expect(renderAnimatedOpacity.needsCompositing, false);
+    expect(renderAnimatedOpacity.needsCompositing, true);
   });
 
   test('RenderAnimatedOpacity reuses its layer', () {
@@ -431,7 +429,6 @@ void main() {
 
   void _testFittedBoxWithClipRectLayer() {
     _testLayerReuse<ClipRectLayer>(RenderFittedBox(
-      alignment: Alignment.center,
       fit: BoxFit.cover,
       clipBehavior: Clip.hardEdge,
       // Inject opacity under the clip to force compositing.
@@ -444,7 +441,6 @@ void main() {
 
   void _testFittedBoxWithTransformLayer() {
     _testLayerReuse<TransformLayer>(RenderFittedBox(
-      alignment: Alignment.center,
       fit: BoxFit.fill,
       // Inject opacity under the clip to force compositing.
       child: RenderOpacity(
@@ -514,12 +510,11 @@ void main() {
   test('RenderFollowerLayer hit test without a leader layer and the showWhenUnlinked is true', () {
     final RenderFollowerLayer follower = RenderFollowerLayer(
       link: LayerLink(),
-      showWhenUnlinked: true,
       child: RenderSizedBox(const Size(1.0, 1.0)),
     );
     layout(follower, constraints: BoxConstraints.tight(const Size(200.0, 200.0)));
     final BoxHitTestResult hitTestResult = BoxHitTestResult();
-    expect(follower.hitTest(hitTestResult, position: const Offset(0.0, 0.0)), isTrue);
+    expect(follower.hitTest(hitTestResult, position: Offset.zero), isTrue);
   });
 
   test('RenderFollowerLayer hit test without a leader layer and the showWhenUnlinked is false', () {
@@ -530,7 +525,7 @@ void main() {
     );
     layout(follower, constraints: BoxConstraints.tight(const Size(200.0, 200.0)));
     final BoxHitTestResult hitTestResult = BoxHitTestResult();
-    expect(follower.hitTest(hitTestResult, position: const Offset(0.0, 0.0)), isFalse);
+    expect(follower.hitTest(hitTestResult, position: Offset.zero), isFalse);
   });
 
   test('RenderFollowerLayer hit test with a leader layer and the showWhenUnlinked is true', () {
@@ -541,12 +536,11 @@ void main() {
 
     final RenderFollowerLayer follower = RenderFollowerLayer(
       link: link,
-      showWhenUnlinked: true,
       child: RenderSizedBox(const Size(1.0, 1.0)),
     );
     layout(follower, constraints: BoxConstraints.tight(const Size(200.0, 200.0)));
     final BoxHitTestResult hitTestResult = BoxHitTestResult();
-    expect(follower.hitTest(hitTestResult, position: const Offset(0.0, 0.0)), isTrue);
+    expect(follower.hitTest(hitTestResult, position: Offset.zero), isTrue);
   });
 
   test('RenderFollowerLayer hit test with a leader layer and the showWhenUnlinked is false', () {
@@ -563,7 +557,7 @@ void main() {
     layout(follower, constraints: BoxConstraints.tight(const Size(200.0, 200.0)));
     final BoxHitTestResult hitTestResult = BoxHitTestResult();
     // The follower is still hit testable because there is a leader layer.
-    expect(follower.hitTest(hitTestResult, position: const Offset(0.0, 0.0)), isTrue);
+    expect(follower.hitTest(hitTestResult, position: Offset.zero), isTrue);
   });
 }
 
@@ -600,7 +594,7 @@ void _testLayerReuse<L extends Layer>(RenderBox renderObject) {
   expect(L, isNot(Layer));
   expect(renderObject.debugLayer, null);
   layout(renderObject, phase: EnginePhase.paint, constraints: BoxConstraints.tight(const Size(10, 10)));
-  final Layer layer = renderObject.debugLayer;
+  final Layer layer = renderObject.debugLayer!;
   expect(layer, isA<L>());
   expect(layer, isNotNull);
 
@@ -624,8 +618,8 @@ class _TestPathClipper extends CustomClipper<Path> {
 
 class _TestSemanticsUpdateRenderFractionalTranslation extends RenderFractionalTranslation {
   _TestSemanticsUpdateRenderFractionalTranslation({
-    @required Offset translation,
-    RenderBox child,
+    required Offset translation,
+    RenderBox? child,
   }) : super(translation: translation, child: child);
 
   int markNeedsSemanticsUpdateCallCount = 0;

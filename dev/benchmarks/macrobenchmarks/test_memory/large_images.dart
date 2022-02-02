@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -12,8 +10,8 @@ import 'package:macrobenchmarks/main.dart';
 
 Future<void> endOfAnimation() async {
   do {
-    await SchedulerBinding.instance.endOfFrame;
-  } while (SchedulerBinding.instance.hasScheduledFrame);
+    await SchedulerBinding.instance!.endOfFrame;
+  } while (SchedulerBinding.instance!.hasScheduledFrame);
 }
 
 Future<void> main() async {

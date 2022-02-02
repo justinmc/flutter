@@ -5,7 +5,6 @@
 import 'dart:ui' as ui show TextHeightBehavior;
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/painting.dart';
 
 import 'basic.dart';
 import 'framework.dart';
@@ -13,7 +12,7 @@ import 'inherited_theme.dart';
 import 'media_query.dart';
 
 // Examples can assume:
-// String _name;
+// late String _name;
 
 /// The text style to apply to descendant [Text] widgets which don't have an
 /// explicit style.
@@ -103,7 +102,7 @@ class DefaultTextStyle extends InheritedTheme {
         final DefaultTextStyle parent = DefaultTextStyle.of(context);
         return DefaultTextStyle(
           key: key,
-          style: parent.style!.merge(style),
+          style: parent.style.merge(style),
           textAlign: textAlign ?? parent.textAlign,
           softWrap: softWrap ?? parent.softWrap,
           overflow: overflow ?? parent.overflow,
@@ -116,7 +115,7 @@ class DefaultTextStyle extends InheritedTheme {
   }
 
   /// The text style to apply.
-  final TextStyle? style;
+  final TextStyle style;
 
   /// How each line of text in the Text widget should be aligned horizontally.
   final TextAlign? textAlign;
@@ -151,7 +150,7 @@ class DefaultTextStyle extends InheritedTheme {
   /// See [TextWidthBasis] for possible values and their implications.
   final TextWidthBasis textWidthBasis;
 
-  /// {@macro flutter.dart:ui.textHeightBehavior}
+  /// {@macro dart.ui.textHeightBehavior}
   final ui.TextHeightBehavior? textHeightBehavior;
 
   /// The closest instance of this class that encloses the given context.
@@ -181,8 +180,7 @@ class DefaultTextStyle extends InheritedTheme {
 
   @override
   Widget wrap(BuildContext context, Widget child) {
-    final DefaultTextStyle? defaultTextStyle = context.findAncestorWidgetOfExactType<DefaultTextStyle>();
-    return identical(this, defaultTextStyle) ? child : DefaultTextStyle(
+    return DefaultTextStyle(
       style: style,
       textAlign: textAlign,
       softWrap: softWrap,
@@ -197,7 +195,7 @@ class DefaultTextStyle extends InheritedTheme {
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
     super.debugFillProperties(properties);
-    style?.debugFillProperties(properties);
+    style.debugFillProperties(properties);
     properties.add(EnumProperty<TextAlign>('textAlign', textAlign, defaultValue: null));
     properties.add(FlagProperty('softWrap', value: softWrap, ifTrue: 'wrapping at box width', ifFalse: 'no wrapping except at line break characters', showName: true));
     properties.add(EnumProperty<TextOverflow>('overflow', overflow, defaultValue: null));
@@ -215,7 +213,7 @@ class _NullWidget extends StatelessWidget {
     throw FlutterError(
       'A DefaultTextStyle constructed with DefaultTextStyle.fallback cannot be incorporated into the widget tree, '
       'it is meant only to provide a fallback value returned by DefaultTextStyle.of() '
-      'when no enclosing default text style is present in a BuildContext.'
+      'when no enclosing default text style is present in a BuildContext.',
     );
   }
 }
@@ -243,7 +241,7 @@ class DefaultTextHeightBehavior extends InheritedTheme {
         assert(child != null),
         super(key: key, child: child);
 
-  /// {@macro flutter.dart:ui.textHeightBehavior}
+  /// {@macro dart.ui.textHeightBehavior}
   final TextHeightBehavior textHeightBehavior;
 
   /// The closest instance of this class that encloses the given context.
@@ -266,8 +264,7 @@ class DefaultTextHeightBehavior extends InheritedTheme {
 
   @override
   Widget wrap(BuildContext context, Widget child) {
-    final DefaultTextHeightBehavior? defaultTextHeightBehavior = context.findAncestorWidgetOfExactType<DefaultTextHeightBehavior>();
-    return identical(this, defaultTextHeightBehavior) ? child : DefaultTextHeightBehavior(
+    return DefaultTextHeightBehavior(
       textHeightBehavior: textHeightBehavior,
       child: child,
     );
@@ -307,7 +304,7 @@ class DefaultTextHeightBehavior extends InheritedTheme {
 ///   'Hello, $_name! How are you?',
 ///   textAlign: TextAlign.center,
 ///   overflow: TextOverflow.ellipsis,
-///   style: TextStyle(fontWeight: FontWeight.bold),
+///   style: const TextStyle(fontWeight: FontWeight.bold),
 /// )
 /// ```
 /// {@end-tool}
@@ -363,7 +360,7 @@ class Text extends StatelessWidget {
   /// If the [softWrap] is true or null, the glyph causing overflow, and those that follow,
   /// will not be rendered. Otherwise, it will be shown with the given overflow option.
   const Text(
-    this.data, {
+    String this.data, {
     Key? key,
     this.style,
     this.strutStyle,
@@ -395,7 +392,7 @@ class Text extends StatelessWidget {
   ///
   /// See [RichText] which provides a lower-level way to draw text.
   const Text.rich(
-    this.textSpan, {
+    InlineSpan this.textSpan, {
     Key? key,
     this.style,
     this.strutStyle,
@@ -470,7 +467,8 @@ class Text extends StatelessWidget {
 
   /// How visual overflow should be handled.
   ///
-  /// Defaults to retrieving the value from the nearest [DefaultTextStyle] ancestor.
+  /// If this is null [TextStyle.overflow] will be used, otherwise the value
+  /// from the nearest [DefaultTextStyle] ancestor will be used.
   final TextOverflow? overflow;
 
   /// The number of font pixels for each logical pixel.
@@ -496,6 +494,7 @@ class Text extends StatelessWidget {
   /// widget directly to entirely override the [DefaultTextStyle].
   final int? maxLines;
 
+  /// {@template flutter.widgets.Text.semanticsLabel}
   /// An alternative semantics label for this text.
   ///
   /// If present, the semantics of this widget will contain this value instead
@@ -508,12 +507,13 @@ class Text extends StatelessWidget {
   /// ```dart
   /// Text(r'$$', semanticsLabel: 'Double dollars')
   /// ```
+  /// {@endtemplate}
   final String? semanticsLabel;
 
   /// {@macro flutter.painting.textPainter.textWidthBasis}
   final TextWidthBasis? textWidthBasis;
 
-  /// {@macro flutter.dart:ui.textHeightBehavior}
+  /// {@macro dart.ui.textHeightBehavior}
   final ui.TextHeightBehavior? textHeightBehavior;
 
   @override
@@ -521,7 +521,7 @@ class Text extends StatelessWidget {
     final DefaultTextStyle defaultTextStyle = DefaultTextStyle.of(context);
     TextStyle? effectiveTextStyle = style;
     if (style == null || style!.inherit)
-      effectiveTextStyle = defaultTextStyle.style!.merge(style);
+      effectiveTextStyle = defaultTextStyle.style.merge(style);
     if (MediaQuery.boldTextOverride(context))
       effectiveTextStyle = effectiveTextStyle!.merge(const TextStyle(fontWeight: FontWeight.bold));
     Widget result = RichText(
@@ -529,7 +529,7 @@ class Text extends StatelessWidget {
       textDirection: textDirection, // RichText uses Directionality.of to obtain a default if this is null.
       locale: locale, // RichText uses Localizations.localeOf to obtain a default if this is null
       softWrap: softWrap ?? defaultTextStyle.softWrap,
-      overflow: overflow ?? defaultTextStyle.overflow,
+      overflow: overflow ?? effectiveTextStyle?.overflow ?? defaultTextStyle.overflow,
       textScaleFactor: textScaleFactor ?? MediaQuery.textScaleFactorOf(context),
       maxLines: maxLines ?? defaultTextStyle.maxLines,
       strutStyle: strutStyle,

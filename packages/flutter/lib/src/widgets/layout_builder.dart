@@ -18,7 +18,7 @@ typedef LayoutWidgetBuilder = Widget Function(BuildContext context, BoxConstrain
 /// adhere to. This is useful when the parent constrains the child's size and layout,
 /// and doesn't depend on the child's intrinsic size.
 ///
-/// {@template flutter.widgets.layoutBuilder.builderFunctionInvocation}
+/// {@template flutter.widgets.ConstrainedLayoutBuilder}
 /// The [builder] function is called in the following situations:
 ///
 /// * The first time the widget is laid out.
@@ -44,7 +44,7 @@ abstract class ConstrainedLayoutBuilder<ConstraintType extends Constraints> exte
        super(key: key);
 
   @override
-  _LayoutBuilderElement<ConstraintType> createElement() => _LayoutBuilderElement<ConstraintType>(this);
+  RenderObjectElement createElement() => _LayoutBuilderElement<ConstraintType>(this);
 
   /// Called at layout time to construct the widget tree.
   ///
@@ -79,7 +79,7 @@ class _LayoutBuilderElement<ConstraintType extends Constraints> extends RenderOb
   }
 
   @override
-  void mount(Element? parent, dynamic newSlot) {
+  void mount(Element? parent, Object? newSlot) {
     super.mount(parent, newSlot); // Creates the renderObject.
     renderObject.updateCallback(_layout);
   }
@@ -115,24 +115,24 @@ class _LayoutBuilderElement<ConstraintType extends Constraints> extends RenderOb
   }
 
   void _layout(ConstraintType constraints) {
-    owner!.buildScope(this, () {
-      Widget? built;
-      if (widget.builder != null) {
-        try {
-          built = widget.builder(this, constraints);
-          debugWidgetBuilderValue(widget, built);
-        } catch (e, stack) {
-          built = ErrorWidget.builder(
-            _debugReportException(
-              ErrorDescription('building $widget'),
-              e,
-              stack,
-              informationCollector: () sync* {
-                yield DiagnosticsDebugCreator(DebugCreator(this));
-              },
-            ),
-          );
-        }
+    @pragma('vm:notify-debugger-on-exception')
+    void layoutCallback() {
+      Widget built;
+      try {
+        built = widget.builder(this, constraints);
+        debugWidgetBuilderValue(widget, built);
+      } catch (e, stack) {
+        built = ErrorWidget.builder(
+          _debugReportException(
+            ErrorDescription('building $widget'),
+            e,
+            stack,
+            informationCollector: () => <DiagnosticsNode>[
+              if (kDebugMode)
+                DiagnosticsDebugCreator(DebugCreator(this)),
+            ],
+          ),
+        );
       }
       try {
         _child = updateChild(_child, built, null);
@@ -143,18 +143,21 @@ class _LayoutBuilderElement<ConstraintType extends Constraints> extends RenderOb
             ErrorDescription('building $widget'),
             e,
             stack,
-            informationCollector: () sync* {
-              yield DiagnosticsDebugCreator(DebugCreator(this));
-            },
+            informationCollector: () => <DiagnosticsNode>[
+              if (kDebugMode)
+                DiagnosticsDebugCreator(DebugCreator(this)),
+            ],
           ),
         );
         _child = updateChild(null, built, slot);
       }
-    });
+    }
+
+    owner!.buildScope(this, layoutCallback);
   }
 
   @override
-  void insertRenderObjectChild(RenderObject child, dynamic slot) {
+  void insertRenderObjectChild(RenderObject child, Object? slot) {
     final RenderObjectWithChildMixin<RenderObject> renderObject = this.renderObject;
     assert(slot == null);
     assert(renderObject.debugValidateChild(child));
@@ -163,12 +166,12 @@ class _LayoutBuilderElement<ConstraintType extends Constraints> extends RenderOb
   }
 
   @override
-  void moveRenderObjectChild(RenderObject child, dynamic oldSlot, dynamic newSlot) {
+  void moveRenderObjectChild(RenderObject child, Object? oldSlot, Object? newSlot) {
     assert(false);
   }
 
   @override
-  void removeRenderObjectChild(RenderObject child, dynamic slot) {
+  void removeRenderObjectChild(RenderObject child, Object? slot) {
     final RenderConstrainedLayoutBuilder<ConstraintType, RenderObject> renderObject = this.renderObject;
     assert(renderObject.child == child);
     renderObject.child = null;
@@ -237,7 +240,7 @@ mixin RenderConstrainedLayoutBuilder<ConstraintType extends Constraints, ChildTy
 /// the child's intrinsic size. The [LayoutBuilder]'s final size will match its
 /// child's size.
 ///
-/// {@macro flutter.widgets.layoutBuilder.builderFunctionInvocation}
+/// {@macro flutter.widgets.ConstrainedLayoutBuilder}
 ///
 /// {@youtube 560 315 https://www.youtube.com/watch?v=IYDVcriKjsw}
 ///
@@ -245,57 +248,11 @@ mixin RenderConstrainedLayoutBuilder<ConstraintType extends Constraints, ChildTy
 /// in an [Align] widget. If the child might want to be bigger, consider
 /// wrapping it in a [SingleChildScrollView] or [OverflowBox].
 ///
-/// {@tool dartpad --template=stateless_widget_material}
-///
+/// {@tool dartpad}
 /// This example uses a [LayoutBuilder] to build a different widget depending on the available width. Resize the
 /// DartPad window to see [LayoutBuilder] in action!
 ///
-/// ```dart
-/// Widget build(BuildContext context) {
-///   return Scaffold(
-///     appBar: AppBar(title: Text("LayoutBuilder Example")),
-///     body: LayoutBuilder(
-///       builder: (context, constraints) {
-///         if (constraints.maxWidth > 600) {
-///           return _buildWideContainers();
-///         } else {
-///           return _buildNormalContainer();
-///         }
-///       },
-///     ),
-///   );
-/// }
-///
-/// Widget _buildNormalContainer() {
-///   return Center(
-///     child: Container(
-///       height: 100.0,
-///       width: 100.0,
-///       color: Colors.red,
-///     ),
-///   );
-/// }
-///
-/// Widget _buildWideContainers() {
-///   return Center(
-///     child: Row(
-///       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-///       children: <Widget>[
-///         Container(
-///           height: 100.0,
-///           width: 100.0,
-///           color: Colors.red,
-///         ),
-///         Container(
-///           height: 100.0,
-///           width: 100.0,
-///           color: Colors.yellow,
-///         ),
-///       ],
-///     ),
-///   );
-/// }
-/// ```
+/// ** See code in examples/api/lib/widgets/layout_builder/layout_builder.0.dart **
 /// {@end-tool}
 ///
 /// See also:
@@ -319,7 +276,7 @@ class LayoutBuilder extends ConstrainedLayoutBuilder<BoxConstraints> {
   LayoutWidgetBuilder get builder => super.builder;
 
   @override
-  _RenderLayoutBuilder createRenderObject(BuildContext context) => _RenderLayoutBuilder();
+  RenderObject createRenderObject(BuildContext context) => _RenderLayoutBuilder();
 }
 
 class _RenderLayoutBuilder extends RenderBox with RenderObjectWithChildMixin<RenderBox>, RenderConstrainedLayoutBuilder<BoxConstraints, RenderBox> {
@@ -348,6 +305,15 @@ class _RenderLayoutBuilder extends RenderBox with RenderObjectWithChildMixin<Ren
   }
 
   @override
+  Size computeDryLayout(BoxConstraints constraints) {
+    assert(debugCannotComputeDryLayout(reason:
+      'Calculating the dry layout would require running the layout callback '
+      'speculatively, which might mutate the live render object tree.',
+    ));
+    return Size.zero;
+  }
+
+  @override
   void performLayout() {
     final BoxConstraints constraints = this.constraints;
     rebuildIfNecessary();
@@ -357,6 +323,13 @@ class _RenderLayoutBuilder extends RenderBox with RenderObjectWithChildMixin<Ren
     } else {
       size = constraints.biggest;
     }
+  }
+
+  @override
+  double? computeDistanceToActualBaseline(TextBaseline baseline) {
+    if (child != null)
+      return child!.getDistanceToActualBaseline(baseline);
+    return super.computeDistanceToActualBaseline(baseline);
   }
 
   @override
@@ -376,7 +349,7 @@ class _RenderLayoutBuilder extends RenderBox with RenderObjectWithChildMixin<Ren
         throw FlutterError(
           'LayoutBuilder does not support returning intrinsic dimensions.\n'
           'Calculating the intrinsic dimensions would require running the layout '
-          'callback speculatively, which might mutate the live render object tree.'
+          'callback speculatively, which might mutate the live render object tree.',
         );
       }
       return true;
@@ -388,7 +361,7 @@ class _RenderLayoutBuilder extends RenderBox with RenderObjectWithChildMixin<Ren
 
 FlutterErrorDetails _debugReportException(
   DiagnosticsNode context,
-  dynamic exception,
+  Object exception,
   StackTrace stack, {
   InformationCollector? informationCollector,
 }) {
