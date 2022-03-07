@@ -4836,6 +4836,7 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
   ///    to define the route's `willPop` method.
   @optionalTypeArgs
   Future<bool> maybePop<T extends Object?>([ T? result ]) async {
+    print('justin maybepop');
     final _RouteEntry? lastEntry = _history.cast<_RouteEntry?>().lastWhere(
       (_RouteEntry? e) => e != null && _RouteEntry.isPresentPredicate(e),
       orElse: () => null,
@@ -4890,6 +4891,7 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
   /// {@end-tool}
   @optionalTypeArgs
   void pop<T extends Object?>([ T? result ]) {
+    print('justin pop');
     assert(!_debugLocked);
     assert(() {
       _debugLocked = true;
@@ -4931,6 +4933,7 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
   /// ```
   /// {@end-tool}
   void popUntil(RoutePredicate predicate) {
+    print('justin popuntil');
     _RouteEntry? candidate = _history.cast<_RouteEntry?>().lastWhere(
       (_RouteEntry? e) => e != null && _RouteEntry.isPresentPredicate(e),
       orElse: () => null,
@@ -5017,6 +5020,7 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
   /// This function may be called directly from [Route.didPop] if [Route.didPop]
   /// will return true.
   void finalizeRoute(Route<dynamic> route) {
+    print('justin finalizeRoute');
     // FinalizeRoute may have been called while we were already locked as a
     // responds to route.didPop(). Make sure to leave in the state we were in
     // before the call.
@@ -5075,6 +5079,7 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
   ///
   /// When the gesture finishes, call [didStopUserGesture].
   void didStartUserGesture() {
+    print('justin didStartUserGesture');
     _userGesturesInProgress += 1;
     if (_userGesturesInProgress == 1) {
       final int routeIndex = _getIndexBefore(
@@ -5100,6 +5105,7 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
   /// Notifies the navigator that a gesture regarding which the navigator was
   /// previously notified with [didStartUserGesture] has completed.
   void didStopUserGesture() {
+    print('justin didStopUserGesture');
     assert(_userGesturesInProgress > 0);
     _userGesturesInProgress -= 1;
     if (_userGesturesInProgress == 0) {

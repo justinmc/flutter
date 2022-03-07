@@ -6,6 +6,7 @@ import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
@@ -883,14 +884,36 @@ class _ModalScopeState<T> extends State<_ModalScope<T>> {
                             ),
                           );
                           if (kIsWeb) {
+                            /*
+                            child = _PassiveTapDetector(
+                              child: Focus(
+                                focusNode: routeFocusNode,
+                                skipTraversal: true,
+                                onKeyEvent: (FocusNode focusNode, KeyEvent event) {
+                                  // TODO(justinmc): Should this be Shortcuts/Actions?
+                                  if (focusNode.hasPrimaryFocus
+                                      && event is KeyDownEvent
+                                      && event.logicalKey == LogicalKeyboardKey.tab) {
+                                    focusNode.unfocus();
+                                    focusScopeNode.nextFocus();
+                                    return KeyEventResult.handled;
+                                  }
+                                  return KeyEventResult.ignored;
+                                },
+                                child: child,
+                              ),
+                            );
+                            */
                             child = GestureDetector(
                               onTapDown: (TapDownDetails details) {
+                                print('justin gesturedetector tapdown');
                                 routeFocusNode.requestFocus();
                               },
                               child: Focus(
                                 focusNode: routeFocusNode,
                                 skipTraversal: true,
                                 onKeyEvent: (FocusNode focusNode, KeyEvent event) {
+                                  // TODO(justinmc): Should this be Shortcuts/Actions?
                                   if (focusNode.hasPrimaryFocus
                                       && event is KeyDownEvent
                                       && event.logicalKey == LogicalKeyboardKey.tab) {
@@ -2068,3 +2091,50 @@ typedef RoutePageBuilder = Widget Function(BuildContext context, Animation<doubl
 ///
 /// See [ModalRoute.buildTransitions] for complete definition of the parameters.
 typedef RouteTransitionsBuilder = Widget Function(BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation, Widget child);
+
+class _PassiveTapDetector extends StatelessWidget {
+  _PassiveTapDetector({
+    Key? key,
+    required this.child,
+  }) : super(key: key);
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return RawGestureDetector(
+      gestures: <Type, GestureRecognizerFactory>{
+        TapGestureRecognizer: GestureRecognizerFactoryWithHandlers<TapGestureRecognizer>(
+          () => TapGestureRecognizer(),
+          (TapGestureRecognizer instance) {
+            instance
+              ..onTapDown = (TapDownDetails details) {
+                print('justin tapdown');
+              };
+          },
+        ),
+      },
+      child: child,
+    );
+  }
+}
+
+class _TransparentTapGestureRecognizer extends TapGestureRecognizer {
+  _TransparentTapGestureRecognizer({
+    Object? debugOwner,
+  }) : super(debugOwner: debugOwner);
+
+  @override
+  void rejectGesture(int pointer) {
+    // Accept new gestures that another recognizer has already won.
+    // Specifically, this needs to accept taps on the text selection handle on
+    // behalf of the text field in order to handle double tap to select. It must
+    // not accept other gestures like longpresses and drags that end outside of
+    // the text field.
+    if (state == GestureRecognizerState.ready) {
+      acceptGesture(pointer);
+    } else {
+      super.rejectGesture(pointer);
+    }
+  }
+}

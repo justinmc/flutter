@@ -286,11 +286,22 @@ mixin CupertinoRouteTransitionMixin<T> on PageRoute<T> {
         primaryRouteAnimation: animation,
         secondaryRouteAnimation: secondaryAnimation,
         linearTransition: linearTransition,
+        child: child,
+        /*
+        child: GestureDetector(
+          onHorizontalDragUpdate: (DragUpdateDetails details) {
+            print('justin horizontal drag update');
+          },
+          child: child,
+        ),
+        */
+        /*
         child: _CupertinoBackGestureDetector<T>(
           enabledCallback: () => _isPopGestureEnabled<T>(route),
           onStartPopGesture: () => _startPopGesture<T>(route),
           child: child,
         ),
+        */
       );
     }
   }
@@ -635,12 +646,14 @@ class _CupertinoBackGestureDetectorState<T> extends State<_CupertinoBackGestureD
   }
 
   void _handleDragStart(DragStartDetails details) {
+    print('justin _CupertinoBackGestureDetectorState dragstart');
     assert(mounted);
     assert(_backGestureController == null);
     _backGestureController = widget.onStartPopGesture();
   }
 
   void _handleDragUpdate(DragUpdateDetails details) {
+    print('justin _handleDragUpdate');
     assert(mounted);
     assert(_backGestureController != null);
     _backGestureController!.dragUpdate(_convertToLogical(details.primaryDelta! / context.size!.width));
@@ -649,12 +662,14 @@ class _CupertinoBackGestureDetectorState<T> extends State<_CupertinoBackGestureD
   void _handleDragEnd(DragEndDetails details) {
     assert(mounted);
     assert(_backGestureController != null);
+    print('justin _CupertinoBackGestureDetectorState dragend');
     _backGestureController!.dragEnd(_convertToLogical(details.velocity.pixelsPerSecond.dx / context.size!.width));
     _backGestureController = null;
   }
 
   void _handleDragCancel() {
     assert(mounted);
+    print('justin _CupertinoBackGestureDetectorState dragcancel');
     // This can be called even if start is not called, paired with the "down" event
     // that we don't consider here.
     _backGestureController?.dragEnd(0.0);
@@ -662,6 +677,7 @@ class _CupertinoBackGestureDetectorState<T> extends State<_CupertinoBackGestureD
   }
 
   void _handlePointerDown(PointerDownEvent event) {
+    print('justin _handlePointerDown');
     if (widget.enabledCallback())
       _recognizer.addPointer(event);
   }
@@ -739,6 +755,7 @@ class _CupertinoBackGestureController<T> {
   /// The drag gesture has ended with a horizontal motion of
   /// [fractionalVelocity] as a fraction of screen width per second.
   void dragEnd(double velocity) {
+    print('justin _CupertinoBackGestureController dragend');
     // Fling in the appropriate direction.
     // AnimationController.fling is guaranteed to
     // take at least one frame.
@@ -756,6 +773,7 @@ class _CupertinoBackGestureController<T> {
     else
       animateForward = controller.value > 0.5;
 
+    print('justin _CupertinoBackGestureController dragend forward? $animateForward');
     if (animateForward) {
       // The closer the panel is to dismissing, the shorter the animation is.
       // We want to cap the animation time, but we want to use a linear curve
@@ -767,6 +785,7 @@ class _CupertinoBackGestureController<T> {
       controller.animateTo(1.0, duration: Duration(milliseconds: droppedPageForwardAnimationTime), curve: animationCurve);
     } else {
       // This route is destined to pop at this point. Reuse navigator's pop.
+      print('justin pop the route');
       navigator.pop();
 
       // The popping may have finished inline if already at the target destination.

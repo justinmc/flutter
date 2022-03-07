@@ -10,6 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../rendering/mock_canvas.dart';
 
 void main() {
+  /*
   testWidgets('test page transition', (WidgetTester tester) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -237,6 +238,7 @@ void main() {
     // Page 2 didn't move
     expect(tester.getTopLeft(find.text('Page 2')), Offset.zero);
   }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+  */
 
   testWidgets('test back gesture', (WidgetTester tester) async {
     await tester.pumpWidget(
@@ -262,12 +264,15 @@ void main() {
     await tester.pump();
 
     // Page 1 is now visible.
+    print('justin ive dragged and now going to check for page1');
     expect(find.text('Page 1'), isOnstage);
     expect(find.text('Page 2'), isOnstage);
+    print('justin done checking');
 
     // The route widget position needs to track the finger position very exactly.
     expect(tester.getTopLeft(find.text('Page 2')), const Offset(400.0, 0.0));
 
+    // TODO(justinmc): The gesture is never released!
     await gesture.moveBy(const Offset(-200.0, 0.0));
     await tester.pump();
 
@@ -279,6 +284,7 @@ void main() {
     expect(tester.getTopLeft(find.text('Page 2')), const Offset(100.0, 0.0));
   }, variant: const TargetPlatformVariant(<TargetPlatform>{ TargetPlatform.iOS }));
 
+  /*
   testWidgets('back gesture while OS changes', (WidgetTester tester) async {
     final Map<String, WidgetBuilder> routes = <String, WidgetBuilder>{
       '/': (BuildContext context) => Material(
@@ -972,6 +978,7 @@ void main() {
     expect(find.text('p1'), findsOneWidget);
     expect(find.text('count: 1'), findsOneWidget);
   });
+  */
 }
 
 class TransitionDetector extends DefaultTransitionDelegate<void> {
