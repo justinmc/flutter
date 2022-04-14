@@ -3,9 +3,11 @@
 // found in the LICENSE file.
 
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
+import 'package:vector_math/vector_math_64.dart' show Matrix4;
 
 import 'actions.dart';
 import 'basic.dart';
@@ -418,6 +420,18 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
     if (_shouldShowOptions) {
       final OverlayEntry newFloatingOptions = OverlayEntry(
         builder: (BuildContext context) {
+          /*
+          return Stack(
+            children: <Widget>[
+              CustomSingleChildLayout(
+                delegate: _OptionsLayoutDelegate(
+                  anchor: const Offset(0.0, 200.0),
+                ),
+                child: widget.optionsViewBuilder(context, _select, _options),
+              ),
+            ],
+          );
+          */
           return CompositedTransformFollower(
             link: _optionsLayerLink,
             showWhenUnlinked: false,
@@ -426,6 +440,16 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
               highlightIndexNotifier: _highlightedOptionIndex,
               child: Builder(
                 builder: (BuildContext context) {
+                  return Stack(
+                    children: <Widget>[
+                      CustomSingleChildLayout(
+                        delegate: _OptionsLayoutDelegate(
+                          anchor: const Offset(0.0, -130.0),
+                        ),
+                        child: widget.optionsViewBuilder(context, _select, _options),
+                      ),
+                    ],
+                  );
                   return widget.optionsViewBuilder(context, _select, _options);
                 }
               )
@@ -614,5 +638,42 @@ class AutocompleteHighlightedOption extends InheritedNotifier<ValueNotifier<int>
   /// ```
   static int of(BuildContext context) {
     return context.dependOnInheritedWidgetOfExactType<AutocompleteHighlightedOption>()?.notifier?.value ?? 0;
+  }
+}
+
+class _OptionsLayoutDelegate extends SingleChildLayoutDelegate {
+  /// Creates an instance of _OptionsLayoutDelegate.
+  _OptionsLayoutDelegate({
+    required this.anchor,
+  });
+
+  /// Where to align the top left corner.
+  ///
+  /// Should be provided in local coordinates.
+  final Offset anchor;
+
+  @override
+  BoxConstraints getConstraintsForChild(BoxConstraints constraints) {
+    return constraints.loosen();
+  }
+
+  @override
+  Offset getPositionForChild(Size size, Size childSize) {
+    final double fitAdjustment = math.min(
+      size.height - anchor.dy - childSize.height,
+      0,
+    );
+
+    final Offset offset = Offset(
+      anchor.dx,
+      anchor.dy + fitAdjustment,
+    );
+    print('justin put it at $offset with adjustment $fitAdjustment = ${size.height} - ${anchor.dy} - ${childSize.height}');
+    return offset;
+  }
+
+  @override
+  bool shouldRelayout(_OptionsLayoutDelegate oldDelegate) {
+    return anchor != oldDelegate.anchor;
   }
 }
