@@ -421,6 +421,12 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
             link: _optionsLayerLink,
             showWhenUnlinked: false,
             targetAnchor: Alignment.bottomLeft,
+            child: Container(
+              width: 100,
+              height: 100,
+              color: const Color(0xffff0000),
+            ),
+            /*
             child: AutocompleteHighlightedOption(
               highlightIndexNotifier: _highlightedOptionIndex,
               child: Builder(
@@ -429,6 +435,7 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
                 }
               )
             ),
+            */
           );
         },
       );
