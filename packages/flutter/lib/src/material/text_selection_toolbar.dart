@@ -171,9 +171,15 @@ class _TextSelectionToolbarOverflowableState extends State<_TextSelectionToolbar
   void didUpdateWidget(_TextSelectionToolbarOverflowable oldWidget) {
     super.didUpdateWidget(oldWidget);
     // If the children are changing at all, the current page should be reset.
-    if (!listEquals(widget.children, oldWidget.children)) {
-      _reset();
+    if (listEquals(widget.children, oldWidget.children)) {
+      return;
     }
+    final List<Key?> keys = widget.children.map((Widget widget) => widget.key).toList();
+    final List<Key?> oldKeys = oldWidget.children.map((Widget widget) => widget.key).toList();
+    if (!keys.contains(null) && listEquals(keys, oldKeys)) {
+      return;
+    }
+    _reset();
   }
 
   @override
