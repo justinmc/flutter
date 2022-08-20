@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
 import 'basic.dart';
 import 'context_menu_button_item.dart';
@@ -194,6 +195,13 @@ class _EditableTextContextMenuButtonItemsBuilderState extends State<EditableText
         // known. A button's position in the menu can slightly affect its
         // appearance.
         final List<ContextMenuButtonItem> buttonItems = <ContextMenuButtonItem>[
+          // TODO(justinmc): You don't know the total yet. You DO need some
+          // kind of intermediate data representation first before you create
+          // widgets that may need to know the total.
+          // Furthermore, once you instantiate the widgets with their index and
+          // total, they can't be moved around!  Reversing the order of the
+          // buttons, say, would require re-instantiating all of the widgets
+          // with new indices and totals.
           if (_canCut)
             ContextMenuButtonItem(
               onPressed: _handleCut,
@@ -221,7 +229,19 @@ class _EditableTextContextMenuButtonItemsBuilderState extends State<EditableText
           return const SizedBox(width: 0.0, height: 0.0);
         }
 
-        return widget.builder(context, buttonItems);
+        int index = 0;
+        final List<AdaptiveTextSelectionToolbarButton> buttons = buttonItems
+            .map((ContextMenuButtonItem buttonItem) {
+              return AdaptiveTextSelectionToolbarButton(
+                type: buttonItem.type,
+                label: buttonItem.label,
+                onPressed: buttonItem.onPressed,
+                index: index++,
+                total: buttonItems.length,
+              );
+            }).toList();
+
+        return widget.builder(context, buttons);
       },
     );
   }

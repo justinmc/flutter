@@ -3,11 +3,7 @@
 // found in the LICENSE file.
 
 import 'package:flutter/cupertino.dart';
-
-import 'desktop_text_selection_toolbar.dart';
-import 'text_selection_toolbar.dart';
-import 'text_selection_toolbar_buttons_builder.dart';
-import 'theme.dart';
+import 'package:flutter/material.dart';
 
 /// The default context menu for text selection for the current platform.
 ///
@@ -57,8 +53,7 @@ class AdaptiveTextSelectionToolbar extends StatelessWidget {
     required this.children,
     required this.primaryAnchor,
     this.secondaryAnchor,
-  }) : buttonItems = null,
-       editableTextState = null,
+  }) : editableTextState = null,
        selectableRegionState = null;
 
   /// Create an instance of [AdaptiveTextSelectionToolbar] and
@@ -83,8 +78,7 @@ class AdaptiveTextSelectionToolbar extends StatelessWidget {
     required this.editableTextState,
     required this.primaryAnchor,
     this.secondaryAnchor,
-  }) : buttonItems = null,
-       children = null,
+  }) : children = null,
        selectableRegionState = null;
 
   /// Create an instance of [AdaptiveTextSelectionToolbar] and
@@ -107,40 +101,8 @@ class AdaptiveTextSelectionToolbar extends StatelessWidget {
     required this.selectableRegionState,
     required this.primaryAnchor,
     this.secondaryAnchor,
-  }) : buttonItems = null,
-       children = null,
-       editableTextState = null;
-
-  /// Create an instance of [AdaptiveTextSelectionToolbar] and
-  /// adaptively generate the buttons based on the current platform and
-  /// [buttonItems].
-  ///
-  /// {@macro flutter.material.AdaptiveTextSelectionToolbar}
-  ///
-  /// {@macro flutter.material.AdaptiveTextSelectionToolbar.constructor.editableText}
-  ///
-  /// {@macro flutter.material.AdaptiveTextSelectionToolbar.constructor.selectableRegion}
-  ///
-  /// See also:
-  ///
-  ///  * [SelectableRegionContextMenuButtonItemsBuilder], which can be used to
-  ///    build the default [ContextMenuButtonType]s for a [SelectableRegion].
-  ///  * [EditableTextContextMenuButtonItemsBuilder], which can be used to
-  ///    build the default [ContextMenuButtonType]s for an [EditableText].
-  const AdaptiveTextSelectionToolbar.buttonItems({
-    super.key,
-    required this.buttonItems,
-    required this.primaryAnchor,
-    this.secondaryAnchor,
   }) : children = null,
-       editableTextState = null,
-       selectableRegionState = null;
-
-  /// {@template flutter.material.AdaptiveTextSelectionToolbar.buttonItems}
-  /// The data that will be used to adaptively generate each child button of the
-  /// menu when using [AdaptiveTextSelectionToolbar.buttonItems].
-  /// {@endtemplate}
-  final List<ContextMenuButtonItem>? buttonItems;
+       editableTextState = null;
 
   /// The children of the toolbar, typically buttons, when using the main
   /// [AdaptiveTextSelectionToolbar.new] constructor.
@@ -173,7 +135,7 @@ class AdaptiveTextSelectionToolbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // If there aren't any buttons to build, build an empty toolbar.
-    if ((children?.isEmpty ?? false) || (buttonItems?.isEmpty ?? false)) {
+    if (children?.isEmpty ?? false) {
       return const SizedBox(width: 0.0, height: 0.0);
     }
 
@@ -185,22 +147,14 @@ class AdaptiveTextSelectionToolbar extends StatelessWidget {
       );
     }
 
-    if (buttonItems?.isNotEmpty ?? false) {
-      return _AdaptiveTextSelectionToolbarFromButtonItems(
-        primaryAnchor: primaryAnchor,
-        secondaryAnchor: secondaryAnchor,
-        buttonItems: buttonItems!,
-      );
-    }
-
     if (selectableRegionState != null) {
       return SelectableRegionContextMenuButtonItemsBuilder(
         selectableRegionState: selectableRegionState!,
-        builder: (BuildContext context, List<ContextMenuButtonItem> buttonItems) {
-          return AdaptiveTextSelectionToolbar.buttonItems(
+        builder: (BuildContext context, List<AdaptiveTextSelectionToolbarButton> buttons) {
+          return AdaptiveTextSelectionToolbar(
             primaryAnchor: primaryAnchor,
             secondaryAnchor: secondaryAnchor,
-            buttonItems: buttonItems,
+            children: buttons,
           );
         },
       );
@@ -208,11 +162,11 @@ class AdaptiveTextSelectionToolbar extends StatelessWidget {
 
     return EditableTextContextMenuButtonItemsBuilder(
       editableTextState: editableTextState!,
-      builder: (BuildContext context, List<ContextMenuButtonItem> buttonItems) {
-        return _AdaptiveTextSelectionToolbarFromButtonItems(
+      builder: (BuildContext context, List<AdaptiveTextSelectionToolbarButton> buttons) {
+        return AdaptiveTextSelectionToolbar(
           primaryAnchor: primaryAnchor,
           secondaryAnchor: secondaryAnchor,
-          buttonItems: buttonItems,
+          children: buttons,
         );
       },
     );
@@ -273,40 +227,107 @@ class _AdaptiveTextSelectionToolbarFromChildren extends StatelessWidget {
   }
 }
 
-/// The default text selection toolbar by platform given [buttonItems]
-/// representing the children for the platform.
-class _AdaptiveTextSelectionToolbarFromButtonItems extends StatelessWidget {
-  const _AdaptiveTextSelectionToolbarFromButtonItems({
-    required this.primaryAnchor,
-    this.secondaryAnchor,
-    required this.buttonItems,
-  }) : assert(buttonItems != null);
+/// The type and callback for a context menu button.
+///
+/// See also:
+///
+///  * [AdaptiveTextSelectionToolbar], which can take a list of
+///    ContextMenuButtonItems and create a platform-specific context menu with
+///    the indicated buttons.
+class AdaptiveTextSelectionToolbarButton extends StatelessWidget {
+  // TODO(justinmc): Docs.
+  const AdaptiveTextSelectionToolbarButton({
+    required this.onPressed,
+    required this.index,
+    required this.total,
+    this.type = ContextMenuButtonType.custom,
+    this.label,
+  });
 
-  /// {@macro flutter.material.AdaptiveTextSelectionToolbar.primaryAnchor}
-  final Offset primaryAnchor;
+  final int index;
 
-  /// {@macro flutter.material.AdaptiveTextSelectionToolbar.secondaryAnchor}
-  final Offset? secondaryAnchor;
+  final int total;
 
-  /// The information needed to create each child button of the menu.
-  final List<ContextMenuButtonItem> buttonItems;
+  /// The callback to be called when the button is pressed.
+  final VoidCallback onPressed;
+
+  /// The type of button this represents.
+  final ContextMenuButtonType type;
+
+  /// The label to display on the button.
+  ///
+  /// If a [type] other than [ContextMenuButtonType.custom] is given
+  /// and a label is not provided, then the default label for that type for the
+  /// platform will be looked up.
+  final String? label;
+
+  /// Returns the default button label String for the button of the given
+  /// [ContextMenuButtonType] on any platform.
+  String getButtonLabel(BuildContext context) {
+    if (label != null) {
+      return label!;
+    }
+
+    switch (Theme.of(context).platform) {
+      case TargetPlatform.iOS:
+      case TargetPlatform.macOS:
+        // TODO(justinmc): Cupertino.
+        /*
+        return CupertinoTextSelectionToolbarButtonsBuilder.getButtonLabel(
+          context,
+          buttonItem,
+        );
+        */
+        return 'TODO';
+      case TargetPlatform.android:
+      case TargetPlatform.fuchsia:
+      case TargetPlatform.linux:
+      case TargetPlatform.windows:
+        assert(debugCheckHasMaterialLocalizations(context));
+        final MaterialLocalizations localizations = MaterialLocalizations.of(context);
+        switch (type) {
+          case ContextMenuButtonType.cut:
+            return localizations.cutButtonLabel;
+          case ContextMenuButtonType.copy:
+            return localizations.copyButtonLabel;
+          case ContextMenuButtonType.paste:
+            return localizations.pasteButtonLabel;
+          case ContextMenuButtonType.selectAll:
+            return localizations.selectAllButtonLabel;
+          case ContextMenuButtonType.custom:
+            return '';
+        }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    // If there aren't any buttons to build, build an empty toolbar.
-    if (buttonItems.isEmpty) {
-      return const SizedBox(width: 0.0, height: 0.0);
-    }
-
-    return TextSelectionToolbarButtonsBuilder(
-      buttonItems: buttonItems,
-      builder: (BuildContext context, List<Widget> children) {
-        return _AdaptiveTextSelectionToolbarFromChildren(
-          primaryAnchor: primaryAnchor,
-          secondaryAnchor: secondaryAnchor,
-          children: children,
+    switch (Theme.of(context).platform) {
+      case TargetPlatform.iOS:
+        return CupertinoTextSelectionToolbarButton.text(
+          onPressed: onPressed,
+          text: getButtonLabel(context),
         );
-      },
-    );
+      case TargetPlatform.android:
+        return TextSelectionToolbarTextButton(
+          padding: TextSelectionToolbarTextButton.getPadding(index, total),
+          onPressed: onPressed,
+          child: Text(getButtonLabel(context)),
+        );
+      case TargetPlatform.fuchsia:
+      case TargetPlatform.linux:
+      case TargetPlatform.windows:
+        return DesktopTextSelectionToolbarButton.text(
+          context: context,
+          onPressed: onPressed,
+          text: getButtonLabel(context),
+        );
+      case TargetPlatform.macOS:
+        return CupertinoDesktopTextSelectionToolbarButton.text(
+          context: context,
+          onPressed: onPressed,
+          text: getButtonLabel(context),
+        );
+    }
   }
 }
