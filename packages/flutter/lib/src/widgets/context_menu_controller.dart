@@ -5,6 +5,7 @@
 import 'package:flutter/services.dart';
 
 import 'context_menu_button_item.dart';
+import 'focus_manager.dart';
 import 'framework.dart';
 import 'inherited_theme.dart';
 import 'navigator.dart';
@@ -54,6 +55,7 @@ class ContextMenuController {
     this.onRemove,
     required BuildContext context,
     required WidgetBuilder contextMenuBuilder,
+    this.focusNode,
     Widget? debugRequiredFor,
   }) {
     _show(
@@ -61,8 +63,11 @@ class ContextMenuController {
       contextMenuBuilder: contextMenuBuilder,
       debugRequiredFor: debugRequiredFor,
     );
+    focusNode?.addListener(_onFocusChange);
     _shownInstance = this;
   }
+
+  final FocusNode? focusNode;
 
   /// Called when this menu is removed.
   final VoidCallback? onRemove;
@@ -80,7 +85,7 @@ class ContextMenuController {
     required WidgetBuilder contextMenuBuilder,
     Widget? debugRequiredFor,
   }) {
-    removeAny();
+    _removeAny();
     final OverlayState overlayState = Overlay.of(
       context,
       rootOverlay: true,
@@ -109,13 +114,22 @@ class ContextMenuController {
   /// See also:
   ///
   ///  * [remove], which removes only the current instance.
-  static void removeAny() {
+  static void _removeAny() {
     _menuOverlayEntry?.remove();
     _menuOverlayEntry = null;
     if (_shownInstance != null) {
+      _shownInstance!.focusNode?.removeListener(_shownInstance!._onFocusChange);
+      _shownInstance!.focusNode?.unfocus();
       _shownInstance!.onRemove?.call();
       _shownInstance = null;
     }
+  }
+
+  void _onFocusChange() {
+    if (focusNode!.hasFocus) {
+      return;
+    }
+    remove();
   }
 
   /// True if and only if this menu is currently being shown.
@@ -149,11 +163,11 @@ class ContextMenuController {
   ///
   /// See also:
   ///
-  ///  * [removeAny], which removes any shown instance of the context menu.
+  ///  * [_removeAny], which removes any shown instance of the context menu.
   void remove() {
     if (!isShown) {
       return;
     }
-    removeAny();
+    _removeAny();
   }
 }

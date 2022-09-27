@@ -8,10 +8,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-void main() => runApp(const MyApp());
+void main() => runApp(MyApp());
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  MyApp({super.key});
 
   void _showDialog (BuildContext context) {
     Navigator.of(context).push(
@@ -23,6 +23,8 @@ class MyApp extends StatelessWidget {
     );
   }
 
+  final FocusNode focusNode = FocusNode();
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -31,6 +33,7 @@ class MyApp extends StatelessWidget {
           title: const Text('Context menu outside of text'),
         ),
         body: _ContextMenuRegion(
+          focusNode: focusNode,
           contextMenuBuilder: (BuildContext context, Offset primaryAnchor, [Offset? secondaryAnchor]) {
             // The custom context menu will look like the default context menu
             // on the current platform with a single 'Print' button.
@@ -40,7 +43,8 @@ class MyApp extends StatelessWidget {
               buttonItems: <ContextMenuButtonItem>[
                 ContextMenuButtonItem(
                   onPressed: () {
-                    ContextMenuController.removeAny();
+                    focusNode.unfocus();
+                    //ContextMenuController.removeAny();
                     _showDialog(context);
                   },
                   label: 'Print',
@@ -69,6 +73,7 @@ class MyApp extends StatelessWidget {
 class _ContextMenuRegion extends StatefulWidget {
   /// Creates an instance of [_ContextMenuRegion].
   const _ContextMenuRegion({
+    required this.focusNode,
     required this.child,
     required this.contextMenuBuilder,
   });
@@ -78,6 +83,8 @@ class _ContextMenuRegion extends StatefulWidget {
 
   /// The child widget that will be listened to for gestures.
   final Widget child;
+
+  final FocusNode focusNode;
 
   @override
   State<_ContextMenuRegion> createState() => _ContextMenuRegionState();
@@ -102,6 +109,7 @@ class _ContextMenuRegionState extends State<_ContextMenuRegion> {
   }
 
   void _onSecondaryTapUp(TapUpDetails details) {
+    widget.focusNode.requestFocus();
     _show(details.globalPosition);
   }
 
@@ -124,6 +132,7 @@ class _ContextMenuRegionState extends State<_ContextMenuRegion> {
 
   void _show(Offset position) {
     _contextMenuController = ContextMenuController(
+      focusNode: widget.focusNode,
       context: context,
       contextMenuBuilder: (BuildContext context) {
         return widget.contextMenuBuilder(context, position);
@@ -143,13 +152,16 @@ class _ContextMenuRegionState extends State<_ContextMenuRegion> {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onSecondaryTapUp: _onSecondaryTapUp,
-      onTap: _onTap,
-      onLongPress: _longPressEnabled ? _onLongPress : null,
-      onLongPressStart: _longPressEnabled ? _onLongPressStart : null,
-      child: widget.child,
+    return Focus(
+      focusNode: widget.focusNode,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onSecondaryTapUp: _onSecondaryTapUp,
+        onTap: _onTap,
+        onLongPress: _longPressEnabled ? _onLongPress : null,
+        onLongPressStart: _longPressEnabled ? _onLongPressStart : null,
+        child: widget.child,
+      ),
     );
   }
 }
