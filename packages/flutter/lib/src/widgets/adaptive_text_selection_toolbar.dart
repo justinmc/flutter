@@ -7,6 +7,17 @@ import 'package:flutter/rendering.dart';
 import 'context_menu_button_item.dart';
 import 'text_selection.dart';
 
+class TextSelectionToolbarAnchors {
+  const TextSelectionToolbarAnchors({
+    required this.primaryAnchor,
+    this.secondaryAnchor,
+  });
+
+  final Offset primaryAnchor;
+
+  final Offset? secondaryAnchor;
+}
+
 /// Returns the [ContextMenuButtonItem]s representing the buttons in this
 /// platform's default selection menu for an editable field.
 ///

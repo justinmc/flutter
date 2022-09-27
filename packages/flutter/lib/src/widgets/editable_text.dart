@@ -1618,7 +1618,7 @@ class EditableText extends StatefulWidget {
   /// {@endtemplate}
   ///
   /// If not provided, no context menu will be shown.
-  final ButtonItemsContextMenuBuilder? contextMenuBuilder;
+  final EditableTextContextMenuBuilder? contextMenuBuilder;
 
   /// {@template flutter.widgets.EditableText.spellCheckConfiguration}
   /// Configuration that details how spell check should be performed.
@@ -2216,6 +2216,14 @@ class EditableTextState extends State<EditableText> with AutomaticKeepAliveClien
           ? () => editableTextState.selectAll(SelectionChangedCause.toolbar)
           : null,
     );
+  }
+
+  /// Returns the anchor points for the toolbar.
+  ///
+  /// The selection overlay must exist.
+  TextSelectionToolbarAnchors? getAnchors() {
+    assert(_selectionOverlay != null);
+    return _selectionOverlay!.getAnchors();
   }
 
   // State lifecycle:
@@ -2929,9 +2937,12 @@ class EditableTextState extends State<EditableText> with AutomaticKeepAliveClien
         ) {
           return widget.contextMenuBuilder!(
             context,
+            this,
+            /*
             buttonItemsForToolbarOptions() ?? _getEditableTextButtonItems(this),
             primaryAnchor,
             secondaryAnchor,
+            */
           );
         },
       magnifierConfiguration: widget.magnifierConfiguration,
@@ -5197,3 +5208,9 @@ _Throttled<T> _throttle<T>({
     return timer!;
   };
 }
+
+// TODO(justinmc): Document.
+typedef EditableTextContextMenuBuilder = Widget Function(
+  BuildContext context,
+  EditableTextState editableTextState,
+);

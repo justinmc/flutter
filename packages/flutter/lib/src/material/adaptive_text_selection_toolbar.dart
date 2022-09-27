@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 
 import 'debug.dart';
@@ -60,8 +61,7 @@ class AdaptiveTextSelectionToolbar extends StatelessWidget {
   const AdaptiveTextSelectionToolbar({
     super.key,
     required this.children,
-    required this.primaryAnchor,
-    this.secondaryAnchor,
+    required this.anchors,
   }) : buttonItems = null;
 
   /// Create an instance of [AdaptiveTextSelectionToolbar] whose children will
@@ -78,8 +78,7 @@ class AdaptiveTextSelectionToolbar extends StatelessWidget {
   const AdaptiveTextSelectionToolbar.buttonItems({
     super.key,
     required this.buttonItems,
-    required this.primaryAnchor,
-    this.secondaryAnchor,
+    required this.anchors,
   }) : children = null;
 
   /// Create an instance of [AdaptiveTextSelectionToolbar] with the default
@@ -99,8 +98,7 @@ class AdaptiveTextSelectionToolbar extends StatelessWidget {
     required VoidCallback? onCut,
     required VoidCallback? onPaste,
     required VoidCallback? onSelectAll,
-    required this.primaryAnchor,
-    this.secondaryAnchor,
+    required this.anchors,
   }) : children = null,
        buttonItems = getEditableButtonItems(
          clipboardStatus: clipboardStatus,
@@ -108,6 +106,19 @@ class AdaptiveTextSelectionToolbar extends StatelessWidget {
          onCut: onCut,
          onPaste: onPaste,
          onSelectAll: onSelectAll,
+       );
+
+  AdaptiveTextSelectionToolbar.editableText({
+    super.key,
+    required EditableTextState editableTextState,
+  }) : children = null,
+       anchors = editableTextState.getAnchors()!,
+       buttonItems = getEditableButtonItems(
+         clipboardStatus: editableTextState.clipboardStatus?.value,
+         onCopy: () => editableTextState.copySelection(SelectionChangedCause.toolbar),
+         onCut: () => editableTextState.pasteText(SelectionChangedCause.toolbar),
+         onPaste: () => editableTextState.cutSelection(SelectionChangedCause.toolbar),
+         onSelectAll: () => editableTextState.selectAll(SelectionChangedCause.toolbar),
        );
 
   /// Create an instance of [AdaptiveTextSelectionToolbar] with the default
@@ -123,8 +134,7 @@ class AdaptiveTextSelectionToolbar extends StatelessWidget {
     required VoidCallback onCopy,
     required VoidCallback onSelectAll,
     required SelectionGeometry selectionGeometry,
-    required this.primaryAnchor,
-    this.secondaryAnchor,
+    required this.anchors,
   }) : children = null,
        buttonItems = getSelectableButtonItems(
          selectionGeometry: selectionGeometry,
@@ -141,19 +151,14 @@ class AdaptiveTextSelectionToolbar extends StatelessWidget {
   /// The children of the toolbar, typically buttons.
   final List<Widget>? children;
 
-  /// {@template flutter.material.AdaptiveTextSelectionToolbar.primaryAnchor}
+  /// {@template flutter.material.AdaptiveTextSelectionToolbar.anchors}
   /// The main location on which to anchor the menu.
   ///
-  /// Optionally, [secondaryAnchor] can be provided as an alternative anchor
-  /// location if the menu doesn't fit here.
+  /// Optionally, [TextSelectionToolbarAnchors.secondaryAnchor] can be provided
+  /// as an alternative anchor location to fit below if the menu doesn't fit
+  /// above [TextSelectionToolbarAnchors.primaryAnchor].
   /// {@endtemplate}
-  final Offset primaryAnchor;
-
-  /// {@template flutter.material.AdaptiveTextSelectionToolbar.secondaryAnchor}
-  /// The optional secondary location on which to anchor the menu, if it doesn't
-  /// fit at [primaryAnchor].
-  /// {@endtemplate}
-  final Offset? secondaryAnchor;
+  final TextSelectionToolbarAnchors anchors;
 
   /// Returns the default button label String for the button of the given
   /// [ContextMenuButtonType] on any platform.
@@ -256,26 +261,26 @@ class AdaptiveTextSelectionToolbar extends StatelessWidget {
     switch (Theme.of(context).platform) {
       case TargetPlatform.iOS:
         return CupertinoTextSelectionToolbar(
-          anchorAbove: primaryAnchor,
-          anchorBelow: secondaryAnchor == null ? primaryAnchor : secondaryAnchor!,
+          anchorAbove: anchors.primaryAnchor,
+          anchorBelow: anchors.secondaryAnchor == null ? anchors.primaryAnchor : anchors.secondaryAnchor!,
           children: resultChildren,
         );
       case TargetPlatform.android:
         return TextSelectionToolbar(
-          anchorAbove: primaryAnchor,
-          anchorBelow: secondaryAnchor == null ? primaryAnchor : secondaryAnchor!,
+          anchorAbove: anchors.primaryAnchor,
+          anchorBelow: anchors.secondaryAnchor == null ? anchors.primaryAnchor : anchors.secondaryAnchor!,
           children: resultChildren,
         );
       case TargetPlatform.fuchsia:
       case TargetPlatform.linux:
       case TargetPlatform.windows:
         return DesktopTextSelectionToolbar(
-          anchor: primaryAnchor,
+          anchor: anchors.primaryAnchor,
           children: resultChildren,
         );
       case TargetPlatform.macOS:
         return CupertinoDesktopTextSelectionToolbar(
-          anchor: primaryAnchor,
+          anchor: anchors.primaryAnchor,
           children: resultChildren,
         );
     }

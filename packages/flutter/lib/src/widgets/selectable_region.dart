@@ -242,11 +242,11 @@ class SelectableRegion extends StatefulWidget {
   final ValueChanged<SelectedContent?>? onSelectionChanged;
 
   @override
-  State<StatefulWidget> createState() => _SelectableRegionState();
+  State<StatefulWidget> createState() => SelectableRegionState();
 }
 
 /// State for a [SelectableRegion].
-class _SelectableRegionState extends State<SelectableRegion> with TextSelectionDelegate implements SelectionRegistrar {
+class SelectableRegionState extends State<SelectableRegion> with TextSelectionDelegate implements SelectionRegistrar {
   late final Map<Type, Action<Intent>> _actions = <Type, Action<Intent>>{
     SelectAllTextIntent: _makeOverridable(_SelectAllAction(this)),
     CopySelectionTextIntent: _makeOverridable(_CopySelectionAction(this)),
@@ -488,6 +488,13 @@ class _SelectableRegionState extends State<SelectableRegion> with TextSelectionD
            lineHeightAtStart,
            endGlyphHeight,
          );
+         /*
+         final TextSelectionToolbarAnchors anchors = _selectionOverlay!.getAnchors(
+           renderBox,
+           lineHeightAtStart,
+           endGlyphHeight,
+         );
+         */
          return widget.contextMenuBuilder!(
            context,
            _getSelectableRegionButtonItems(),
@@ -1099,7 +1106,7 @@ abstract class _NonOverrideAction<T extends Intent> extends ContextAction<T> {
 class _SelectAllAction extends _NonOverrideAction<SelectAllTextIntent> {
   _SelectAllAction(this.state);
 
-  final _SelectableRegionState state;
+  final SelectableRegionState state;
 
   @override
   void invokeAction(SelectAllTextIntent intent, [BuildContext? context]) {
@@ -1110,7 +1117,7 @@ class _SelectAllAction extends _NonOverrideAction<SelectAllTextIntent> {
 class _CopySelectionAction extends _NonOverrideAction<CopySelectionTextIntent> {
   _CopySelectionAction(this.state);
 
-  final _SelectableRegionState state;
+  final SelectableRegionState state;
 
   @override
   void invokeAction(CopySelectionTextIntent intent, [BuildContext? context]) {
@@ -1927,3 +1934,9 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
     return finalResult!;
   }
 }
+
+// TODO(justinmc): Document.
+typedef SelectableRegionContextMenuBuilder = Widget Function(
+  BuildContext context,
+  SelectableRegionState selectableRegionState,
+);
