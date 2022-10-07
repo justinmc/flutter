@@ -621,7 +621,9 @@ class TextSelectionOverlay {
     ));
   }
 
-  late Offset _dragStartPosition;
+  late Offset _dragPosition;
+  late double _dragStartY;
+  late double _dragStartLineY;
 
   void _handleSelectionStartHandleDragStart(DragStartDetails details) {
     if (!renderObject.attached) {
@@ -634,9 +636,35 @@ class TextSelectionOverlay {
     // Dx of text position point need to be consistent with dx of drag point.
     // Dy of text position point need to be locate in the correct text line.
     final Offset offsetFromHandleToTextPosition = _getOffsetToTextPositionPoint(_selectionOverlay.startHandleType);
-    _dragStartPosition = details.globalPosition + offsetFromHandleToTextPosition;
+    //_dragStartPosition = details.globalPosition + offsetFromHandleToTextPosition;
+    _dragStartY = details.globalPosition.dy;// + offsetFromHandleToTextPosition;
+    //_dragPosition = _dragStartPosition;
 
-    final TextPosition position = renderObject.getPositionForPoint(_dragStartPosition);
+
+    final Rect localCaret = renderObject.getLocalRectForCaret(value.selection.base);
+    final Offset caretCenter = renderObject.localToGlobal(Offset(0.0, localCaret.center.dy));
+    final Size handleSize = selectionControls!.getHandleSize(
+      renderObject.preferredLineHeight,
+    );
+    final Offset handleAnchor = selectionControls!.getHandleAnchor(
+      _selectionOverlay.startHandleType,
+      renderObject.preferredLineHeight,
+    );
+    /*
+    _dragStartPosition = Offset(
+      details.globalPosition.dx, 
+      details.globalPosition.dy - handleSize.height - handleAnchor.dy,
+    );
+    */
+    //_dragStartLineY = details.globalPosition.dy - handleSize.height - handleAnchor.dy;
+    _dragStartLineY = caretCenter.dy;
+    _dragPosition = Offset(
+      details.globalPosition.dx,
+      _dragStartLineY,
+    );
+
+
+    final TextPosition position = renderObject.getPositionForPoint(_dragPosition);
 
     _selectionOverlay.showMagnifier(_buildMagnifier(
       currentTextPosition: position,
@@ -649,8 +677,16 @@ class TextSelectionOverlay {
     if (!renderObject.attached) {
       return;
     }
-    _dragStartPosition += details.delta;
-    final TextPosition position = renderObject.getPositionForPoint(_dragStartPosition);
+    //_dragPosition += details.delta;
+    //final TextPosition position = renderObject.getPositionForPoint(_dragPosition);
+    final double dy = details.globalPosition.dy - _dragStartY;
+    final int dyLines = (dy / renderObject.preferredLineHeight).floor();
+    print('justin dyLines $dyLines');
+    _dragPosition = Offset(
+      _dragPosition.dx + details.delta.dx,
+      _dragStartLineY + dyLines * renderObject.preferredLineHeight,
+    );
+    final TextPosition position = renderObject.getPositionForPoint(_dragPosition);
 
     if (_selection.isCollapsed) {
       _selectionOverlay.updateMagnifier(_buildMagnifier(
