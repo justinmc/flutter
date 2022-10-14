@@ -172,7 +172,7 @@ class AdaptiveTextSelectionToolbar extends StatelessWidget {
   /// The [ContextMenuButtonItem]s that will be turned into the correct button
   /// widgets for the current platform.
   /// {@endtemplate}
-  final List<ContextMenuButtonItem>? buttonItems;
+  final List<ContextMenuItem>? buttonItems;
 
   /// The children of the toolbar, typically buttons.
   final List<Widget>? children;
@@ -184,7 +184,7 @@ class AdaptiveTextSelectionToolbar extends StatelessWidget {
 
   /// Returns the default button label String for the button of the given
   /// [ContextMenuButtonType] on any platform.
-  static String getButtonLabel(BuildContext context, ContextMenuButtonItem buttonItem) {
+  static String getButtonLabel(BuildContext context, ContextMenuItem buttonItem) {
     if (buttonItem.label != null) {
       return buttonItem.label!;
     }
@@ -229,19 +229,25 @@ class AdaptiveTextSelectionToolbar extends StatelessWidget {
   /// * [CupertinoAdaptiveTextSelectionToolbar.getAdaptiveButtons], which is the
   ///   Cupertino equivalent of this class and builds only the Cupertino
   ///   buttons.
-  static Iterable<Widget> getAdaptiveButtons(BuildContext context, List<ContextMenuButtonItem> buttonItems) {
+  static Iterable<Widget> getAdaptiveButtons(BuildContext context, List<ContextMenuItem> buttonItems) {
     int buttonIndex = 0;
     switch (Theme.of(context).platform) {
       case TargetPlatform.iOS:
-        return buttonItems.map((ContextMenuButtonItem buttonItem) {
-            return CupertinoTextSelectionToolbarButton.text(
-              onPressed: buttonItem.onPressed,
-              text: getButtonLabel(context, buttonItem),
-            );
-          });
+        return buttonItems.map((ContextMenuItem buttonItem) {
+          if (buttonItem.child != null) {
+            return buttonItem;
+          }
+          return CupertinoTextSelectionToolbarButton.text(
+            onPressed: buttonItem.onPressed,
+            text: getButtonLabel(context, buttonItem),
+          );
+        });
       case TargetPlatform.fuchsia:
       case TargetPlatform.android:
-        return buttonItems.map((ContextMenuButtonItem buttonItem) {
+        return buttonItems.map((ContextMenuItem buttonItem) {
+          if (buttonItem.child != null) {
+            return buttonItem;
+          }
           return TextSelectionToolbarTextButton(
             padding: TextSelectionToolbarTextButton.getPadding(buttonIndex++, buttonItems.length),
             onPressed: buttonItem.onPressed,
@@ -250,7 +256,10 @@ class AdaptiveTextSelectionToolbar extends StatelessWidget {
         });
       case TargetPlatform.linux:
       case TargetPlatform.windows:
-        return buttonItems.map((ContextMenuButtonItem buttonItem) {
+        return buttonItems.map((ContextMenuItem buttonItem) {
+          if (buttonItem.child != null) {
+            return buttonItem;
+          }
           return DesktopTextSelectionToolbarButton.text(
             context: context,
             onPressed: buttonItem.onPressed,
@@ -258,7 +267,10 @@ class AdaptiveTextSelectionToolbar extends StatelessWidget {
           );
         });
       case TargetPlatform.macOS:
-        return buttonItems.map((ContextMenuButtonItem buttonItem) {
+        return buttonItems.map((ContextMenuItem buttonItem) {
+          if (buttonItem.child != null) {
+            return buttonItem;
+          }
           return CupertinoDesktopTextSelectionToolbarButton.text(
             context: context,
             onPressed: buttonItem.onPressed,

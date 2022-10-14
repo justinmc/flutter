@@ -254,7 +254,7 @@ class SelectableRegion extends StatefulWidget {
   ///   [AdaptiveTextSelectionToolbar.buttonItems].
   /// * [AdaptiveTextSelectionToolbar.getAdaptiveButtons], which builds the button
   ///   Widgets for the current platform given [ContextMenuButtonItem]s.
-  static List<ContextMenuButtonItem> getSelectableButtonItems({
+  static List<ContextMenuItem> getSelectableButtonItems({
     required final SelectionGeometry selectionGeometry,
     required final VoidCallback onCopy,
     required final VoidCallback onSelectAll,
@@ -265,14 +265,14 @@ class SelectableRegion extends StatefulWidget {
     // Determine which buttons will appear so that the order and total number is
     // known. A button's position in the menu can slightly affect its
     // appearance.
-    return <ContextMenuButtonItem>[
+    return <ContextMenuItem>[
       if (canCopy)
-        ContextMenuButtonItem(
+        ContextMenuItem(
           onPressed: onCopy,
           type: ContextMenuButtonType.copy,
         ),
       if (canSelectAll)
-        ContextMenuButtonItem(
+        ContextMenuItem(
           onPressed: onSelectAll,
           type: ContextMenuButtonType.selectAll,
         ),
@@ -885,7 +885,7 @@ class SelectableRegionState extends State<SelectableRegion> with TextSelectionDe
   ///   but generic to any selectable and not editable content.
   /// * [AdaptiveTextSelectionToolbar.getAdaptiveButtons], which builds the
   ///   button Widgets for the current platform given [ContextMenuButtonItem]s.
-  List<ContextMenuButtonItem> get contextMenuButtonItems {
+  List<ContextMenuItem> get contextMenuButtonItems {
     return SelectableRegion.getSelectableButtonItems(
       selectionGeometry: _selectionDelegate.value,
       onCopy: () {

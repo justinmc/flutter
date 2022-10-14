@@ -156,7 +156,7 @@ class CupertinoAdaptiveTextSelectionToolbar extends StatelessWidget {
 
   /// The [ContextMenuButtonItem]s that will be turned into the correct button
   /// widgets for the current platform.
-  final List<ContextMenuButtonItem>? buttonItems;
+  final List<ContextMenuItem>? buttonItems;
 
   /// Gets the line height at the start of the selection for the given
   /// [EditableTextState].
@@ -204,7 +204,7 @@ class CupertinoAdaptiveTextSelectionToolbar extends StatelessWidget {
 
   /// Returns the default button label String for the button of the given
   /// [ContextMenuButtonItem]'s [ContextMenuButtonType].
-  static String getButtonLabel(BuildContext context, ContextMenuButtonItem buttonItem) {
+  static String getButtonLabel(BuildContext context, ContextMenuItem buttonItem) {
     if (buttonItem.label != null) {
       return buttonItem.label!;
     }
@@ -242,12 +242,12 @@ class CupertinoAdaptiveTextSelectionToolbar extends StatelessWidget {
   ///
   /// * [AdaptiveTextSelectionToolbar.getAdaptiveButtons], which is the Material
   ///   equivalent of this class and builds only the Material buttons.
-  static Iterable<Widget> getAdaptiveButtons(BuildContext context, List<ContextMenuButtonItem> buttonItems) {
+  static Iterable<Widget> getAdaptiveButtons(BuildContext context, List<ContextMenuItem> buttonItems) {
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
       case TargetPlatform.fuchsia:
       case TargetPlatform.iOS:
-        return buttonItems.map((ContextMenuButtonItem buttonItem) {
+        return buttonItems.map((ContextMenuItem buttonItem) {
           return CupertinoTextSelectionToolbarButton.text(
             onPressed: buttonItem.onPressed,
             text: getButtonLabel(context, buttonItem),
@@ -256,7 +256,7 @@ class CupertinoAdaptiveTextSelectionToolbar extends StatelessWidget {
       case TargetPlatform.linux:
       case TargetPlatform.windows:
       case TargetPlatform.macOS:
-        return buttonItems.map((ContextMenuButtonItem buttonItem) {
+        return buttonItems.map((ContextMenuItem buttonItem) {
           return CupertinoDesktopTextSelectionToolbarButton.text(
             context: context,
             onPressed: buttonItem.onPressed,

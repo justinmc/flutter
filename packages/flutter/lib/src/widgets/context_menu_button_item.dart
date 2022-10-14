@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'basic.dart';
 import 'framework.dart';
 
 /// The buttons that can appear in a context menu by default.
@@ -34,13 +35,14 @@ enum ContextMenuButtonType {
 ///  * [AdaptiveTextSelectionToolbar], which can take a list of
 ///    ContextMenuButtonItems and create a platform-specific context menu with
 ///    the indicated buttons.
-@immutable
-class ContextMenuButtonItem {
-  /// Creates a const instance of [ContextMenuButtonItem].
-  const ContextMenuButtonItem({
+class ContextMenuItem extends StatelessWidget {
+  /// Creates a const instance of [ContextMenuItem].
+  const ContextMenuItem({
+    super.key,
     required this.onPressed,
     this.type = ContextMenuButtonType.custom,
     this.label,
+    this.child,
   });
 
   /// The callback to be called when the button is pressed.
@@ -56,34 +58,29 @@ class ContextMenuButtonItem {
   /// platform will be looked up.
   final String? label;
 
+  final Widget? child;
+
   /// Creates a new [ContextMenuButtonItem] with the provided parameters
   /// overridden.
-  ContextMenuButtonItem copyWith({
+  ContextMenuItem copyWith({
     VoidCallback? onPressed,
     ContextMenuButtonType? type,
     String? label,
+    Widget? child,
   }) {
-    return ContextMenuButtonItem(
+    return ContextMenuItem(
       onPressed: onPressed ?? this.onPressed,
       type: type ?? this.type,
       label: label ?? this.label,
+      child: child ?? this.child,
     );
   }
 
   @override
-  bool operator ==(Object other) {
-    if (other.runtimeType != runtimeType) {
-      return false;
+  Widget build(BuildContext context) {
+    if (child == null) {
+      return const SizedBox.shrink();
     }
-    return other is ContextMenuButtonItem
-        && other.label == label
-        && other.onPressed == onPressed
-        && other.type == type;
+    return child!;
   }
-
-  @override
-  int get hashCode => Object.hash(label, onPressed, type);
-
-  @override
-  String toString() => 'ContextMenuButtonItem $type, $label';
 }

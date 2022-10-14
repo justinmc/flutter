@@ -1668,7 +1668,7 @@ class EditableText extends StatefulWidget {
   ///   [AdaptiveTextSelectionToolbar.buttonItems].
   /// * [AdaptiveTextSelectionToolbar.getAdaptiveButtons], which builds the button
   ///   Widgets for the current platform given [ContextMenuButtonItem]s.
-  static List<ContextMenuButtonItem> getEditableButtonItems({
+  static List<ContextMenuItem> getEditableButtonItems({
     required final ClipboardStatus? clipboardStatus,
     required final VoidCallback? onCopy,
     required final VoidCallback? onCut,
@@ -1679,27 +1679,27 @@ class EditableText extends StatefulWidget {
     // of the clipboard is known, since it's used to determine if paste is
     // shown.
     if (onPaste != null && clipboardStatus == ClipboardStatus.unknown) {
-      return <ContextMenuButtonItem>[];
+      return <ContextMenuItem>[];
     }
 
-    return <ContextMenuButtonItem>[
+    return <ContextMenuItem>[
       if (onCut != null)
-        ContextMenuButtonItem(
+        ContextMenuItem(
           onPressed: onCut,
           type: ContextMenuButtonType.cut,
         ),
       if (onCopy != null)
-        ContextMenuButtonItem(
+        ContextMenuItem(
           onPressed: onCopy,
           type: ContextMenuButtonType.copy,
         ),
       if (onPaste != null)
-        ContextMenuButtonItem(
+        ContextMenuItem(
           onPressed: onPaste,
           type: ContextMenuButtonType.paste,
         ),
       if (onSelectAll != null)
-        ContextMenuButtonItem(
+        ContextMenuItem(
           onPressed: onSelectAll,
           type: ContextMenuButtonType.selectAll,
         ),
@@ -2212,35 +2212,35 @@ class EditableTextState extends State<EditableText> with AutomaticKeepAliveClien
     'Use `contextMenuBuilder` instead of `toolbarOptions`. '
     'This feature was deprecated after v3.3.0-0.5.pre.',
   )
-  List<ContextMenuButtonItem>? buttonItemsForToolbarOptions([TargetPlatform? targetPlatform]) {
+  List<ContextMenuItem>? buttonItemsForToolbarOptions([TargetPlatform? targetPlatform]) {
     final ToolbarOptions toolbarOptions = widget.toolbarOptions;
     if (toolbarOptions == ToolbarOptions.empty) {
       return null;
     }
-    return <ContextMenuButtonItem>[
+    return <ContextMenuItem>[
       if (toolbarOptions.cut && cutEnabled)
-        ContextMenuButtonItem(
+        ContextMenuItem(
           onPressed: () {
             selectAll(SelectionChangedCause.toolbar);
           },
           type: ContextMenuButtonType.selectAll,
         ),
       if (toolbarOptions.copy && copyEnabled)
-        ContextMenuButtonItem(
+        ContextMenuItem(
           onPressed: () {
             copySelection(SelectionChangedCause.toolbar);
           },
           type: ContextMenuButtonType.copy,
         ),
       if (toolbarOptions.paste && clipboardStatus != null && pasteEnabled)
-        ContextMenuButtonItem(
+        ContextMenuItem(
           onPressed: () {
             pasteText(SelectionChangedCause.toolbar);
           },
           type: ContextMenuButtonType.paste,
         ),
       if (toolbarOptions.selectAll && selectAllEnabled)
-        ContextMenuButtonItem(
+        ContextMenuItem(
           onPressed: () {
             selectAll(SelectionChangedCause.toolbar);
           },
@@ -2261,7 +2261,7 @@ class EditableTextState extends State<EditableText> with AutomaticKeepAliveClien
   ///   [AdaptiveTextSelectionToolbar.buttonItems].
   /// * [AdaptiveTextSelectionToolbar.getAdaptiveButtons], which builds the button
   ///   Widgets for the current platform given [ContextMenuButtonItem]s.
-  List<ContextMenuButtonItem> get contextMenuButtonItems {
+  List<ContextMenuItem> get contextMenuButtonItems {
     return buttonItemsForToolbarOptions() ?? EditableText.getEditableButtonItems(
       clipboardStatus: clipboardStatus?.value,
       onCopy: copyEnabled
