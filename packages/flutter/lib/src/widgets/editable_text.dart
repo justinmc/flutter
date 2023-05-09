@@ -3319,6 +3319,7 @@ class EditableTextState extends State<EditableText> with AutomaticKeepAliveClien
       selectionDelegate: this,
       dragStartBehavior: widget.dragStartBehavior,
       onSelectionHandleTapped: widget.onSelectionHandleTapped,
+      focusNode: widget.focusNode,
       contextMenuBuilder: widget.contextMenuBuilder == null
         ? null
         : (BuildContext context) {

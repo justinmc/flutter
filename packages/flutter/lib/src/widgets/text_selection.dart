@@ -19,11 +19,14 @@ import 'container.dart';
 import 'context_menu_controller.dart';
 import 'debug.dart';
 import 'editable_text.dart';
+import 'focus_manager.dart';
+import 'focus_scope.dart';
 import 'framework.dart';
 import 'gesture_detector.dart';
 import 'magnifier.dart';
 import 'overlay.dart';
 import 'scrollable.dart';
+import 'shortcuts.dart';
 import 'tap_and_drag_gestures.dart';
 import 'tap_region.dart';
 import 'ticker_provider.dart';
@@ -321,6 +324,7 @@ class TextSelectionOverlay {
     this.selectionControls,
     bool handlesVisible = false,
     required this.selectionDelegate,
+    required this.focusNode,
     DragStartBehavior dragStartBehavior = DragStartBehavior.start,
     VoidCallback? onSelectionHandleTapped,
     ClipboardStatusNotifier? clipboardStatus,
@@ -359,6 +363,7 @@ class TextSelectionOverlay {
       onSelectionHandleTapped: onSelectionHandleTapped,
       dragStartBehavior: dragStartBehavior,
       toolbarLocation: renderObject.lastSecondaryTapDownPosition,
+      focusNode: focusNode,
     );
   }
 
@@ -387,6 +392,9 @@ class TextSelectionOverlay {
 
   /// {@macro flutter.widgets.SelectionOverlay.selectionDelegate}
   final TextSelectionDelegate selectionDelegate;
+
+  // TODO(justinmc): Document.
+  final FocusNode focusNode;
 
   late final SelectionOverlay _selectionOverlay;
 
@@ -938,6 +946,7 @@ class SelectionOverlay {
     this.toolbarVisible,
     required List<TextSelectionPoint> selectionEndpoints,
     required this.selectionControls,
+    required this.focusNode,
     @Deprecated(
       'Use `contextMenuBuilder` in `showToolbar` instead. '
       'This feature was deprecated after v3.3.0-0.5.pre.',
@@ -1213,6 +1222,8 @@ class SelectionOverlay {
   /// {@endtemplate}
   final TextSelectionControls? selectionControls;
 
+  final FocusNode focusNode;
+
   /// {@template flutter.widgets.SelectionOverlay.selectionDelegate}
   /// The delegate for manipulating the current selection in the owning
   /// text field.
@@ -1354,6 +1365,7 @@ class SelectionOverlay {
         return _SelectionToolbarWrapper(
           layerLink: toolbarLayerLink,
           offset: -renderBox.localToGlobal(Offset.zero),
+          parentNode: focusNode,
           child: contextMenuBuilder(context),
         );
       },
@@ -1377,6 +1389,7 @@ class SelectionOverlay {
         return _SelectionToolbarWrapper(
           layerLink: toolbarLayerLink,
           offset: -renderBox.localToGlobal(Offset.zero),
+          parentNode: focusNode,
           child: builder(context),
         );
       },
@@ -1547,6 +1560,7 @@ class SelectionOverlay {
       visibility: toolbarVisible,
       layerLink: toolbarLayerLink,
       offset: -editingRegion.topLeft,
+      parentNode: focusNode,
       child: Builder(
         builder: (BuildContext context) {
           return selectionControls!.buildToolbar(
@@ -1595,11 +1609,13 @@ class _SelectionToolbarWrapper extends StatefulWidget {
     required this.layerLink,
     required this.offset,
     required this.child,
+    required this.parentNode,
   });
 
   final Widget child;
   final Offset offset;
   final LayerLink layerLink;
+  final FocusNode parentNode;
   final ValueListenable<bool>? visibility;
 
   @override
@@ -1646,18 +1662,48 @@ class _SelectionToolbarWrapperState extends State<_SelectionToolbarWrapper> with
     }
   }
 
+  final FocusNode focusNode = FocusNode();
+  Timer? timer;
+
   @override
   Widget build(BuildContext context) {
+    timer?.cancel();
+    timer = Timer.periodic(const Duration(seconds: 1), (Timer timer) {
+      print('justin has focus? ${focusNode.hasFocus}');
+      if (!focusNode.hasFocus) {
+        focusNode.requestFocus();
+      }
+    });
+
     return TextFieldTapRegion(
-      child: Directionality(
-        textDirection: Directionality.of(this.context),
-        child: FadeTransition(
-          opacity: _opacity,
-          child: CompositedTransformFollower(
-            link: widget.layerLink,
-            showWhenUnlinked: false,
-            offset: widget.offset,
-            child: widget.child,
+      child: CallbackShortcuts(
+        bindings: <ShortcutActivator, VoidCallback>{
+          const SingleActivator(LogicalKeyboardKey.arrowDown): () {
+            print('justin arrow down!');
+          },
+        },
+        child: Focus(
+          //parentNode: widget.parentNode,
+          focusNode: focusNode,
+          autofocus: true,
+          child: CallbackShortcuts(
+            bindings: <ShortcutActivator, VoidCallback>{
+              const SingleActivator(LogicalKeyboardKey.arrowDown): () {
+                print('justin arrow down inside');
+              },
+            },
+            child: Directionality(
+              textDirection: Directionality.of(this.context),
+              child: FadeTransition(
+                opacity: _opacity,
+                child: CompositedTransformFollower(
+                  link: widget.layerLink,
+                  showWhenUnlinked: false,
+                  offset: widget.offset,
+                  child: widget.child,
+                ),
+              ),
+            ),
           ),
         ),
       ),

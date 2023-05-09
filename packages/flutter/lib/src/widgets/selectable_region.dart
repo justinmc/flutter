@@ -692,7 +692,8 @@ class SelectableRegionState extends State<SelectableRegion> with TextSelectionDe
       startHandleLayerLink: _startHandleLayerLink,
       endHandleLayerLink: _endHandleLayerLink,
       toolbarLayerLink: _toolbarLayerLink,
-      magnifierConfiguration: widget.magnifierConfiguration
+      magnifierConfiguration: widget.magnifierConfiguration,
+      focusNode: widget.focusNode,
     );
   }
 
