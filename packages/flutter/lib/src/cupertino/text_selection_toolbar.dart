@@ -442,7 +442,7 @@ class _CupertinoTextSelectionToolbarContent extends StatefulWidget {
 class _CupertinoTextSelectionToolbarContentState extends State<_CupertinoTextSelectionToolbarContent> with TickerProviderStateMixin {
   // Controls the fading of the buttons within the menu during page transitions.
   late AnimationController _controller;
-  final _CupertinoTextSelectionToolbarItemsController _toolbarItemsController = _CupertinoTextSelectionToolbarItemsController();
+  final GlobalKey _toolbarItemsKey = GlobalKey();
   int _page = 0;
   int? _nextPage;
 
@@ -459,7 +459,12 @@ class _CupertinoTextSelectionToolbarContentState extends State<_CupertinoTextSel
   }
 
   void _handleNextPage() {
-    if (_toolbarItemsController.hasNextPage) {
+    final _RenderCupertinoTextSelectionToolbarItems? renderBox =
+        _toolbarItemsKey.currentContext!.findRenderObject() as _RenderCupertinoTextSelectionToolbarItems?;
+    if (renderBox == null) {
+      return;
+    }
+    if (renderBox.hasNextPage ?? false) {
       _controller.reverse();
       _controller.addStatusListener(_statusListener);
       _nextPage = _page + 1;
@@ -526,7 +531,7 @@ class _CupertinoTextSelectionToolbarContentState extends State<_CupertinoTextSel
         child: GestureDetector(
           onHorizontalDragEnd: _onHorizontalDragEnd,
           child: _CupertinoTextSelectionToolbarItems(
-            controller: _toolbarItemsController,
+            key: _toolbarItemsKey,
             page: _page,
             backButton: CupertinoTextSelectionToolbarButton(
               onPressed: _handlePreviousPage,
@@ -569,7 +574,7 @@ class _CupertinoTextSelectionToolbarItemsController {
 // _CupertinoTextSelectionToolbarItemsElement, paginates the menu items.
 class _CupertinoTextSelectionToolbarItems extends RenderObjectWidget {
   _CupertinoTextSelectionToolbarItems({
-    this.controller,
+    super.key,
     required this.page,
     required this.children,
     required this.backButton,
@@ -578,7 +583,6 @@ class _CupertinoTextSelectionToolbarItems extends RenderObjectWidget {
     required this.nextButton,
   }) : assert(children.isNotEmpty);
 
-  final _CupertinoTextSelectionToolbarItemsController? controller;
   final Widget backButton;
   final List<Widget> children;
   final Color dividerColor;
@@ -589,7 +593,6 @@ class _CupertinoTextSelectionToolbarItems extends RenderObjectWidget {
   @override
   _RenderCupertinoTextSelectionToolbarItems createRenderObject(BuildContext context) {
     return _RenderCupertinoTextSelectionToolbarItems(
-      controller: controller,
       dividerColor: dividerColor,
       dividerWidth: dividerWidth,
       page: page,
@@ -600,7 +603,6 @@ class _CupertinoTextSelectionToolbarItems extends RenderObjectWidget {
   void updateRenderObject(BuildContext context, _RenderCupertinoTextSelectionToolbarItems renderObject) {
     renderObject
       ..page = page
-      ..controller = controller
       ..dividerColor = dividerColor
       ..dividerWidth = dividerWidth;
   }
@@ -765,7 +767,6 @@ class _CupertinoTextSelectionToolbarItemsElement extends RenderObjectElement {
 // The custom RenderBox that helps paginate the menu items.
 class _RenderCupertinoTextSelectionToolbarItems extends RenderBox with ContainerRenderObjectMixin<RenderBox, ToolbarItemsParentData>, RenderBoxContainerDefaultsMixin<RenderBox, ToolbarItemsParentData> {
   _RenderCupertinoTextSelectionToolbarItems({
-    required this.controller,
     required Color dividerColor,
     required double dividerWidth,
     required int page,
@@ -776,7 +777,8 @@ class _RenderCupertinoTextSelectionToolbarItems extends RenderBox with Container
 
   final Map<_CupertinoTextSelectionToolbarItemsSlot, RenderBox> slottedChildren = <_CupertinoTextSelectionToolbarItemsSlot, RenderBox>{};
 
-  _CupertinoTextSelectionToolbarItemsController? controller;
+  bool? hasNextPage;
+  bool? hasPreviousPage;
 
   RenderBox? _updateChild(RenderBox? oldChild, RenderBox? newChild, _CupertinoTextSelectionToolbarItemsSlot slot) {
     if (oldChild != null) {
@@ -943,8 +945,12 @@ class _RenderCupertinoTextSelectionToolbarItems extends RenderBox with Container
 
       // Update the controller values so that we can check in the horizontal
       // drag gesture callback when it's possible to navigate.
+      /*
       controller?.hasNextPage = page != currentPage;
       controller?.hasPreviousPage = page > 0;
+      */
+      hasNextPage = page != currentPage;
+      hasPreviousPage = page > 0;
     } else {
       // No divider for the next button when there's only one page.
       toolbarWidth -= dividerWidth;
