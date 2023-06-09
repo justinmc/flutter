@@ -404,25 +404,31 @@ void main() {
     );
   });
 
+  // TODO(justinmc): I'm thinking this lead error might be unrelated to my work,
+  // just exposed by my work.  But still I'll have to fix it. Seems tricky.
   testWidgetsWithLeakTracking('LicensePage returns early if unmounted', (WidgetTester tester) async {
     final Completer<LicenseEntry> licenseCompleter = Completer<LicenseEntry>();
     LicenseRegistry.addLicense(() {
       return Stream<LicenseEntry>.fromFuture(licenseCompleter.future);
     });
 
+    print('justin going to do first pump');
     await tester.pumpWidget(
       const MaterialApp(
+        //home: SizedBox.shrink(),//LicensePage(),
         home: LicensePage(),
       ),
     );
     await tester.pump();
 
+    print('justin going to do second pump');
     await tester.pumpWidget(
       const MaterialApp(
         home: Placeholder(),
       ),
     );
 
+    print('justin going to pumjp and settljek');
     await tester.pumpAndSettle();
     final FakeLicenseEntry licenseEntry = FakeLicenseEntry();
     licenseCompleter.complete(licenseEntry);

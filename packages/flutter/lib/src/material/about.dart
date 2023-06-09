@@ -452,6 +452,7 @@ class _LicensePageState extends State<LicensePage> {
   }
 
   Widget _packageLicensePage(BuildContext _, Object? args, ScrollController? scrollController) {
+    return SizedBox.shrink();
     assert(args is _DetailArguments);
     final _DetailArguments detailArguments = args! as _DetailArguments;
     return _PackageLicensePage(
@@ -462,6 +463,7 @@ class _LicensePageState extends State<LicensePage> {
   }
 
   Widget _packagesView(final BuildContext _, final bool isLateral) {
+    return SizedBox.shrink();
     final Widget about = _AboutProgram(
       name: widget.applicationName ?? _defaultApplicationName(context),
       icon: widget.applicationIcon ?? _defaultApplicationIcon(context),
@@ -1173,6 +1175,7 @@ class _MasterDetailFlowState extends State<_MasterDetailFlow> implements _PageOp
     _builtLayout = _LayoutMode.nested;
     final MaterialPageRoute<void> masterPageRoute = _masterPageRoute(context);
 
+    return SizedBox.shrink();
     return NavigatorPopHandler(
       onPop: () {
         _navigatorKey.currentState!.maybePop();
@@ -1213,7 +1216,10 @@ class _MasterDetailFlowState extends State<_MasterDetailFlow> implements _PageOp
 
   MaterialPageRoute<void> _masterPageRoute(BuildContext context) {
     return MaterialPageRoute<dynamic>(
+      // TODO(justinmc): This seemed promising but has no effect.
+      maintainState: false,
       builder: (BuildContext c) {
+        return SizedBox.shrink();
         return BlockSemantics(
           child: _MasterPage(
             leading: Navigator.of(context).canPop()
@@ -1240,6 +1246,7 @@ class _MasterDetailFlowState extends State<_MasterDetailFlow> implements _PageOp
   }
 
   Widget _lateralUI(BuildContext context) {
+    return SizedBox.shrink();
     _builtLayout = _LayoutMode.lateral;
     return _MasterDetailScaffold(
       actionBuilder: (_, __) => const<Widget>[],

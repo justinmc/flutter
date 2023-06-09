@@ -3481,6 +3481,7 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
       SystemNavigator.selectSingleEntryHistory();
     }
 
+    print('justin going to add listener');
     _history.addListener(_onHistoryChanged);
   }
 
@@ -3759,6 +3760,7 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
 
   @override
   void dispose() {
+    print('justin dispose');
     assert(!_debugLocked);
     assert(() {
       _debugLocked = true;
@@ -3776,6 +3778,7 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
     _rawNextPagelessRestorationScopeId.dispose();
     _serializableHistory.dispose();
     userGestureInProgressNotifier.dispose();
+    print('justin remove listener');
     _history.removeListener(_onHistoryChanged);
     super.dispose();
     // don't unlock, so that the object becomes unusable
