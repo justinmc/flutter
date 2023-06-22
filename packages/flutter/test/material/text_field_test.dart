@@ -24,6 +24,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../rendering/mock_canvas.dart';
 import '../widgets/clipboard_utils.dart';
 import '../widgets/editable_text_utils.dart';
 import '../widgets/semantics_tester.dart';
@@ -16404,6 +16405,92 @@ void main() {
   },
     skip: isContextMenuProvidedByPlatform, // [intended] only applies to platforms where we supply the context menu.
     variant: TargetPlatformVariant.all(excluding: <TargetPlatform>{ TargetPlatform.iOS }),
+  );
+
+  testWidgets('lala', (WidgetTester tester) async {
+    final TextEditingController controller = TextEditingController(
+      text: 'blah1 blah2',
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: TextField(
+              controller: controller,
+              contextMenuBuilder: (BuildContext context, EditableTextState editableTextState) {
+                return AdaptiveTextSelectionToolbar.buttonItems(
+                  buttonItems: <ContextMenuButtonItem>[
+                    ...editableTextState.contextMenuButtonItems,
+                    // Some extra context menu buttons to make the overflow
+                    // arrows appear.
+                    for (int i = 0; i < 10; i++)
+                      ContextMenuButtonItem(
+                        label: 'button #$i',
+                        onPressed: () {},
+                      ),
+                  ],
+                  anchors: editableTextState.contextMenuAnchors,
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(AdaptiveTextSelectionToolbar), findsNothing);
+
+    await tester.tapAt(textOffsetToPosition(tester, 8));
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.tapAt(textOffsetToPosition(tester, 8));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AdaptiveTextSelectionToolbar), findsOneWidget);
+
+    Finder findOverflowButton() => find.byWidgetPredicate((Widget widget) =>
+      widget is CustomPaint &&
+      '${widget.painter?.runtimeType}' == '_CupertinoChevronPainter',
+    );
+
+    expect(findOverflowButton(), findsOneWidget);
+    expect(
+      findOverflowButton().last,
+      paints
+          ..path(
+            includes: const <Offset>[
+              Offset(7.5, 8.0),
+              Offset(2.5, 13.0),
+            ],
+          ),
+    );
+
+    await tester.tap(findOverflowButton());
+    await tester.pumpAndSettle();
+
+    expect(findOverflowButton(), findsNWidgets(2));
+    expect(
+      findOverflowButton().first,
+      paints
+          ..path(
+            includes: const <Offset>[
+              Offset(2.5, 8.0),
+              Offset(7.5, 13.0),
+            ],
+          ),
+    );
+    expect(
+      findOverflowButton().last,
+      paints
+          ..path(
+            includes: const <Offset>[
+              Offset(7.5, 8.0),
+              Offset(2.5, 13.0),
+            ],
+          ),
+    );
+  },
+    skip: isContextMenuProvidedByPlatform, // [intended] only applies to platforms where we supply the context menu.
+    variant: const TargetPlatformVariant(<TargetPlatform>{ TargetPlatform.iOS }),
   );
 }
 

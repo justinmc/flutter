@@ -605,6 +605,10 @@ class _CupertinoChevronPainter extends CustomPainter {
       ..moveTo(iconSize / 2, 0)
       ..lineTo(isLeft ? 0 : iconSize, iconSize / 2)
       ..lineTo(iconSize / 2, iconSize);
+    print('justin isLeft: $isLeft.');
+    print('justin first lineTo: (${isLeft ? 0 : iconSize}, ${iconSize / 2})');
+    print('justin second lineTo: (${iconSize / 2}, $iconSize)');
+    print('justin shift by $sizeOffset');
 
     final Paint paint = Paint()
       ..color = color
