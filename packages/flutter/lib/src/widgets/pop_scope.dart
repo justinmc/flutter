@@ -94,6 +94,18 @@ class PopScope extends StatefulWidget {
 class _PopScopeState extends State<PopScope> implements PopInterface {
   ModalRoute<dynamic>? _route;
 
+  LocalHistoryEntry? _localHistoryEntry;
+
+  void _updateLocalHistoryEntry() {
+    if (!widget.canPop && _localHistoryEntry == null) {
+      _localHistoryEntry = LocalHistoryEntry();
+      _route?.addLocalHistoryEntry(_localHistoryEntry!);
+    } else if (widget.canPop && _localHistoryEntry != null) {
+      _route?.removeLocalHistoryEntry(_localHistoryEntry!);
+      _localHistoryEntry = null;
+    }
+  }
+
   @override
   PopInvokedCallback? get onPopInvoked => widget.onPopInvoked;
 
@@ -109,9 +121,11 @@ class _PopScopeState extends State<PopScope> implements PopInterface {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _route?.unregisterPopInterface(this);
+    //_route?.removeLocalHistoryEntry(_localHistoryEntry);
+    //_route?.unregisterPopInterface(this);
     _route = ModalRoute.of(context);
-    _route?.registerPopInterface(this);
+    //_route?.registerPopInterface(this);
+    _updateLocalHistoryEntry();
   }
 
   @override
@@ -120,11 +134,16 @@ class _PopScopeState extends State<PopScope> implements PopInterface {
     if (widget.canPop != oldWidget.canPop) {
       canPopNotifier.value = widget.canPop;
     }
+
+    _updateLocalHistoryEntry();
   }
 
   @override
   void dispose() {
-    _route?.unregisterPopInterface(this);
+    //_route?.unregisterPopInterface(this);
+    if (_localHistoryEntry != null) {
+      _route?.removeLocalHistoryEntry(_localHistoryEntry!);
+    }
     canPopNotifier.dispose();
     super.dispose();
   }

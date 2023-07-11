@@ -760,6 +760,8 @@ mixin LocalHistoryRoute<T> on Route<T> {
 
   @override
   bool get willHandlePopInternally {
+    // TODO(justinmc): Now that I understand localhistory, it makes sense to
+    // return true here when a PopScope is blocking pops.
     return _localHistory != null && _localHistory!.isNotEmpty;
   }
 }
