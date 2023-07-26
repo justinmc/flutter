@@ -165,6 +165,7 @@ class OverlayEntry implements Listenable {
   /// that if you do call this after the overlay rebuild, the UI will not update
   /// until the next frame (i.e. many milliseconds later).
   void remove() {
+    print('justin remove OverlayEntry.');
     assert(_overlay != null);
     assert(!_disposedByOwner);
     final OverlayState overlay = _overlay!;

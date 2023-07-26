@@ -559,7 +559,7 @@ class TextSelectionOverlay {
   }
 
   /// Whether the handles are currently visible.
-  bool get handlesAreVisible => _selectionOverlay._handles != null && handlesVisible;
+  bool get handlesAreVisible => _selectionOverlay._handles != null && handlesVisible && !_selectionOverlay._doneWithHandles;
 
   /// {@macro flutter.widgets.SelectionOverlay.toolbarIsVisible}
   ///
@@ -1023,11 +1023,12 @@ class SelectionOverlay {
       return;
     }
 
+    // TODO(justinmc): This doesn't cause the leak.
     _magnifierController.show(
         context: context,
         below: magnifierConfiguration.shouldDisplayHandlesInMagnifier
             ? null
-            : _handles?.first,
+            : _doneWithHandles ? null : _handles?.first,
         builder: (_) => builtMagnifier);
   }
 
@@ -1088,6 +1089,7 @@ class SelectionOverlay {
   /// Called when the users start dragging the start selection handles.
   final ValueChanged<DragStartDetails>? onStartHandleDragStart;
 
+  // TODO(justinmc): All of these drags are irrelevant.
   void _handleStartHandleDragStart(DragStartDetails details) {
     assert(!_isDraggingStartHandle);
     // Calling OverlayEntry.remove may not happen until the following frame, so
@@ -1335,7 +1337,15 @@ class SelectionOverlay {
 
   /// A pair of handles. If this is non-null, there are always 2, though the
   /// second is hidden when the selection is collapsed.
-  List<OverlayEntry>? _handles;
+  List<OverlayEntry>? __handles;
+
+  List<OverlayEntry>? get _handles {
+    print('justin getting _handles. Is it null? ${__handles == null}');
+    return __handles;
+  }
+  set _handles (List<OverlayEntry>? nextHandles) {
+    __handles = nextHandles;
+  }
 
   /// A copy/paste toolbar.
   OverlayEntry? _toolbar;
@@ -1349,10 +1359,12 @@ class SelectionOverlay {
   /// Builds the handles by inserting them into the [context]'s overlay.
   /// {@endtemplate}
   void showHandles() {
-    if (_handles != null) {
+    // TODO(justinmc): So it seems that recreating the handles at the end doesn't *cause* the EditableText to not dispose...
+    if (_doneWithHandles || _handles != null) {
       return;
     }
 
+    print('justin showHandles creating the handles');
     _handles = <OverlayEntry>[
       OverlayEntry(builder: _buildStartHandle),
       OverlayEntry(builder: _buildEndHandle),
@@ -1364,7 +1376,7 @@ class SelectionOverlay {
   /// Destroys the handles by removing them from overlay.
   /// {@endtemplate}
   void hideHandles() {
-    if (_handles != null) {
+    if (!_doneWithHandles && _handles != null) {
       _handles![0].remove();
       _handles![1].remove();
       _handles = null;
@@ -1431,7 +1443,8 @@ class SelectionOverlay {
 
   /// Rebuilds the selection toolbar or handles if they are present.
   void markNeedsBuild() {
-    if (_handles == null && _toolbar == null) {
+    //print('justin markneedsbuild ${SchedulerBinding.instance.schedulerPhase}');
+    if (_doneWithHandles || (_handles == null && _toolbar == null)) {
       return;
     }
     // If we are in build state, it will be too late to update visibility.
@@ -1455,6 +1468,7 @@ class SelectionOverlay {
         }
       });
     } else {
+      // TODO(justinmc): Not these markneedsbuilds.
       if (_handles != null) {
         _handles![0].markNeedsBuild();
         _handles![1].markNeedsBuild();
@@ -1471,12 +1485,16 @@ class SelectionOverlay {
   /// {@template flutter.widgets.SelectionOverlay.hide}
   /// Hides the entire overlay including the toolbar and the handles.
   /// {@endtemplate}
+  bool _doneWithHandles = false;
   void hide() {
     _magnifierController.hide();
     if (_handles != null) {
+      // TODO(justinmc): If I comment out these 3 lines, then EditableText gets disposed and all 3 overlayentries get removed there. Otherwise it never gets disposed.
       _handles![0].remove();
       _handles![1].remove();
+      // TODO(justinmc): Actually just commenting out this line causes EditablewText to dispose...
       _handles = null;
+      _doneWithHandles = true;
     }
     if (_toolbar != null || _contextMenuController.isShown || _spellCheckToolbarController.isShown) {
       hideToolbar();
@@ -3159,12 +3177,14 @@ class _TextSelectionGestureDetectorState extends State<TextSelectionGestureDetec
   // The down handler is force-run on success of a single tap and optimistically
   // run before a long press success.
   void _handleTapDown(TapDragDownDetails details) {
+    print('justin handletapdown, consecutive ${details.consecutiveTapCount}');
     widget.onTapDown?.call(details);
     // This isn't detected as a double tap gesture in the gesture recognizer
     // because it's 2 single taps, each of which may do different things depending
     // on whether it's a single tap, the first tap of a double tap, the second
     // tap held down, a clean double tap etc.
     if (_getEffectiveConsecutiveTapCount(details.consecutiveTapCount) == 2) {
+      // TODO(justinmc): Removing this doesn't stop the leak.
       return widget.onDoubleTapDown?.call(details);
     }
 

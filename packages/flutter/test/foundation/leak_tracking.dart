@@ -117,7 +117,7 @@ Future<void> _withFlutterLeakTracking(
     Future<void> asyncCodeRunner(DartAsyncCallback action) async => tester.runAsync(action);
 
     try {
-      Leaks leaks = await withLeakTracking(
+      Leaks leaks = await withCoolLeakTracking(
         callback,
         asyncCodeRunner: asyncCodeRunner,
         leakDiagnosticConfig: config.leakDiagnosticConfig,
@@ -136,6 +136,75 @@ Future<void> _withFlutterLeakTracking(
       MemoryAllocations.instance.removeListener(flutterEventToLeakTracker);
     }
   });
+}
+
+Future<Leaks> withCoolLeakTracking(
+  DartAsyncCallback? callback, {
+  bool shouldThrowOnLeaks = true,
+  Duration? timeoutForFinalGarbageCollection,
+  LeakDiagnosticConfig leakDiagnosticConfig = const LeakDiagnosticConfig(),
+  AsyncCodeRunner? asyncCodeRunner,
+  int gcCountBuffer = defaultGcCountBuffer,
+}) async {
+  /*
+  await callback!();
+  return Future.value(Leaks({}));
+  */
+
+  if (gcCountBuffer <= 0) {
+    throw ArgumentError.value(
+      gcCountBuffer,
+      'gcCountBuffer',
+      'Must be positive.',
+    );
+  }
+
+  if (callback == null) return Leaks({});
+
+  enableLeakTracking(
+    resetIfAlreadyEnabled: true,
+    config: LeakTrackingConfiguration.passive(
+      leakDiagnosticConfig: leakDiagnosticConfig,
+      gcCountBuffer: gcCountBuffer,
+    ),
+  );
+
+  try {
+    await callback();
+    print('justin callback has been called.');
+    callback = null;
+
+    asyncCodeRunner ??= (action) async => await action();
+    Leaks? leaks;
+
+    await asyncCodeRunner(
+      () async {
+        if (leakDiagnosticConfig.collectRetainingPathForNonGCed) {
+          // This early check is needed to collect retaing paths before forced GC,
+          // because paths are unavailable for GCed objects.
+          await checkNonGCed();
+        }
+
+        await forceGC(
+          fullGcCycles: gcCountBuffer,
+          timeout: timeoutForFinalGarbageCollection,
+        );
+        leaks = await collectLeaks();
+        if ((leaks?.total ?? 0) > 0 && shouldThrowOnLeaks) {
+          // `expect` should not be used here, because, when the method is used
+          // from Flutter, the packages `test` and `flutter_test` conflict.
+          throw MemoryLeaksDetectedError(leaks!);
+        }
+      },
+    );
+
+    // `tester.runAsync` does not throw in case of errors, but collect them other way.
+    if (leaks == null) throw StateError('Leaks collection failed.');
+    //return Future.value(Leaks({}));
+    return leaks!;
+  } finally {
+    disableLeakTracking();
+  }
 }
 
 /// Cleans leaks that are allowed by [config].
