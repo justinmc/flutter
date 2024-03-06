@@ -25,59 +25,25 @@ import 'system_channels.dart';
 ///  * [ContextMenuController], which controls Flutter-drawn context menus.
 ///  * [SystemContextMenu], which wraps this functionality in a widget.
 class SystemContextMenuController {
-  /// Creates an instance of [SystemContextMenuController].
-  ///
-  /// Not shown until [show] is called.
-  SystemContextMenuController({
-    this.onSystemHide,
-  }) {
-    _instances.add(this);
-  }
-
-  /// Called when the system has hidden the context menu.
-  ///
-  /// For example, tapping outside of the context menu typically causes the
-  /// system to hide it directly. Flutter is made aware that the context menu is
-  /// no longer visible through this callback.
-  final VoidCallback? onSystemHide;
-
-  static final Set<SystemContextMenuController> _instances = <SystemContextMenuController>{};
-
   static const MethodChannel _channel = SystemChannels.platform;
 
-  static SystemContextMenuController? _lastShown;
+  static final Set<VoidCallback> _onSystemHides = <VoidCallback>{};
+
+  static void registerOnSystemHide(VoidCallback onSystemHide) {
+    _onSystemHides.add(onSystemHide);
+  }
 
   // TODO(justinmc): Name.
   /// Handles the engine informing Flutter that the system has hidden the
   /// context menu.
   static void handleSystemHide() {
-    for (final SystemContextMenuController instance in _instances) {
-      instance._handleSystemHide();
+    _isVisible = false;
+    for (final VoidCallback onSystemHide in _onSystemHides) {
+      onSystemHide();
     }
   }
 
-  /// True when the instance most recently [show]n has been hidden by the
-  /// system.
-  bool _hiddenBySystem = false;
-
-  bool get _isVisible => this == _lastShown && !_hiddenBySystem;
-
-  bool get _isDisposed => !_instances.contains(this);
-
-  /// Handles the system hiding a context menu.
-  ///
-  /// This is called for all instances of [SystemContextMenuController], so it's
-  /// not guaranteed that this instance was the one that was hidden.
-  void _handleSystemHide() {
-    assert(!_isDisposed);
-    // If this instance wasn't being shown, then it wasn't the instance that was
-    // hidden.
-    if (!_isVisible) {
-      return;
-    }
-    _hiddenBySystem = true;
-    onSystemHide?.call();
-  }
+  static bool _isVisible = false;
 
   /// Shows the system context menu anchored on the given [Rect].
   ///
@@ -95,12 +61,9 @@ class SystemContextMenuController {
   ///  * [hideSystemContextMenu], which hides the menu shown by this method.
   ///  * [MediaQuery.supportsShowingSystemContextMenu], which indicates whether
   ///    this method is supported on the current platform.
-  Future<void> show(Rect rect) {
+  static Future<void> show(Rect rect) async {
     assert(defaultTargetPlatform == TargetPlatform.iOS);
-    assert(!_isDisposed);
-    _lastShown = this;
-    _hiddenBySystem = false;
-    return _channel.invokeMethod<void>(
+    await _channel.invokeMethod<void>(
       'ContextMenu.showSystemContextMenu',
       <String, dynamic>{
         'targetRect': <String, double>{
@@ -111,6 +74,7 @@ class SystemContextMenuController {
         },
       },
     );
+    _isVisible = true;
   }
 
   /// Hides this system context menu.
@@ -125,26 +89,14 @@ class SystemContextMenuController {
   ///  * [showSystemContextMenu], which shows he menu hidden by this method.
   ///  * [MediaQuery.supportsShowingSystemContextMenu], which indicates whether
   ///    the system context menu is supported on the current platform.
-  Future<void> hide() async {
+  static Future<void> hide() async {
     assert(defaultTargetPlatform == TargetPlatform.iOS);
-    assert(!_isDisposed);
-    // This check prevents a given instance from accidentally hiding some other
-    // instance, since only one can be visible at a time.
-    if (this != _lastShown) {
+    if (!_isVisible) {
       return;
     }
-    _lastShown = null;
-    // This may be called unnecessarily in the case where the user has already
-    // hidden the menu (for example by tapping the screen).
-    return _channel.invokeMethod<void>(
+    await _channel.invokeMethod<void>(
       'ContextMenu.hideSystemContextMenu',
     );
-  }
-
-  /// Used to release resources when this instance will never be used again.
-  void dispose() {
-    assert(!_isDisposed);
-    hide();
-    _instances.remove(this);
+    _isVisible = false;
   }
 }

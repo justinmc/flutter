@@ -78,8 +78,6 @@ class SystemContextMenu extends StatefulWidget {
 }
 
 class _SystemContextMenuState extends State<SystemContextMenu> {
-  late final SystemContextMenuController _systemContextMenuController;
-
   /// Whether showing the system context menu is supported by the platform.
   bool get _isSupported {
     return defaultTargetPlatform == TargetPlatform.iOS
@@ -89,23 +87,23 @@ class _SystemContextMenuState extends State<SystemContextMenu> {
   @override
   void initState() {
     super.initState();
-    _systemContextMenuController = SystemContextMenuController(
-      onSystemHide: widget.onSystemHide,
-    );
-    _systemContextMenuController.show(widget.anchor);
+    if (widget.onSystemHide != null) {
+      SystemContextMenuController.registerOnSystemHide(widget.onSystemHide!);
+    }
+    SystemContextMenuController.show(widget.anchor);
   }
 
   @override
   void didUpdateWidget(SystemContextMenu oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.anchor != oldWidget.anchor) {
-      _systemContextMenuController.show(widget.anchor);
+      SystemContextMenuController.show(widget.anchor);
     }
   }
 
   @override
   void dispose() {
-    _systemContextMenuController.dispose();
+    SystemContextMenuController.hide();
     super.dispose();
   }
 
