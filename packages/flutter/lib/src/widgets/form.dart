@@ -566,6 +566,7 @@ class FormFieldState<T> extends State<FormField<T>> with RestorationMixin {
   /// [AutovalidateMode.always] or [AutovalidateMode.onUserInteraction],
   /// revalidates all the fields of the form.
   void didChange(T? value) {
+    // TODO(justinmc): This didChange causes the bad rebuild!
     setState(() {
       _value = value;
       _hasInteractedByUser.value = true;

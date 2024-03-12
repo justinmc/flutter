@@ -200,6 +200,7 @@ class TextFormField extends FormField<String> {
              field.didChange(value);
              onChanged?.call(value);
            }
+           print('justin TFF builder. Passed controller ${controller?.isDisposed} vs. state controller ${state._effectiveController.isDisposed}');
            return UnmanagedRestorationScope(
              bucket: field.bucket,
              child: TextField(
@@ -394,7 +395,16 @@ class _TextFormFieldState extends FormFieldState<String> {
     // example, the reset() method. In such cases, the FormField value will
     // already have been set.
     if (_effectiveController.text != value) {
+      final TextFormField textFormField = widget as TextFormField;
+      print('justin _handleControllerChanged call didChange ${_effectiveController.isDisposed}, ${textFormField.controller?.isDisposed}');
       didChange(_effectiveController.text);
     }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final TextFormField textFormField = widget as TextFormField;
+    print('justin _TextFormFieldState.build. ${textFormField.controller?.isDisposed}');
+    return super.build(context);
   }
 }

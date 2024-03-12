@@ -539,6 +539,8 @@ class ValueNotifier<T> extends ChangeNotifier implements ValueListenable<T> {
     }
   }
 
+  bool get isDisposed => _debugDisposed;
+
   /// The current value stored in this notifier.
   ///
   /// When the value is replaced with something that is not equal to the old

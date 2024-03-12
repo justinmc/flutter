@@ -1531,6 +1531,7 @@ class _TextFieldState extends State<TextField> with RestorationMixin implements 
     );
 
     if (widget.decoration != null) {
+      print('justin building the deadly Listenable. Disposed? ${controller.isDisposed}');
       child = AnimatedBuilder(
         animation: Listenable.merge(<Listenable>[ focusNode, controller ]),
         builder: (BuildContext context, Widget? child) {

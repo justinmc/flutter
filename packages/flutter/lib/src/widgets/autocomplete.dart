@@ -307,7 +307,8 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
 
   // The box constraints that the field was last built with.
   final ValueNotifier<BoxConstraints> _fieldBoxConstraints =
-      ValueNotifier<BoxConstraints>(const BoxConstraints());
+      // TODO(justinmc): Should be initialized to empty.
+      ValueNotifier<BoxConstraints>(const BoxConstraints(maxWidth: 400.0, maxHeight: 200.0,));
 
   TextEditingController? _internalTextEditingController;
   TextEditingController get _textEditingController {
@@ -511,18 +512,33 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
 
   @override
   Widget build(BuildContext context) {
-    final Widget fieldView = widget.fieldViewBuilder?.call(context, _textEditingController, _focusNode, _onFieldSubmitted)
-                          ?? const SizedBox.shrink();
     return OverlayPortal.targetsRootOverlay(
       controller: _optionsViewController,
       overlayChildBuilder: _buildOptionsView,
       child: TextFieldTapRegion(
+        /*
+        // TODO(justinmc): This should fix it. Don't forget to set _fieldBoxConstraints above.
+        child: Shortcuts(
+          shortcuts: _shortcuts,
+          child: Actions(
+            actions: _actionMap,
+            child: CompositedTransformTarget(
+              link: _optionsLayerLink,
+              child: fieldView,
+            ),
+          ),
+        ),
+        */
         child: LayoutBuilder(
           builder: (BuildContext context, BoxConstraints boxConstraints) {
             assert(boxConstraints.hasBoundedWidth);
             SchedulerBinding.instance.addPostFrameCallback((Duration duration) {
               _fieldBoxConstraints.value = boxConstraints;
             });
+            print('justin LayoutBuilder building fieldViewBuilder with disposed ${_textEditingController.isDisposed}');
+            // TODO(justinmc): I think this needs to be at the top of the build method in order to work with the Animated width thing? Not sure.
+            final Widget fieldView = widget.fieldViewBuilder?.call(context, _textEditingController, _focusNode, _onFieldSubmitted)
+                                  ?? const SizedBox.shrink();
             return Shortcuts(
               shortcuts: _shortcuts,
               child: Actions(
