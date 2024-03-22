@@ -98,7 +98,7 @@ abstract class OverlayRoute<T> extends Route<T> {
 /// See also:
 ///
 ///  * [Route], which documents the meaning of the `T` generic type argument.
-abstract class TransitionRoute<T> extends OverlayRoute<T> with PredictiveBackRoute {
+abstract class TransitionRoute<T> extends OverlayRoute<T> {
   /// Creates a route that animates itself when it is pushed or popped.
   TransitionRoute({
     super.settings,
@@ -477,74 +477,6 @@ abstract class TransitionRoute<T> extends OverlayRoute<T> with PredictiveBackRou
   ///    [ModalRoute.buildTransitions] `secondaryAnimation` to run.
   bool canTransitionFrom(TransitionRoute<dynamic> previousRoute) => true;
 
-  // Begin PredictiveBackRoute.
-
-  @override
-  void handleStartBackGesture({double progress = 0}) {
-    _controller?.value = progress;
-    navigator?.didStartUserGesture();
-  }
-
-  @override
-  void handleUpdateBackGestureProgress({required double progress}) {
-    // If some other navigation happened during this gesture, don't mess with
-    // the transition anymore.
-    if (!isCurrent) {
-      return;
-    }
-    _controller?.value = progress;
-  }
-
-  @override
-  void handleDragEnd({required bool animateForward}) {
-    if (isCurrent) {
-      if (animateForward) {
-        if (_controller != null) {
-          // The closer the panel is to dismissing, the shorter the animation is.
-          // We want to cap the animation time, but we want to use a linear curve
-          // to determine it.
-          final int droppedPageForwardAnimationTime = min(
-            ui.lerpDouble(800, 0, _controller!.value)!.floor(),
-            300,
-          );
-          _controller!.animateTo(
-            1.0,
-            duration: Duration(milliseconds: droppedPageForwardAnimationTime),
-            curve: Curves.fastLinearToSlowEaseIn,
-          );
-        }
-      } else {
-        // This route is destined to pop at this point. Reuse navigator's pop.
-        navigator?.pop();
-
-        // The popping may have finished inline if already at the target destination.
-        if (_controller?.isAnimating ?? false) {
-          // Otherwise, use a custom popping animation duration and curve.
-          final int droppedPageBackAnimationTime =
-              ui.lerpDouble(0, 800, _controller!.value)!.floor();
-          _controller!.animateBack(0.0,
-              duration: Duration(milliseconds: droppedPageBackAnimationTime),
-              curve: Curves.fastLinearToSlowEaseIn);
-        }
-      }
-    }
-
-    if (_controller?.isAnimating ?? false) {
-      // Keep the userGestureInProgress in true state since AndroidBackGesturePageTransitionsBuilder
-      // depends on userGestureInProgress
-      late AnimationStatusListener animationStatusCallback;
-      animationStatusCallback = (AnimationStatus status) {
-        navigator?.didStopUserGesture();
-        _controller!.removeStatusListener(animationStatusCallback);
-      };
-      _controller!.addStatusListener(animationStatusCallback);
-    } else {
-      navigator?.didStopUserGesture();
-    }
-  }
-
-  // End PredictiveBackRoute.
-
   @override
   void dispose() {
     assert(!_transitionCompleter.isCompleted, 'Cannot dispose a $runtimeType twice.');
@@ -563,30 +495,6 @@ abstract class TransitionRoute<T> extends OverlayRoute<T> with PredictiveBackRou
 
   @override
   String toString() => '${objectRuntimeType(this, 'TransitionRoute')}(animation: $_controller)';
-}
-
-/// An interface for a route that supports predictive back gestures.
-///
-/// See also:
-///
-///  * [PredictiveBackPageTransitionsBuilder], which builds page transitions for
-///    predictive back.
-mixin PredictiveBackRoute {
-  /// Whether this route is the top-most route on the navigator.
-  bool get isCurrent;
-
-  /// Whether a pop gesture can be started by the user for this route.
-  bool get popGestureEnabled;
-
-  /// Handles a predictive back gesture starting.
-  void handleStartBackGesture({double progress = 0});
-
-  /// Handles a predictive back gesture updating as the user drags across the
-  /// screen.
-  void handleUpdateBackGestureProgress({required double progress});
-
-  /// Handles a predictive back gesture ending.
-  void handleDragEnd({required bool animateForward});
 }
 
 /// An entry in the history of a [LocalHistoryRoute].
