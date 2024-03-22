@@ -522,9 +522,13 @@ abstract class TransitionRoute<T> extends OverlayRoute<T> with PredictiveBackRou
           // Otherwise, use a custom popping animation duration and curve.
           final int droppedPageBackAnimationTime =
               ui.lerpDouble(0, 800, _controller!.value)!.floor();
-          _controller!.animateBack(0.0,
-              duration: Duration(milliseconds: droppedPageBackAnimationTime),
-              curve: Curves.fastLinearToSlowEaseIn);
+          print('justin animating back from ${_controller!.value} to 0.0.');
+          _controller!.animateBack(
+            0.0,
+            // TODO(justinmc): Switch back.
+            duration: Duration(milliseconds: 3000),//droppedPageBackAnimationTime),
+            curve: Curves.fastLinearToSlowEaseIn,
+          );
         }
       }
     }

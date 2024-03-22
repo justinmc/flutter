@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import 'page_transitions_theme.dart';
+import 'colors.dart';
 
 /// Used by [PageTransitionsTheme] to define a [MaterialPageRoute] page
 /// transition animation that looks like the default page transition used on
@@ -34,14 +35,31 @@ class PredictiveBackPageTransitionsBuilder extends PageTransitionsBuilder {
   /// predictive back transition.
   const PredictiveBackPageTransitionsBuilder();
 
+  // Going from 1st page to 2nd:
+  // 1st page: 1=>1, 0=>1
+  // 2nd page: 0=>1, 0=>0
+  //
+  // Going from 2nd page to 1st before and after commit (same):
+  // 1st page: 1=>1, 1=>0
+  // 2nd page: 1=>0, 0=>0
+  //
+  // Primary is YOU are being pushed or popped.
+  // Secondary is used when something is pushed/popped onto/off of you.
   @override
   Widget buildTransitions<T>(
     PageRoute<T> route,
     BuildContext context,
-    Animation<double> animation,
-    Animation<double> secondaryAnimation,
+    Animation<double> animation, // For current: 1.0=>0.0. For not: 1.0=>1.0.
+    Animation<double> secondaryAnimation, // For current: 0.0=>0.0. For not: 1.0=>0.0.
     Widget child,
   ) {
+    /*
+    if (route.isCurrent) {
+      print('justin values for current ${route.isCurrent}: ${animation.value}, ${secondaryAnimation.value}');
+    } else {
+      print('justin values for current ${route.isCurrent}:                                               ${animation.value}, ${secondaryAnimation.value}');
+    }
+    */
     return _PredictiveBackGestureDetector(
       predictiveBackRoute: route,
       builder: (BuildContext context) {
@@ -186,7 +204,7 @@ class _PredictiveBackGestureDetectorState extends State<_PredictiveBackGestureDe
 
 /// Android's predictive back page transition.
 class _PredictiveBackPageTransition extends StatelessWidget {
-  const _PredictiveBackPageTransition({
+  _PredictiveBackPageTransition({
     required this.animation,
     required this.secondaryAnimation,
     required this.getIsCurrent,
@@ -202,48 +220,93 @@ class _PredictiveBackPageTransition extends StatelessWidget {
   // percentage.
   static const double _transitionPoint = 20.0;
 
-  double _getXShift(BuildContext context) {
+  static double _getXShift(BuildContext context) {
     final Size size = MediaQuery.sizeOf(context);
     final double screenWidth = size.width;
     return (screenWidth / 20) - 8;
   }
 
-  Widget _secondaryAnimatedBuilder(BuildContext context, Widget? child) {
-    // These values were eyeballed from the Settings app on a physical Pixel 6
-    // running Android 14.
-    final bool isCurrent = getIsCurrent();
-    final Tween<double> xShiftTween = isCurrent
-        ? ConstantTween<double>(0.0)
-        : Tween<double>(begin: _getXShift(context), end: 0.0);
-    final Animatable<double> scaleTween = isCurrent
-        ? ConstantTween<double>(1.0)
-        : Tween<double>(begin: 0.95, end: 1.0);
-    final Animatable<double> fadeTween = isCurrent
-        ? ConstantTween<double>(1)
-        : TweenSequence<double>(<TweenSequenceItem<double>>[
-            TweenSequenceItem<double>(
-              tween: Tween<double>(begin: 1.0, end: 0.8),
-              weight: 100.0 - _transitionPoint,
-            ),
-            TweenSequenceItem<double>(
-              tween: Tween<double>(begin: 1.0, end: 1.0),
-              weight: _transitionPoint,
-            ),
-          ]);
+  // TODO(justinmc): Save this (or the actual shift/scale/fade values?) and then
+  // in the reverse builder, start the animation from those values.
+  double? _lastSecondaryForwardValue;
+
+  // TODO(justinmc): The animation is jumping when it reverses.
+  Widget _secondaryAnimationBuilderForward(BuildContext context, Animation<double> animation, Widget? child) {
+    _lastSecondaryForwardValue = animation.value;
+    final Tween<double> xShiftTween = Tween<double>(begin: _getXShift(context), end: 0.0);
+    final Animatable<double> scaleTween = Tween<double>(begin: 0.95, end: 1.0);
+    // TODO(justinmc): Double check this fade.
+    final Animatable<double> fadeTween =
+        TweenSequence<double>(<TweenSequenceItem<double>>[
+          TweenSequenceItem<double>(
+            tween: Tween<double>(begin: 1.0, end: 0.8),
+            weight: 100.0 - _transitionPoint,
+          ),
+          TweenSequenceItem<double>(
+            tween: Tween<double>(begin: 1.0, end: 1.0),
+            weight: _transitionPoint,
+          ),
+        ]);
 
     return Transform.translate(
       offset: Offset(
-        xShiftTween.animate(secondaryAnimation).value,
+        xShiftTween.animate(animation).value,
         0.0,
       ),
       child: Transform.scale(
-        scale: scaleTween.animate(secondaryAnimation).value,
+        scale: scaleTween.animate(animation).value,
         child: Opacity(
-          opacity: fadeTween.animate(secondaryAnimation).value,
+          opacity: fadeTween.animate(animation).value,
           child: child,
         ),
       ),
     );
+  }
+
+  Widget _secondaryAnimationBuilderReverse(BuildContext context, Animation<double> animation, Widget? child) {
+    final Tween<double> xShiftTween = Tween<double>(begin: 0.0, end: _getXShift(context));
+    final Animatable<double> scaleTween = Tween<double>(begin: 1.0, end: 0.95);
+    // TODO(justinmc): Double check this fade.
+    final Animatable<double> fadeTween =
+        TweenSequence<double>(<TweenSequenceItem<double>>[
+          TweenSequenceItem<double>(
+            tween: Tween<double>(begin: 1.0, end: 0.8),
+            weight: 100.0 - _transitionPoint,
+          ),
+          TweenSequenceItem<double>(
+            tween: Tween<double>(begin: 1.0, end: 1.0),
+            weight: _transitionPoint,
+          ),
+        ]);
+
+    return Transform.translate(
+      offset: Offset(
+        xShiftTween.animate(animation).value,
+        0.0,
+      ),
+      child: Transform.scale(
+        scale: scaleTween.animate(animation).value,
+        child: Opacity(
+          opacity: fadeTween.animate(animation).value,
+          child: child,
+        ),
+      ),
+    );
+  }
+
+  Widget _secondaryAnimatedBuilder(BuildContext context, Widget? child) {
+    return switch (secondaryAnimation.status) {
+      AnimationStatus.reverse => _secondaryAnimationBuilderReverse(
+        context,
+        secondaryAnimation,
+        child,
+      ),
+      _ => _secondaryAnimationBuilderForward(
+        context,
+        secondaryAnimation,
+        child,
+      ),
+    };
   }
 
   Widget _primaryAnimatedBuilder(BuildContext context, Widget? child) {
