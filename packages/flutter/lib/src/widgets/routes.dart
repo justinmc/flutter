@@ -98,7 +98,7 @@ abstract class OverlayRoute<T> extends Route<T> {
 /// See also:
 ///
 ///  * [Route], which documents the meaning of the `T` generic type argument.
-abstract class TransitionRoute<T> extends OverlayRoute<T> with PredictiveBackRoute {
+abstract class TransitionRoute<T> extends OverlayRoute<T> implements PredictiveBackRoute {
   /// Creates a route that animates itself when it is pushed or popped.
   TransitionRoute({
     super.settings,
@@ -480,7 +480,8 @@ abstract class TransitionRoute<T> extends OverlayRoute<T> with PredictiveBackRou
   // Begin PredictiveBackRoute.
 
   @override
-  void handleStartBackGesture({double progress = 0}) {
+  void handleStartBackGesture({double progress = 0.0}) {
+    assert(isCurrent);
     _controller?.value = progress;
     navigator?.didStartUserGesture();
   }
@@ -496,7 +497,16 @@ abstract class TransitionRoute<T> extends OverlayRoute<T> with PredictiveBackRou
   }
 
   @override
-  void handleDragEnd({required bool animateForward}) {
+  void handleCancelBackGesture() {
+    _handleDragEnd(animateForward: true);
+  }
+
+  @override
+  void handleCommitBackGesture() {
+    _handleDragEnd(animateForward: false);
+  }
+
+  void _handleDragEnd({required bool animateForward}) {
     if (isCurrent) {
       if (animateForward) {
         if (_controller != null) {
@@ -535,7 +545,7 @@ abstract class TransitionRoute<T> extends OverlayRoute<T> with PredictiveBackRou
 
     if (_controller?.isAnimating ?? false) {
       // Keep the userGestureInProgress in true state since AndroidBackGesturePageTransitionsBuilder
-      // depends on userGestureInProgress
+      // depends on userGestureInProgress.
       late AnimationStatusListener animationStatusCallback;
       animationStatusCallback = (AnimationStatus status) {
         navigator?.didStopUserGesture();
@@ -575,7 +585,7 @@ abstract class TransitionRoute<T> extends OverlayRoute<T> with PredictiveBackRou
 ///
 ///  * [PredictiveBackPageTransitionsBuilder], which builds page transitions for
 ///    predictive back.
-mixin PredictiveBackRoute {
+abstract interface class PredictiveBackRoute {
   /// Whether this route is the top-most route on the navigator.
   bool get isCurrent;
 
@@ -583,14 +593,23 @@ mixin PredictiveBackRoute {
   bool get popGestureEnabled;
 
   /// Handles a predictive back gesture starting.
-  void handleStartBackGesture({double progress = 0});
+  ///
+  /// The `progress` parameter indicates the progress of the gesture from 0.0 to
+  /// 1.0, as in [PredictiveBackEvent.progress].
+  void handleStartBackGesture({double progress = 0.0});
 
   /// Handles a predictive back gesture updating as the user drags across the
   /// screen.
+  ///
+  /// The `progress` parameter indicates the progress of the gesture from 0.0 to
+  /// 1.0, as in [PredictiveBackEvent.progress].
   void handleUpdateBackGestureProgress({required double progress});
 
-  /// Handles a predictive back gesture ending.
-  void handleDragEnd({required bool animateForward});
+  /// Handles a predictive back gesture ending successfully.
+  void handleCommitBackGesture();
+
+  /// Handles a predictive back gesture ending in cancelation.
+  void handleCancelBackGesture();
 }
 
 /// An entry in the history of a [LocalHistoryRoute].

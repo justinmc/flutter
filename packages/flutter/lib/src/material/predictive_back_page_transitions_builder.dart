@@ -26,10 +26,10 @@ import 'colors.dart';
 ///    that's similar to the one provided by Android O.
 ///  * [OpenUpwardsPageTransitionsBuilder], which defines a page transition
 ///    that's similar to the one provided by Android P.
-///  * [CupertinoPageTransitionsBuilder], which defines a horizontal page
-///    transition that matches native iOS page transitions.
 ///  * [ZoomPageTransitionsBuilder], which defines the default page transition
 ///    that's similar to the one provided in Android Q.
+///  * [CupertinoPageTransitionsBuilder], which defines a horizontal page
+///    transition that matches native iOS page transitions.
 class PredictiveBackPageTransitionsBuilder extends PageTransitionsBuilder {
   /// Creates an instance of a [PageTransitionsBuilder] that matches Android U's
   /// predictive back transition.
@@ -61,7 +61,7 @@ class PredictiveBackPageTransitionsBuilder extends PageTransitionsBuilder {
     }
     */
     return _PredictiveBackGestureDetector(
-      predictiveBackRoute: route,
+      route: route,
       builder: (BuildContext context) {
         // Only do a predictive back transition when the user is performing a
         // pop gesture. Otherwise, for things like button presses or other
@@ -89,12 +89,12 @@ class PredictiveBackPageTransitionsBuilder extends PageTransitionsBuilder {
 
 class _PredictiveBackGestureDetector extends StatefulWidget {
   const _PredictiveBackGestureDetector({
-    required this.predictiveBackRoute,
+    required this.route,
     required this.builder,
   });
 
   final WidgetBuilder builder;
-  final PredictiveBackRoute predictiveBackRoute;
+  final PredictiveBackRoute route;
 
   @override
   State<_PredictiveBackGestureDetector> createState() =>
@@ -103,17 +103,17 @@ class _PredictiveBackGestureDetector extends StatefulWidget {
 
 class _PredictiveBackGestureDetectorState extends State<_PredictiveBackGestureDetector>
     with WidgetsBindingObserver {
-  PredictiveBackEvent? _startBackEvent;
   bool _gestureInProgress = false;
 
   /// True when the predictive back gesture is enabled.
   bool get _isEnabled {
-    return widget.predictiveBackRoute.isCurrent
-        && widget.predictiveBackRoute.popGestureEnabled;
+    return widget.route.isCurrent
+        && widget.route.popGestureEnabled;
   }
 
   /// The back event when the gesture first started.
   PredictiveBackEvent? get startBackEvent => _startBackEvent;
+  PredictiveBackEvent? _startBackEvent;
   set startBackEvent(PredictiveBackEvent? startBackEvent) {
     if (_startBackEvent != startBackEvent && mounted) {
       setState(() {
@@ -123,8 +123,8 @@ class _PredictiveBackGestureDetectorState extends State<_PredictiveBackGestureDe
   }
 
   /// The most recent back event during the gesture.
-  PredictiveBackEvent? _currentBackEvent;
   PredictiveBackEvent? get currentBackEvent => _currentBackEvent;
+  PredictiveBackEvent? _currentBackEvent;
   set currentBackEvent(PredictiveBackEvent? currentBackEvent) {
     if (_currentBackEvent != currentBackEvent && mounted) {
       setState(() {
@@ -133,7 +133,7 @@ class _PredictiveBackGestureDetectorState extends State<_PredictiveBackGestureDe
     }
   }
 
-  // Begin WidgetsBinding.
+  // Begin WidgetsBindingObserver.
 
   @override
   bool handleStartBackGesture(PredictiveBackEvent backEvent) {
@@ -142,7 +142,7 @@ class _PredictiveBackGestureDetectorState extends State<_PredictiveBackGestureDe
       return false;
     }
 
-    widget.predictiveBackRoute.handleStartBackGesture(progress: 1 - backEvent.progress);
+    widget.route.handleStartBackGesture(progress: 1 - backEvent.progress);
     startBackEvent = currentBackEvent = backEvent;
     return true;
   }
@@ -153,7 +153,7 @@ class _PredictiveBackGestureDetectorState extends State<_PredictiveBackGestureDe
       return false;
     }
 
-    widget.predictiveBackRoute.handleUpdateBackGestureProgress(progress: 1 - backEvent.progress);
+    widget.route.handleUpdateBackGestureProgress(progress: 1 - backEvent.progress);
     currentBackEvent = backEvent;
     return true;
   }
@@ -164,7 +164,7 @@ class _PredictiveBackGestureDetectorState extends State<_PredictiveBackGestureDe
       return false;
     }
 
-    widget.predictiveBackRoute.handleDragEnd(animateForward: true);
+    widget.route.handleCancelBackGesture();
     _gestureInProgress = false;
     startBackEvent = currentBackEvent = null;
     return true;
@@ -176,13 +176,13 @@ class _PredictiveBackGestureDetectorState extends State<_PredictiveBackGestureDe
       return false;
     }
 
-    widget.predictiveBackRoute.handleDragEnd(animateForward: false);
+    widget.route.handleCommitBackGesture();
     _gestureInProgress = false;
     startBackEvent = currentBackEvent = null;
     return true;
   }
 
-  // End WidgetsBinding.
+  // End WidgetsBindingObserver.
 
   @override
   void initState() {
@@ -211,6 +211,17 @@ class _PredictiveBackPageTransition extends StatelessWidget {
     required this.child,
   });
 
+  // These values were eyeballed to match the native predictive back animation
+  // on a Pixel 2 running Android API 34.
+  static const double _scaleFullyOpened = 1.0;
+  static const double _scaleStartTransition = 0.95;
+  static const double _opacityFullyOpened = 1.0;
+  static const double _opacityStartTransition = 0.95;
+  static const double _weightForStartState = 65.0;
+  static const double _weightForEndState = 35.0;
+  static const double _screenWidthDivisionFactor = 20.0;
+  static const double _xShiftAdjustment = 8.0;
+
   final Animation<double> animation;
   final Animation<double> secondaryAnimation;
   final ValueGetter<bool> getIsCurrent;
@@ -223,61 +234,49 @@ class _PredictiveBackPageTransition extends StatelessWidget {
   static double _getXShift(BuildContext context) {
     final Size size = MediaQuery.sizeOf(context);
     final double screenWidth = size.width;
-    return (screenWidth / 20) - 8;
-  }
+    final double xShift =
+        (screenWidth / _screenWidthDivisionFactor) - _xShiftAdjustment;
 
-  // TODO(justinmc): Save this (or the actual shift/scale/fade values?) and then
-  // in the reverse builder, start the animation from those values.
-  double? _lastSecondaryForwardValue;
-
-  // TODO(justinmc): The animation is jumping when it reverses.
-  Widget _secondaryAnimationBuilderForward(BuildContext context, Animation<double> animation, Widget? child) {
-    _lastSecondaryForwardValue = animation.value;
-    final Tween<double> xShiftTween = Tween<double>(begin: _getXShift(context), end: 0.0);
-    final Animatable<double> scaleTween = Tween<double>(begin: 0.95, end: 1.0);
-    // TODO(justinmc): Double check this fade.
-    final Animatable<double> fadeTween =
-        TweenSequence<double>(<TweenSequenceItem<double>>[
-          TweenSequenceItem<double>(
-            tween: Tween<double>(begin: 1.0, end: 0.8),
-            weight: 100.0 - _transitionPoint,
-          ),
-          TweenSequenceItem<double>(
-            tween: Tween<double>(begin: 1.0, end: 1.0),
-            weight: _transitionPoint,
-          ),
-        ]);
-
-    return Transform.translate(
-      offset: Offset(
-        xShiftTween.animate(animation).value,
-        0.0,
-      ),
-      child: Transform.scale(
-        scale: scaleTween.animate(animation).value,
-        child: Opacity(
-          opacity: fadeTween.animate(animation).value,
-          child: child,
-        ),
-      ),
-    );
-  }
-
-  Widget _secondaryAnimationBuilderReverse(BuildContext context, Animation<double> animation, Widget? child) {
-    final Tween<double> xShiftTween = Tween<double>(begin: 0.0, end: _getXShift(context));
-    final Animatable<double> scaleTween = Tween<double>(begin: 1.0, end: 0.95);
-    // TODO(justinmc): Double check this fade.
-    final Animatable<double> fadeTween =
-        TweenSequence<double>(<TweenSequenceItem<double>>[
-          TweenSequenceItem<double>(
-            tween: Tween<double>(begin: 1.0, end: 0.8),
-            weight: 100.0 - _transitionPoint,
-          ),
-          TweenSequenceItem<double>(
-            tween: Tween<double>(begin: 1.0, end: 1.0),
-            weight: _transitionPoint,
-          ),
-        ]);
+    final bool isCurrent = getIsCurrent();
+    final Tween<double> xShiftTween = isCurrent
+        ? ConstantTween<double>(0)
+        : Tween<double>(begin: xShift, end: 0);
+    final Animatable<double> scaleTween = isCurrent
+        ? ConstantTween<double>(_scaleFullyOpened)
+        : TweenSequence<double>(<TweenSequenceItem<double>>[
+            TweenSequenceItem<double>(
+              tween: Tween<double>(
+                begin: _scaleStartTransition,
+                end: _scaleFullyOpened,
+              ),
+              weight: _weightForStartState,
+            ),
+            TweenSequenceItem<double>(
+              tween: Tween<double>(
+                begin: _scaleFullyOpened,
+                end: _scaleFullyOpened,
+              ),
+              weight: _weightForEndState,
+            ),
+          ]);
+    final Animatable<double> fadeTween = isCurrent
+        ? ConstantTween<double>(_opacityFullyOpened)
+        : TweenSequence<double>(<TweenSequenceItem<double>>[
+            TweenSequenceItem<double>(
+              tween: Tween<double>(
+                begin: _opacityFullyOpened,
+                end: _opacityStartTransition,
+              ),
+              weight: _weightForStartState,
+            ),
+            TweenSequenceItem<double>(
+              tween: Tween<double>(
+                begin: _opacityFullyOpened,
+                end: _opacityFullyOpened,
+              ),
+              weight: _weightForEndState,
+            ),
+          ]);
 
     return Transform.translate(
       offset: Offset(
@@ -292,50 +291,54 @@ class _PredictiveBackPageTransition extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  Widget _secondaryAnimatedBuilder(BuildContext context, Widget? child) {
-    return switch (secondaryAnimation.status) {
-      AnimationStatus.reverse => _secondaryAnimationBuilderReverse(
-        context,
-        secondaryAnimation,
-        child,
-      ),
-      _ => _secondaryAnimationBuilderForward(
-        context,
-        secondaryAnimation,
-        child,
-      ),
-    };
   }
 
   Widget _primaryAnimatedBuilder(BuildContext context, Widget? child) {
-    // These values were eyeballed from the Settings app on a physical Pixel 6
-    // running Android 14.
-    final double xShift = _getXShift(context);
-    final Tween<double> xShiftTween = Tween<double>(begin: 0.0, end: 1.0);
-    final Animatable<double> scaleTween = TweenSequence<double>(<TweenSequenceItem<double>>[
+    final Size size = MediaQuery.sizeOf(context);
+    final double screenWidth = size.width;
+    final double xShift =
+        (screenWidth / _screenWidthDivisionFactor) - _xShiftAdjustment;
+
+    final Animatable<double> xShiftTween =
+        TweenSequence<double>(<TweenSequenceItem<double>>[
       TweenSequenceItem<double>(
-        tween: Tween<double>(begin: 0.98, end: 0.98),
-        weight: 100.0 - _transitionPoint,
+        tween: Tween<double>(begin: 0.0, end: 0.0),
+        weight: _weightForStartState,
       ),
       TweenSequenceItem<double>(
-        tween: Tween<double>(begin: 0.98, end: 1.0),
-        weight: _transitionPoint,
+        tween: Tween<double>(begin: xShift, end: 0.0),
+        weight: _weightForEndState,
       ),
     ]);
-    final Animatable<double> fadeTween = TweenSequence<double>(<TweenSequenceItem<double>>[
+    final Animatable<double> scaleTween =
+        TweenSequence<double>(<TweenSequenceItem<double>>[
       TweenSequenceItem<double>(
-        tween: Tween<double>(begin: 0.0, end: 0.05),
-        weight: 76.0,
+        tween: Tween<double>(
+          begin: _scaleFullyOpened,
+          end: _scaleFullyOpened,
+        ),
+        weight: _weightForStartState,
       ),
       TweenSequenceItem<double>(
-        tween: Tween<double>(begin: 0.05, end: 0.95),
-        weight: 4.0,
+        tween: Tween<double>(
+          begin: _scaleStartTransition,
+          end: _scaleFullyOpened,
+        ),
+        weight: _weightForEndState,
+      ),
+    ]);
+    final Animatable<double> fadeTween =
+        TweenSequence<double>(<TweenSequenceItem<double>>[
+      TweenSequenceItem<double>(
+        tween: Tween<double>(begin: 0.0, end: 0.0),
+        weight: _weightForStartState,
       ),
       TweenSequenceItem<double>(
-        tween: Tween<double>(begin: 0.95, end: 1.0),
-        weight: _transitionPoint,
+        tween: Tween<double>(
+          begin: _opacityStartTransition,
+          end: _opacityFullyOpened,
+        ),
+        weight: _weightForEndState,
       ),
     ]);
 

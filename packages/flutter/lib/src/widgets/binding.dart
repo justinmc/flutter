@@ -78,7 +78,13 @@ abstract mixin class WidgetsBindingObserver {
 
   /// Called at the start of a predictive back gesture.
   ///
-  /// Returns true if the call should be considered handled.
+  /// Observers are notified in registration order until one returns true or all
+  /// observers have been notified.
+  ///
+  /// Observers are expected to return true if they were able to handle the
+  /// notification, for example by starting a predictive back animation, and
+  /// false otherwise. [PredictiveBackPageTransitionsBuilder] uses this
+  /// mechanism to listen for predictive back gestures.
   ///
   /// Currently, this is only used on Android devices that support the
   /// predictive back feature.
@@ -86,7 +92,13 @@ abstract mixin class WidgetsBindingObserver {
 
   /// Called when a predictive back gesture moves.
   ///
-  /// Returns true if the call should be considered handled.
+  /// Observers are notified in registration order until one returns true or all
+  /// observers have been notified.
+  ///
+  /// Observers are expected to return true if they were able to handle the
+  /// notification, for example by updating a predictive back animation, and
+  /// false otherwise. [PredictiveBackPageTransitionsBuilder] uses this
+  /// mechanism to listen for predictive back gestures.
   ///
   /// Currently, this is only used on Android devices that support the
   /// predictive back feature.
@@ -95,7 +107,14 @@ abstract mixin class WidgetsBindingObserver {
   /// Called when a predictive back gesture is finished successfully, indicating
   /// that the current route should be popped.
   ///
-  /// Returns true if the call should be considered handled.
+  /// Observers are notified in registration order until one returns true or all
+  /// observers have been notified.
+  ///
+  /// Observers are expected to return true if they were able to handle the
+  /// notification, for example by finalizing a predictive back animation and
+  /// popping the current route, and false otherwise.
+  /// [PredictiveBackPageTransitionsBuilder] uses this mechanism to listen for
+  /// predictive back gestures.
   ///
   /// Currently, this is only used on Android devices that support the
   /// predictive back feature.
@@ -103,6 +122,14 @@ abstract mixin class WidgetsBindingObserver {
 
   /// Called when a predictive back gesture is canceled, indicating that no
   /// navigation should occur.
+  ///
+  /// Observers are notified in registration order until one returns true or all
+  /// observers have been notified.
+  ///
+  /// Observers are expected to return true if they were able to handle the
+  /// notification, for example by reversing a predictive back animation, and
+  /// false otherwise. [PredictiveBackPageTransitionsBuilder] uses this
+  /// mechanism to listen for predictive back gestures.
   ///
   /// Currently, this is only used on Android devices that support the
   /// predictive back feature.
@@ -681,7 +708,12 @@ mixin WidgetsBinding on BindingBase, ServicesBinding, SchedulerBinding, GestureB
   ///
   ///  * [addObserver], for the method that adds observers in the first place.
   ///  * [WidgetsBindingObserver], which has an example of using this method.
-  bool removeObserver(WidgetsBindingObserver observer) => _observers.remove(observer);
+  bool removeObserver(WidgetsBindingObserver observer) {
+    if (observer == _backGestureObserver) {
+      _backGestureObserver = null;
+    }
+    return _observers.remove(observer);
+  }
 
   @override
   Future<AppExitResponse> handleRequestAppExit() async {
@@ -815,67 +847,53 @@ mixin WidgetsBinding on BindingBase, ServicesBinding, SchedulerBinding, GestureB
     SystemNavigator.pop();
   }
 
-  /// Called at the start of a predictive back gesture.
-  ///
-  /// Returns true if the call should be considered handled.
-  ///
-  /// Currently, this is only used on Android devices that support the
-  /// predictive back feature.
-  Future<bool> _handleStartBackGesture(Map<dynamic, dynamic> arguments) {
-    final PredictiveBackEvent backEvent = PredictiveBackEvent.fromJSON(arguments as Map<String, dynamic>);
+  // The observer that is currently handling an active predictive back gesture.
+  WidgetsBindingObserver? _backGestureObserver;
+
+  Future<bool> _handleStartBackGesture(Map<String?, Object?> arguments) {
+    _backGestureObserver = null;
+    final PredictiveBackEvent backEvent = PredictiveBackEvent.fromMap(arguments);
     for (final WidgetsBindingObserver observer in List<WidgetsBindingObserver>.of(_observers)) {
       if (observer.handleStartBackGesture(backEvent)) {
+        _backGestureObserver = observer;
         return Future<bool>.value(true);
       }
     }
     return Future<bool>.value(false);
   }
 
-  /// Called when a predictive back gesture moves.
-  ///
-  /// Returns true if the call should be considered handled.
-  ///
-  /// Currently, this is only used on Android devices that support the
-  /// predictive back feature.
-  Future<bool> _handleUpdateBackGestureProgress(Map<dynamic, dynamic> arguments) {
-    final PredictiveBackEvent backEvent = PredictiveBackEvent.fromJSON(arguments as Map<String, dynamic>);
-    for (final WidgetsBindingObserver observer in List<WidgetsBindingObserver>.of(_observers)) {
-      if (observer.handleUpdateBackGestureProgress(backEvent)) {
-        return Future<bool>.value(true);
-      }
+  Future<bool> _handleUpdateBackGestureProgress(Map<String?, Object?> arguments) {
+    if (_backGestureObserver == null) {
+      return Future<bool>.value(false);
+    }
+
+    final PredictiveBackEvent backEvent = PredictiveBackEvent.fromMap(arguments);
+    if (_backGestureObserver!.handleUpdateBackGestureProgress(backEvent)) {
+      return Future<bool>.value(true);
     }
     return Future<bool>.value(false);
   }
 
-  /// Called when a predictive back gesture is finished successfully, indicating
-  /// that the current route should be popped.
-  ///
-  /// Returns true if the call should be considered handled.
-  ///
-  /// Currently, this is only used on Android devices that support the
-  /// predictive back feature.
   Future<bool> _handleCommitBackGesture() async {
-    for (final WidgetsBindingObserver observer in List<WidgetsBindingObserver>.of(_observers)) {
-      if (observer.handleCommitBackGesture()) {
-        return true;
-      }
+    if (_backGestureObserver?.handleCommitBackGesture() ?? false) {
+      return true;
     }
-    // If no observer handled the back gesture, handle it as if it were a normal
-    /// system pop event.
+    // If the predictive back was not handled, then the route should be popped
+    // like a normal, non-predictive back. For example, this will happen if a
+    // back gesture occurs but no predictive back route transition exists to
+    // handle it. The back gesture should still cause normal pop even if it
+    // doesn't cause a predictive transition.
     await handlePopRoute();
     return true;
   }
 
-  /// Called when a predictive back gesture is canceled, indicating that no
-  /// navigation should occur.
-  ///
-  /// Currently, this is only used on Android devices that support the
-  /// predictive back feature.
   Future<void> _handleCancelBackGesture() {
-    for (final WidgetsBindingObserver observer in List<WidgetsBindingObserver>.of(_observers)) {
-      if (observer.handleCancelBackGesture()) {
-        return Future<bool>.value(true);
-      }
+    if (_backGestureObserver == null) {
+      return Future<bool>.value(false);
+    }
+
+    if (_backGestureObserver!.handleCancelBackGesture()) {
+      return Future<bool>.value(true);
     }
     return Future<bool>.value(false);
   }
@@ -924,9 +942,11 @@ mixin WidgetsBinding on BindingBase, ServicesBinding, SchedulerBinding, GestureB
   }
 
   Future<dynamic> _handleBackGestureInvocation(MethodCall methodCall) {
+    final Map<String?, Object?>? arguments =
+        (methodCall.arguments as Map<Object?, Object?>?)?.cast<String?, Object?>();
     return switch (methodCall.method) {
-      'startBackGesture' => _handleStartBackGesture(methodCall.arguments as Map<dynamic, dynamic>),
-      'updateBackGestureProgress' => _handleUpdateBackGestureProgress(methodCall.arguments as Map<dynamic, dynamic>),
+      'startBackGesture' => _handleStartBackGesture(arguments!),
+      'updateBackGestureProgress' => _handleUpdateBackGestureProgress(arguments!),
       'commitBackGesture' => _handleCommitBackGesture(),
       'cancelBackGesture' => _handleCancelBackGesture(),
       _ => Future<dynamic>.value(),
