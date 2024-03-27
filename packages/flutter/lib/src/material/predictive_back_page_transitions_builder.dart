@@ -6,7 +6,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import 'page_transitions_theme.dart';
-import 'colors.dart';
 
 /// Used by [PageTransitionsTheme] to define a [MaterialPageRoute] page
 /// transition animation that looks like the default page transition used on
@@ -35,31 +34,14 @@ class PredictiveBackPageTransitionsBuilder extends PageTransitionsBuilder {
   /// predictive back transition.
   const PredictiveBackPageTransitionsBuilder();
 
-  // Going from 1st page to 2nd:
-  // 1st page: 1=>1, 0=>1
-  // 2nd page: 0=>1, 0=>0
-  //
-  // Going from 2nd page to 1st before and after commit (same):
-  // 1st page: 1=>1, 1=>0
-  // 2nd page: 1=>0, 0=>0
-  //
-  // Primary is YOU are being pushed or popped.
-  // Secondary is used when something is pushed/popped onto/off of you.
   @override
   Widget buildTransitions<T>(
     PageRoute<T> route,
     BuildContext context,
-    Animation<double> animation, // For current: 1.0=>0.0. For not: 1.0=>1.0.
-    Animation<double> secondaryAnimation, // For current: 0.0=>0.0. For not: 1.0=>0.0.
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
     Widget child,
   ) {
-    /*
-    if (route.isCurrent) {
-      print('justin values for current ${route.isCurrent}: ${animation.value}, ${secondaryAnimation.value}');
-    } else {
-      print('justin values for current ${route.isCurrent}:                                               ${animation.value}, ${secondaryAnimation.value}');
-    }
-    */
     return _PredictiveBackGestureDetector(
       route: route,
       builder: (BuildContext context) {
@@ -204,7 +186,7 @@ class _PredictiveBackGestureDetectorState extends State<_PredictiveBackGestureDe
 
 /// Android's predictive back page transition.
 class _PredictiveBackPageTransition extends StatelessWidget {
-  _PredictiveBackPageTransition({
+  const _PredictiveBackPageTransition({
     required this.animation,
     required this.secondaryAnimation,
     required this.getIsCurrent,
@@ -227,11 +209,7 @@ class _PredictiveBackPageTransition extends StatelessWidget {
   final ValueGetter<bool> getIsCurrent;
   final Widget child;
 
-  // The transition quickly shows the previous route at this point, as a
-  // percentage.
-  static const double _transitionPoint = 20.0;
-
-  static double _getXShift(BuildContext context) {
+  Widget _secondaryAnimatedBuilder(BuildContext context, Widget? child) {
     final Size size = MediaQuery.sizeOf(context);
     final double screenWidth = size.width;
     final double xShift =
@@ -279,14 +257,11 @@ class _PredictiveBackPageTransition extends StatelessWidget {
           ]);
 
     return Transform.translate(
-      offset: Offset(
-        xShiftTween.animate(animation).value,
-        0.0,
-      ),
+      offset: Offset(xShiftTween.animate(secondaryAnimation).value, 0),
       child: Transform.scale(
-        scale: scaleTween.animate(animation).value,
+        scale: scaleTween.animate(secondaryAnimation).value,
         child: Opacity(
-          opacity: fadeTween.animate(animation).value,
+          opacity: fadeTween.animate(secondaryAnimation).value,
           child: child,
         ),
       ),
@@ -343,10 +318,7 @@ class _PredictiveBackPageTransition extends StatelessWidget {
     ]);
 
     return Transform.translate(
-      offset: Offset(
-        xShift - xShiftTween.animate(animation).value * xShift,
-        0.0,
-      ),
+      offset: Offset(xShiftTween.animate(animation).value, 0),
       child: Transform.scale(
         scale: scaleTween.animate(animation).value,
         child: Opacity(
