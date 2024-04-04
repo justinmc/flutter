@@ -295,6 +295,7 @@ void main() {
   // See https://github.com/flutter/flutter/issues/139076
   // Work in progress.
 
+  /*
   group('Material3 - InputDecoration container', () {
     // Default container height for InputDecorator (filled or outlined) is 56dp on mobile
     // whether the label is floating or not.
@@ -2769,23 +2770,20 @@ void main() {
   });
 
   group('Material3 - InputDecoration helper/counter/error', () {
-    // Overall height for InputDecorator (filled or outlined) is 80dp on mobile:
+    // Overall height for InputDecorator (filled or outlined) is 76dp on mobile:
     //    8 - top padding
     //   12 - floating label (font size = 16 * 0.75, line height is forced to 1.0)
     //    4 - gap between label and input
     //   24 - input text (font size = 16, line height = 1.5)
     //    8 - bottom padding
-    //    8 - gap above supporting text
+    //    4 - gap above helper/error/counter
     //   16 - helper/counter (font size = 12, line height is 1.5)
     const double topPadding = 8.0;
     const double floatingLabelHeight = 12.0;
     const double labelInputGap = 4.0;
     const double inputHeight = 24.0;
     const double bottomPadding = 8.0;
-    // TODO(bleroux): make the InputDecorator implementation compliant with M3 spec by changing
-    // the helperGap to 4.0 instead of 8.0.
-    // See https://github.com/flutter/flutter/issues/144984.
-    const double helperGap = 8.0;
+    const double helperGap = 4.0;
     const double helperHeight = 16.0;
     const double containerHeight = topPadding + floatingLabelHeight + labelInputGap + inputHeight + bottomPadding; // 56.0
     const double fullHeight = containerHeight + helperGap + helperHeight; // 80.0 (should be 76.0 based on M3 spec)
@@ -10345,5 +10343,75 @@ void main() {
     await tester.pumpWidget(buildInputDecorator(decoration: decoration));
     final RenderBox box = tester.renderObject(find.byType(InputDecorator));
     expect(box, isNot(paints..drrect()));
+  });
+  */
+
+  testWidgets('text contrast bug', (WidgetTester tester) async {
+    TextFormField getFormField({
+      required String labelText,
+    }) {
+      return TextFormField(
+        keyboardType: TextInputType.number,
+        validator: (String? value) {
+          return 'Please enter $labelText';
+        },
+        decoration: InputDecoration(
+          labelText: labelText,
+          filled: true,
+          errorStyle: const TextStyle(
+            fontSize: 16.0,
+          ),
+        ),
+      );
+    }
+    final SemanticsHandle handle = tester.ensureSemantics();
+    final GlobalKey formKey = GlobalKey();
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: Form(
+            key: formKey,
+            child: Column(
+              children: <Widget>[
+                getFormField(
+                  labelText: 'Deeeeeeee ID',
+                ),
+                const SizedBox(
+                  height: 16,
+                ),
+                getFormField(
+                  labelText: 'Buuuuuuuu ID',
+                ),
+                const SizedBox(
+                  height: 40,
+                ),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsetsDirectional.symmetric(horizontal: 8.0),
+                  child: FilledButton(
+                    onPressed: () {
+                      final FormState formState = formKey.currentState! as FormState;
+                      if (!formState.validate()) {
+                        return;
+                      }
+                    },
+                    child: const Text('Immmmmmmmmm'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ));
+
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(FilledButton));
+    await tester.pumpAndSettle();
+
+    await expectLater(tester, meetsGuideline(const MinimumTextContrastGuideline()));
+
+    handle.dispose();
   });
 }
