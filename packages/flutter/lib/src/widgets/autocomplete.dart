@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 import 'dart:async';
+import 'dart:math' show max;
 
 import 'package:flutter/services.dart';
 
@@ -208,10 +209,10 @@ class RawAutocomplete<T extends Object> extends StatefulWidget {
   /// {@template flutter.widgets.RawAutocomplete.optionsViewBuilder}
   /// Builds the selectable options widgets from a list of options objects.
   ///
-  /// The options are displayed floating below or above the field using a
-  /// [CompositedTransformFollower] inside of an [Overlay], not at the same
-  /// place in the widget tree as [RawAutocomplete]. To control whether it opens
-  /// upward or downward, use [optionsViewOpenDirection].
+  /// The options are displayed floating below or above the field using a inside
+  /// of an [Overlay], not at the same place in the widget tree as
+  /// [RawAutocomplete]. To control whether it opens upward or downward, use
+  /// [optionsViewOpenDirection].
   ///
   /// In order to track which item is highlighted by keyboard navigation, the
   /// resulting options will be wrapped in an inherited
@@ -301,7 +302,6 @@ class RawAutocomplete<T extends Object> extends StatefulWidget {
 
 class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> {
   final GlobalKey _fieldKey = GlobalKey();
-  final LayerLink _optionsLayerLink = LayerLink();
   final OverlayPortalController _optionsViewController = OverlayPortalController(debugLabel: '_RawAutocompleteState');
 
   TextEditingController? _internalTextEditingController;
@@ -419,6 +419,7 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
   }
 
   Widget _buildOptionsView(BuildContext context) {
+    // TODO(justinmc): Still need to make sure OptionsViewDirection works,
     final TextDirection textDirection = Directionality.of(context);
     final Alignment followerAlignment = switch (widget.optionsViewOpenDirection) {
       OptionsViewOpenDirection.up => AlignmentDirectional.bottomStart,
@@ -429,16 +430,34 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
       OptionsViewOpenDirection.down => AlignmentDirectional.bottomStart,
     }.resolve(textDirection);
 
-    return CompositedTransformFollower(
-      link: _optionsLayerLink,
-      showWhenUnlinked: false,
-      targetAnchor: targetAnchor,
-      followerAnchor: followerAlignment,
+    final Rect fieldRect;
+    final RenderBox? fieldRenderBox = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
+    if (fieldRenderBox == null) {
+      fieldRect = Rect.zero;
+    } else {
+      final RenderBox overlayRenderBox = Overlay.of(context).context.findRenderObject()! as RenderBox;
+      final Offset fieldOffset = fieldRenderBox.localToGlobal(
+        Offset.zero,
+        ancestor: overlayRenderBox,
+      );
+      fieldRect = Rect.fromLTWH(
+        fieldOffset.dx,
+        fieldOffset.dy,
+        fieldRenderBox.size.width,
+        fieldRenderBox.size.height,
+      );
+    }
+
+    return CustomSingleChildLayout(
+      delegate: _AutocompleteLayoutDelegate(
+        fieldRect: fieldRect,
+      ),
       child: TextFieldTapRegion(
         child: AutocompleteHighlightedOption(
           highlightIndexNotifier: _highlightedOptionIndex,
           child: Builder(
             builder: (BuildContext context) => widget.optionsViewBuilder(context, _select, _options),
+            //builder: (BuildContext context) => Container(height: 200.0, color: Color(0xaaff0000)),
           ),
         ),
       ),
@@ -493,16 +512,14 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
       controller: _optionsViewController,
       overlayChildBuilder: _buildOptionsView,
       child: TextFieldTapRegion(
+        // TODO(justinmc): No Container needed here.
         child: Container(
           key: _fieldKey,
           child: Shortcuts(
             shortcuts: _shortcuts,
             child: Actions(
               actions: _actionMap,
-              child: CompositedTransformTarget(
-                link: _optionsLayerLink,
-                child: fieldView,
-              ),
+              child: fieldView,
             ),
           ),
         ),
@@ -578,5 +595,39 @@ class AutocompleteHighlightedOption extends InheritedNotifier<ValueNotifier<int>
   /// ```
   static int of(BuildContext context) {
     return context.dependOnInheritedWidgetOfExactType<AutocompleteHighlightedOption>()?.notifier?.value ?? 0;
+  }
+}
+
+class _AutocompleteLayoutDelegate extends SingleChildLayoutDelegate {
+  _AutocompleteLayoutDelegate({
+    required this.fieldRect,
+  });
+
+  // The bounding box of the field in Overlay coordinates.
+  final Rect fieldRect;
+
+  @override
+  BoxConstraints getConstraintsForChild(BoxConstraints constraints) {
+    // The child can't be wider than the field.
+    return BoxConstraints(
+      maxWidth: fieldRect.width == 0.0 ? constraints.maxWidth : fieldRect.width,
+      maxHeight: constraints.maxHeight,
+    );
+  }
+
+  @override
+  Offset getPositionForChild(Size size, Size childSize) {
+    // TODO(justinmc): The child is coming in as full height.
+    final double overflow = max(0, fieldRect.top + childSize.height - size.height);
+    print('justin is $childSize at ${fieldRect.top} overflowing $size?');
+    return Offset(
+      fieldRect.left,
+      fieldRect.top - overflow,
+    );
+  }
+
+  @override
+  bool shouldRelayout(_AutocompleteLayoutDelegate oldDelegate) {
+    return fieldRect != oldDelegate.fieldRect;
   }
 }
