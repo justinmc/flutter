@@ -306,6 +306,8 @@ class RawAutocomplete<T extends Object> extends StatefulWidget {
 class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> {
   final GlobalKey _fieldKey = GlobalKey(debugLabel: kReleaseMode ? null : 'AutocompleteFieldView');
 
+  final LayerLink _optionsLayerLink = LayerLink();
+
   // The box constraints that the field was last built with.
   final ValueNotifier<BoxConstraints> _fieldBoxConstraints =
       ValueNotifier<BoxConstraints>(const BoxConstraints());
@@ -426,7 +428,107 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
     }
   }
 
+  Offset get _fieldOffset {
+    final RenderBox? fieldRenderBox = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
+    if (fieldRenderBox == null) {
+      return Offset.zero;
+    }
+    return fieldRenderBox.localToGlobal(
+      Offset.zero,
+      ancestor: Overlay.of(context).context.findRenderObject(),
+    );
+  }
+
   Widget _buildOptionsView(BuildContext context) {
+    /*
+    return Positioned(
+      top: 0.0,
+      left: 0.0,
+      child: SizedBox(
+        width: 100.0,
+        height: 200.0,
+        child: widget.optionsViewBuilder(context, _select, _options),
+      ),
+    );
+    */
+    return ValueListenableBuilder<BoxConstraints>(
+      valueListenable: _fieldBoxConstraints,
+      builder: (BuildContext context, BoxConstraints fieldConstraints, Widget? child) {
+        final RenderBox? fieldRenderBox = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
+        final TextDirection textDirection = Directionality.of(context);
+        final Alignment followerAnchor = switch (widget.optionsViewOpenDirection) {
+          OptionsViewOpenDirection.up => AlignmentDirectional.bottomStart,
+          OptionsViewOpenDirection.down => AlignmentDirectional.topStart,
+        }.resolve(textDirection);
+        final Alignment targetAnchor = switch (widget.optionsViewOpenDirection) {
+          OptionsViewOpenDirection.up => AlignmentDirectional.topStart,
+          OptionsViewOpenDirection.down => AlignmentDirectional.bottomStart,
+        }.resolve(textDirection);
+        final Size fieldSize = fieldRenderBox?.size ?? Size.infinite;
+
+        return Positioned(
+          top: 0.0,
+          left: 0.0,
+          //bottom: 0.0,
+          //width: fieldRenderBox?.size.width,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: fieldSize.width,
+              maxHeight: 200.0,//constraints.maxHeight - _fieldOffset.dy - fieldSize.height,
+              minHeight: 200.0,
+            ),
+            child: LayoutBuilder(
+              builder: (BuildContext context, BoxConstraints constraints) {
+                print('justin maxHeight: ${constraints.maxHeight - _fieldOffset.dy - fieldSize.height} = ${constraints.maxHeight} - ${_fieldOffset.dy} - ${fieldSize.height}');
+                return ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: fieldSize.width,
+                    maxHeight: 200.0,//constraints.maxHeight - _fieldOffset.dy - fieldSize.height,
+                    minHeight: 200.0,
+                  ),
+                  child: CompositedTransformFollower(
+                    followerAnchor: followerAnchor,
+                    link: _optionsLayerLink,
+                    showWhenUnlinked: false,
+                    // This causes height change.
+                    targetAnchor: targetAnchor,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: fieldSize.width,
+                        maxHeight: 200.0,//constraints.maxHeight - _fieldOffset.dy - fieldSize.height,
+                        minHeight: 200.0,
+                      ),
+                      child: widget.optionsViewBuilder(context, _select, _options),
+                    ),
+                  ),
+                            /*
+                  child: TextFieldTapRegion(
+                    child: AutocompleteHighlightedOption(
+                      highlightIndexNotifier: _highlightedOptionIndex,
+                      // optionsViewBuilder must be able to look up
+                      // AutocompleteHighlightedOption in its context.
+                      child: Builder(
+                        builder: (BuildContext context) {
+                          return ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxWidth: fieldSize.width,
+                              maxHeight: 200.0,//constraints.maxHeight - _fieldOffset.dy - fieldSize.height,
+                              minHeight: 200.0,
+                            ),
+                            child: widget.optionsViewBuilder(context, _select, _options),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  */
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
     return ValueListenableBuilder<BoxConstraints>(
       valueListenable: _fieldBoxConstraints,
       builder: (BuildContext context, BoxConstraints constraints, Widget? child) {
@@ -495,6 +597,7 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
     widget.focusNode?.removeListener(_updateOptionsViewVisibility);
     _internalFocusNode?.dispose();
     _highlightedOptionIndex.dispose();
+    _fieldBoxConstraints.dispose();
     super.dispose();
   }
 
@@ -517,7 +620,10 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
               child: Actions(
                 key: _fieldKey,
                 actions: _actionMap,
-                child: fieldView,
+                child: CompositedTransformTarget(
+                  link: _optionsLayerLink,
+                  child: fieldView,
+                ),
               ),
             );
           },
