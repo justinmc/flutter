@@ -859,8 +859,6 @@ class _RenderDecoration extends RenderBox with SlottedContainerRenderObjectMixin
     return !decoration.isCollapsed && decoration.border.isOutline;
   }
 
-  Offset get _densityOffset => decoration.visualDensity.baseSizeAdjustment;
-
   @override
   void visitChildrenForSemantics(RenderObjectVisitor visitor) {
     if (icon != null) {
@@ -1027,8 +1025,9 @@ class _RenderDecoration extends RenderBox with SlottedContainerRenderObjectMixin
     // The height of the input needs to accommodate label above and counter and
     // helperError below, when they exist.
     final double bottomHeight = subtextSize?.bottomHeight ?? 0.0;
+    final Offset densityOffset = decoration.visualDensity.baseSizeAdjustment;
     final BoxConstraints inputConstraints = boxConstraints
-      .deflate(EdgeInsets.only(top: contentPadding.vertical + topHeight + bottomHeight + _densityOffset.dy))
+      .deflate(EdgeInsets.only(top: contentPadding.vertical + topHeight + bottomHeight + densityOffset.dy))
       .tighten(width: inputWidth);
 
     final RenderBox? input = this.input;
@@ -1068,10 +1067,10 @@ class _RenderDecoration extends RenderBox with SlottedContainerRenderObjectMixin
       + inputHeight
       + fixBelowInput
       + contentPadding.bottom
-      + _densityOffset.dy,
+      + densityOffset.dy,
     );
     final double minContainerHeight = decoration.isDense! || decoration.isCollapsed || expands
-      ? inputHeight
+      ? 0.0
       : kMinInteractiveDimension;
     final double maxContainerHeight = math.max(0.0, boxConstraints.maxHeight - bottomHeight);
     final double containerHeight = expands
@@ -1102,8 +1101,8 @@ class _RenderDecoration extends RenderBox with SlottedContainerRenderObjectMixin
       + inputInternalBaseline
       + baselineAdjustment
       + interactiveAdjustment
-      + _densityOffset.dy / 2.0;
-    final double maxContentHeight = containerHeight - contentPadding.vertical - topHeight - _densityOffset.dy;
+      + densityOffset.dy / 2.0;
+    final double maxContentHeight = containerHeight - contentPadding.vertical - topHeight - densityOffset.dy;
     final double alignableHeight = fixAboveInput + inputHeight + fixBelowInput;
     final double maxVerticalOffset = maxContentHeight - alignableHeight;
 
@@ -1235,11 +1234,12 @@ class _RenderDecoration extends RenderBox with SlottedContainerRenderObjectMixin
     final double inputHeight = _lineHeight(availableInputWidth, <RenderBox?>[input, hint]);
     final double inputMaxHeight = <double>[inputHeight, prefixHeight, suffixHeight].reduce(math.max);
 
+    final Offset densityOffset = decoration.visualDensity.baseSizeAdjustment;
     final double contentHeight = contentPadding.top
       + (label == null ? 0.0 : decoration.floatingLabelHeight)
       + inputMaxHeight
       + contentPadding.bottom
-      + _densityOffset.dy;
+      + densityOffset.dy;
     final double containerHeight = <double>[iconHeight, contentHeight, prefixIconHeight, suffixIconHeight].reduce(math.max);
     final double minContainerHeight = decoration.isDense! || expands
       ? 0.0
@@ -1491,7 +1491,8 @@ class _RenderDecoration extends RenderBox with SlottedContainerRenderObjectMixin
       // Temporary opt-in fix for https://github.com/flutter/flutter/issues/54028
       // Center the scaled label relative to the border.
       final double outlinedFloatingY = (-labelHeight * _kFinalLabelScale) / 2.0 + borderWeight / 2.0;
-      final double floatingY = isOutlineBorder ? outlinedFloatingY : contentPadding.top + _densityOffset.dy / 2;
+      final Offset densityOffset = decoration.visualDensity.baseSizeAdjustment;
+      final double floatingY = isOutlineBorder ? outlinedFloatingY : contentPadding.top + densityOffset.dy / 2;
       final double scale = lerpDouble(1.0, _kFinalLabelScale, t)!;
       final double centeredFloatX = _boxParentData(container!).offset.dx +
           _boxSize(container).width / 2.0 - floatWidth / 2.0;
