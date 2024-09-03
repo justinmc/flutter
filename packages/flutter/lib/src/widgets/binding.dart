@@ -858,10 +858,19 @@ mixin WidgetsBinding on BindingBase, ServicesBinding, SchedulerBinding, GestureB
   @protected
   @visibleForTesting
   Future<bool> handlePopRoute() async {
+    print('justin WidgetsBinding.handlePopRoute, observers $_observers');
+    bool handledPop = false;
     for (final WidgetsBindingObserver observer in List<WidgetsBindingObserver>.of(_observers)) {
+      //final bool observerHandledPop = await observer.didPopRoute();
+      handledPop = await observer.didPopRoute() || handledPop;
+      /*
       if (await observer.didPopRoute()) {
         return true;
       }
+      */
+    }
+    if (handledPop) {
+      return true;
     }
     SystemNavigator.pop();
     return false;

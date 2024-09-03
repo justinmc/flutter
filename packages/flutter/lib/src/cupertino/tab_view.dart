@@ -190,7 +190,8 @@ class _CupertinoTabViewState extends State<CupertinoTabView> {
       // Manually use a NavigatorPopHandler to handle backs only on the active
       // tab, instead of letting Navigator use its default back handling for
       // nested Navigators.
-      handlesBacksWhenNested: false,
+      //handlesBacksWhenNested: false,
+      handlesBacks: false,
       onGenerateRoute: _onGenerateRoute,
       onUnknownRoute: _onUnknownRoute,
       observers: _navigatorObservers,

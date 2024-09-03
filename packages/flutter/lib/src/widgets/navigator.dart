@@ -1565,7 +1565,8 @@ class Navigator extends StatefulWidget {
     this.restorationScopeId,
     this.routeTraversalEdgeBehavior = kDefaultRouteTraversalEdgeBehavior,
     this.onDidRemovePage,
-    this.handlesBacksWhenNested = true,
+    //this.handlesBacksWhenNested = true,
+    this.handlesBacks = false,
   });
 
   /// The list of pages with which to populate the history.
@@ -1654,7 +1655,8 @@ class Navigator extends StatefulWidget {
   ///  * [PopScope], which provides even more control over system back behavior.
   ///  * [CupertinoTabView], which sets this parameter to false in order to
   ///    provide custom back handling for its nested [Navigator]s.
-  final bool handlesBacksWhenNested;
+  //final bool handlesBacksWhenNested;
+  final bool handlesBacks;
 
   /// The delegate used for deciding how routes transition in or off the screen
   /// during the [pages] updates.
@@ -3634,7 +3636,7 @@ class _History extends Iterable<_RouteEntry> with ChangeNotifier {
 /// The state for a [Navigator] widget.
 ///
 /// A reference to this class can be obtained by calling [Navigator.of].
-class NavigatorState extends State<Navigator> with TickerProviderStateMixin, RestorationMixin {
+class NavigatorState extends State<Navigator> with TickerProviderStateMixin, RestorationMixin, WidgetsBindingObserver {
   late GlobalKey<OverlayState> _overlayKey;
   final _History _history = _History();
 
@@ -3745,6 +3747,8 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
 
     ServicesBinding.instance.accessibilityFocus.addListener(_recordLastFocus);
     _history.addListener(_handleHistoryChanged);
+    print('justin NavigatorState.initState addObserver, handlesBacks ${widget.handlesBacks}, history $_history');
+    WidgetsBinding.instance.addObserver(this);
   }
 
   // Record the last focused node in route entry.
@@ -4020,6 +4024,7 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
     ServicesBinding.instance.accessibilityFocus.removeListener(_recordLastFocus);
     _history.removeListener(_handleHistoryChanged);
     _history.dispose();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
     // don't unlock, so that the object becomes unusable
     assert(_debugLocked);
@@ -5654,6 +5659,20 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
     return result;
   }
 
+  // Start WidgetsBindingObserver.
+
+  @override
+  Future<bool> didPopRoute() {
+    print('justin NavigatorState.didPopRoute, handlesBacks? ${widget.handlesBacks}. history $_history');
+    if (!widget.handlesBacks) {
+      return SynchronousFuture<bool>(false);
+    }
+
+    return maybePop();
+  }
+
+  // End WidgetsBindingObserver.
+
   @override
   Widget build(BuildContext context) {
     assert(!_debugLocked);
@@ -5705,6 +5724,8 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
       ),
     );
 
+    return child;
+    /*
     // If this is a nested Navigator, handle system backs here so that the root
     // Navigator doesn't get all of them.
     if (widget.handlesBacksWhenNested && Navigator.maybeOf(context, rootNavigator: true) != this) {
@@ -5720,6 +5741,7 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
       );
     }
     return child;
+    */
   }
 }
 
