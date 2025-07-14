@@ -5,6 +5,8 @@
 /// @docImport 'mock_canvas.dart';
 library;
 
+import 'dart:ui' show Image;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 
@@ -103,6 +105,96 @@ class TestRecordingCanvas implements Canvas {
     invocations.add(
       RecordedInvocation(
         _MethodCall(#drawCircle, <dynamic>[c, radius, Paint.from(paint)]),
+        stack: StackTrace.current,
+      ),
+    );
+  }
+
+  @override
+  void drawRect(Rect rect, Paint paint) {
+    invocations.add(
+      RecordedInvocation(
+        _MethodCall(#drawRect, <dynamic>[rect, Paint.from(paint)]),
+        stack: StackTrace.current,
+      ),
+    );
+  }
+
+  @override
+  void drawRRect(RRect rrect, Paint paint) {
+    invocations.add(
+      RecordedInvocation(
+        _MethodCall(#drawRRect, <dynamic>[rrect, Paint.from(paint)]),
+        stack: StackTrace.current,
+      ),
+    );
+  }
+
+  @override
+  void drawDRRect(RRect outer, RRect inner, Paint paint) {
+    invocations.add(
+      RecordedInvocation(
+        _MethodCall(#drawDRRect, <dynamic>[outer, inner, Paint.from(paint)]),
+        stack: StackTrace.current,
+      ),
+    );
+  }
+
+  @override
+  void drawPath(Path path, Paint paint) {
+    invocations.add(
+      RecordedInvocation(
+        _MethodCall(#drawPath, <dynamic>[path, Paint.from(paint)]),
+        stack: StackTrace.current,
+      ),
+    );
+  }
+
+  @override
+  void drawLine(Offset p1, Offset p2, Paint paint) {
+    invocations.add(
+      RecordedInvocation(
+        _MethodCall(#drawLine, <dynamic>[p1, p2, Paint.from(paint)]),
+        stack: StackTrace.current,
+      ),
+    );
+  }
+
+  @override
+  void drawArc(Rect rect, double startAngle, double sweepAngle, bool useCenter, Paint paint) {
+    invocations.add(
+      RecordedInvocation(
+        _MethodCall(#drawArc, <dynamic>[rect, startAngle, sweepAngle, useCenter, Paint.from(paint)]),
+        stack: StackTrace.current,
+      ),
+    );
+  }
+
+  @override
+  void drawImage(Image image, Offset offset, Paint paint) {
+    invocations.add(
+      RecordedInvocation(
+        _MethodCall(#drawImage, <dynamic>[image, offset, Paint.from(paint)]),
+        stack: StackTrace.current,
+      ),
+    );
+  }
+
+  @override
+  void drawImageRect(Image image, Rect src, Rect dst, Paint paint) {
+    invocations.add(
+      RecordedInvocation(
+        _MethodCall(#drawImageRect, <dynamic>[image, src, dst, Paint.from(paint)]),
+        stack: StackTrace.current,
+      ),
+    );
+  }
+
+  @override
+  void drawShadow(Path path, Color color, double elevation, bool transparentOccluder) {
+    invocations.add(
+      RecordedInvocation(
+        _MethodCall(#drawShadow, <dynamic>[path, color, elevation, transparentOccluder]),
         stack: StackTrace.current,
       ),
     );
