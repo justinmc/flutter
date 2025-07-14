@@ -191,10 +191,90 @@ class TestRecordingCanvas implements Canvas {
   }
 
   @override
-  void drawShadow(Path path, Color color, double elevation, bool transparentOccluder) {
+  void drawPaint(Paint paint) {
     invocations.add(
       RecordedInvocation(
-        _MethodCall(#drawShadow, <dynamic>[path, color, elevation, transparentOccluder]),
+        _MethodCall(#drawPaint, <dynamic>[Paint.from(paint)]),
+        stack: StackTrace.current,
+      ),
+    );
+  }
+
+  @override
+  void drawRSuperellipse(RSuperellipse rsuperellipse, Paint paint) {
+    invocations.add(
+      RecordedInvocation(
+        _MethodCall(#drawRSuperellipse, <dynamic>[rsuperellipse, Paint.from(paint)]),
+        stack: StackTrace.current,
+      ),
+    );
+  }
+
+  @override
+  void drawOval(Rect rect, Paint paint) {
+    invocations.add(
+      RecordedInvocation(
+        _MethodCall(#drawOval, <dynamic>[rect, Paint.from(paint)]),
+        stack: StackTrace.current,
+      ),
+    );
+  }
+
+  @override
+  void drawImageNine(Image image, Rect center, Rect dst, Paint paint) {
+    invocations.add(
+      RecordedInvocation(
+        _MethodCall(#drawImageNine, <dynamic>[image, center, dst, Paint.from(paint)]),
+        stack: StackTrace.current,
+      ),
+    );
+  }
+
+  @override
+  void drawPoints(PointMode pointMode, List<Offset> points, Paint paint) {
+    invocations.add(
+      RecordedInvocation(
+        _MethodCall(#drawPoints, <dynamic>[pointMode, points, Paint.from(paint)]),
+        stack: StackTrace.current,
+      ),
+    );
+  }
+
+  @override
+  void drawRawPoints(PointMode pointMode, Float32List points, Paint paint) {
+    invocations.add(
+      RecordedInvocation(
+        _MethodCall(#drawRawPoints, <dynamic>[pointMode, points, Paint.from(paint)]),
+        stack: StackTrace.current,
+      ),
+    );
+  }
+
+  @override
+  void drawVertices(Vertices vertices, BlendMode blendMode, Paint paint) {
+    invocations.add(
+      RecordedInvocation(
+        _MethodCall(#drawVertices, <dynamic>[vertices, blendMode, Paint.from(paint)]),
+        stack: StackTrace.current,
+      ),
+    );
+  }
+
+  @override
+  void drawAtlas(Image atlas, List<RSTransform> transforms, List<Rect> rects, List<Color>? colors, BlendMode? blendMode, Rect? cullRect, Paint paint) {
+    invocations.add(
+      RecordedInvocation(
+        _MethodCall(#drawAtlas, <dynamic>[atlas, transforms, rects, colors, blendMode, cullRect, Paint.from(paint)]),
+        stack: StackTrace.current,
+      ),
+    );
+  }
+
+  @override
+  void drawRawAtlas(Image atlas, Float32List rstTransforms, Float32List rects, Int32List? colors, BlendMode? blendMode, Rect? cullRect, Paint paint) {
+    invocations.add(
+      RecordedInvocation(
+        _MethodCall(#drawRawAtlas, <dynamic>[atlas, rstTransforms, rects, colors, blendMode, cullRect, Paint.from(paint)]),
         stack: StackTrace.current,
       ),
     );
