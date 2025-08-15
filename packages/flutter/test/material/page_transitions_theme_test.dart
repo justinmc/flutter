@@ -1096,7 +1096,7 @@ void main() {
     }
   }, variant: TargetPlatformVariant.all());
 
-  testWidgets('predictive back falls back to ZoomPageTransitionBuilder', (
+  testWidgets('predictive back falls back to FadeForwardsPageTransitionsBuilder', (
     WidgetTester tester,
   ) async {
     Finder findPredictiveBackPageTransition() {
