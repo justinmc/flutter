@@ -7,9 +7,10 @@
 /// @docImport 'text_field.dart';
 library;
 
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 
+/*
 import 'debug.dart';
 import 'desktop_text_selection_toolbar.dart';
 import 'desktop_text_selection_toolbar_button.dart';
@@ -17,6 +18,21 @@ import 'material_localizations.dart';
 import 'text_selection_toolbar.dart';
 import 'text_selection_toolbar_text_button.dart';
 import 'theme.dart';
+*/
+import '../basic.dart';
+import '../context_menu_button_item.dart';
+import '../debug.dart';
+import '../editable_text.dart';
+import '../framework.dart';
+import '../localizations.dart';
+import '../selectable_region.dart';
+import '../text.dart';
+import '../text_selection.dart';
+import '../text_selection_toolbar_anchors.dart';
+import 'cupertino_desktop_text_selection_toolbar.dart';
+import 'cupertino_desktop_text_selection_toolbar_button.dart';
+import 'cupertino_text_selection_toolbar.dart';
+import 'cupertino_text_selection_toolbar_button.dart';
 
 /// The default context menu for text selection for the current platform.
 ///
@@ -207,7 +223,8 @@ class AdaptiveTextSelectionToolbar extends StatelessWidget {
       return buttonItem.label!;
     }
 
-    switch (Theme.of(context).platform) {
+    // TODO(justinmc): A solution for Theme.platform.
+    switch (defaultTargetPlatform) {
       case TargetPlatform.iOS:
       case TargetPlatform.macOS:
         return CupertinoTextSelectionToolbarButton.getButtonLabel(context, buttonItem);
@@ -215,8 +232,13 @@ class AdaptiveTextSelectionToolbar extends StatelessWidget {
       case TargetPlatform.fuchsia:
       case TargetPlatform.linux:
       case TargetPlatform.windows:
+        // TODO(justinmc): Move localizations from Material to Widgets.
+        /*
         assert(debugCheckHasMaterialLocalizations(context));
         final MaterialLocalizations localizations = MaterialLocalizations.of(context);
+        */
+        assert(debugCheckHasWidgetsLocalizations(context));
+        final WidgetsLocalizations localizations = WidgetsLocalizations.of(context);
         return switch (buttonItem.type) {
           ContextMenuButtonType.cut => localizations.cutButtonLabel,
           ContextMenuButtonType.copy => localizations.copyButtonLabel,
@@ -255,7 +277,8 @@ class AdaptiveTextSelectionToolbar extends StatelessWidget {
     BuildContext context,
     List<ContextMenuButtonItem> buttonItems,
   ) {
-    switch (Theme.of(context).platform) {
+    // TODO(justinmc): Solution for platform.
+    switch (defaultTargetPlatform) {
       case TargetPlatform.iOS:
         return buttonItems.map((ContextMenuButtonItem buttonItem) {
           return CupertinoTextSelectionToolbarButton.buttonItem(buttonItem: buttonItem);
@@ -305,7 +328,8 @@ class AdaptiveTextSelectionToolbar extends StatelessWidget {
         ? children!
         : getAdaptiveButtons(context, buttonItems!).toList();
 
-    switch (Theme.of(context).platform) {
+    // TODO(justinmc): Solution for theme platform.
+    switch (defaultTargetplatform) {
       case TargetPlatform.iOS:
         return CupertinoTextSelectionToolbar(
           anchorAbove: anchors.primaryAnchor,

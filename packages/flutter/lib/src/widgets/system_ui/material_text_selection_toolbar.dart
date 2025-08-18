@@ -13,13 +13,12 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/rendering.dart';
 
-import 'color_scheme.dart';
-import 'debug.dart';
-import 'icon_button.dart';
-import 'icons.dart';
-import 'material.dart';
-import 'material_localizations.dart';
-import 'theme.dart';
+import '../debug.dart';
+import '../localizations.dart';
+/*
+import '../icon_button.dart';
+import '../icons.dart';
+*/
 
 const double _kToolbarHeight = 44.0;
 const double _kToolbarContentDistance = 8.0;
@@ -189,8 +188,8 @@ class _TextSelectionToolbarOverflowableState extends State<_TextSelectionToolbar
 
   @override
   Widget build(BuildContext context) {
-    assert(debugCheckHasMaterialLocalizations(context));
-    final MaterialLocalizations localizations = MaterialLocalizations.of(context);
+    assert(debugCheckHasWidgetsLocalizations(context));
+    final WidgetsLocalizations localizations = WidgetsLocalizations.of(context);
     final TextDirection textDirection = Directionality.of(context);
 
     return _TextSelectionToolbarTrailingEdgeAlign(
@@ -218,6 +217,7 @@ class _TextSelectionToolbarOverflowableState extends State<_TextSelectionToolbar
                 key: _overflowOpen
                     ? StandardComponentType.backButton.key
                     : StandardComponentType.moreButton.key,
+                // TODO(justinmc): Not sure what to do about icons...
                 icon: Icon(_overflowOpen ? Icons.arrow_back : Icons.more_vert),
                 onPressed: () {
                   setState(() {
@@ -780,6 +780,7 @@ class _TextSelectionToolbarContainer extends StatelessWidget {
   static const Color _defaultColorLight = Color(0xffffffff);
   static const Color _defaultColorDark = Color(0xff424242);
 
+  // TODO(justinmc): Solution for ColorScheme.
   static Color _getColor(ColorScheme colorScheme) {
     final bool isDefaultSurface = switch (colorScheme.brightness) {
       Brightness.light => identical(ThemeData().colorScheme.surface, colorScheme.surface),

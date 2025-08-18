@@ -9,13 +9,11 @@ import 'dart:collection';
 import 'dart:math' as math show pi;
 import 'dart:ui' as ui;
 
-import 'package:flutter/foundation.dart' show Brightness, clampDouble;
+import 'package:flutter/foundation.dart' show clampDouble;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
-import 'colors.dart';
-import 'text_selection_toolbar_button.dart';
-import 'theme.dart';
+import 'cupertino_text_selection_toolbar_button.dart';
 
 // The radius of the toolbar RRect shape.
 // Value extracted from https://developer.apple.com/design/resources/.
@@ -37,23 +35,10 @@ const double _kArrowScreenPadding = 26.0;
 const double _kToolbarChevronSize = 10.0;
 const double _kToolbarChevronThickness = 2.0;
 
-// Color was measured from a screenshot of iOS 16.0.2
-// TODO(LongCatIsLooong): https://github.com/flutter/flutter/issues/41507.
-const CupertinoDynamicColor _kToolbarBackgroundColor = CupertinoDynamicColor.withBrightness(
-  color: Color(0xFFF6F6F6),
-  darkColor: Color(0xFF222222),
-);
-
-// Color was measured from a screenshot of iOS 16.0.2.
-const CupertinoDynamicColor _kToolbarDividerColor = CupertinoDynamicColor.withBrightness(
-  color: Color(0xFFD6D6D6),
-  darkColor: Color(0xFF424242),
-);
-
-const CupertinoDynamicColor _kToolbarTextColor = CupertinoDynamicColor.withBrightness(
-  color: CupertinoColors.black,
-  darkColor: CupertinoColors.white,
-);
+// TODO(justinmc): Color solution with Brightness.
+const Color _kToolbarBackgroundColor = Color(0xFFF6F6F6);
+const Color _kToolbarDividerColor = Color(0xFFD6D6D6);
+const Color _kToolbarTextColor = Color(0xff000000);
 
 const Duration _kToolbarTransitionDuration = Duration(milliseconds: 125);
 
@@ -137,10 +122,8 @@ class CupertinoTextSelectionToolbar extends StatelessWidget {
     return _CupertinoTextSelectionToolbarShape(
       anchorAbove: anchorAbove,
       anchorBelow: anchorBelow,
-      shadowColor: CupertinoTheme.brightnessOf(context) == Brightness.light
-          ? CupertinoColors.black.withOpacity(0.2)
-          : null,
-      child: ColoredBox(color: _kToolbarBackgroundColor.resolveFrom(context), child: child),
+      shadowColor: const Color(0xff000000).withOpacity(0.2),
+      child: ColoredBox(color: _kToolbarBackgroundColor, child: child),
     );
   }
 
@@ -472,12 +455,7 @@ class _RenderCupertinoTextSelectionToolbarShape extends RenderShiftedBox {
         ..shader = ui.Gradient.linear(
           Offset.zero,
           const Offset(10.0, 10.0),
-          const <Color>[
-            CupertinoColors.transparent,
-            Color(0xFFFF00FF),
-            Color(0xFFFF00FF),
-            CupertinoColors.transparent,
-          ],
+          const <Color>[Color(0x00000000), Color(0xFFFF00FF), Color(0xFFFF00FF), Color(0x00000000)],
           const <double>[0.25, 0.25, 0.75, 0.75],
           TileMode.repeated,
         )
@@ -627,7 +605,7 @@ class _CupertinoTextSelectionToolbarContentState
 
   @override
   Widget build(BuildContext context) {
-    final Color chevronColor = _kToolbarTextColor.resolveFrom(context);
+    const Color chevronColor = _kToolbarTextColor;
 
     // Wrap the children and the chevron painters in Center with widthFactor
     // and heightFactor of 1.0 so _CupertinoTextSelectionToolbarItems can get
@@ -677,7 +655,7 @@ class _CupertinoTextSelectionToolbarContentState
               key: _toolbarItemsKey,
               page: _page,
               backButton: backButton,
-              dividerColor: _kToolbarDividerColor.resolveFrom(context),
+              dividerColor: _kToolbarDividerColor,
               dividerWidth: 1.0 / MediaQuery.devicePixelRatioOf(context),
               nextButton: nextButton,
               children: children,

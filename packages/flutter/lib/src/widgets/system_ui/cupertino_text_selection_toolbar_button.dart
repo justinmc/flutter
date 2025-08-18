@@ -7,9 +7,6 @@ import 'dart:math';
 import 'package:flutter/widgets.dart';
 
 import 'button.dart';
-import 'colors.dart';
-import 'debug.dart';
-import 'localizations.dart';
 
 const TextStyle _kToolbarButtonFontStyle = TextStyle(
   inherit: false,
@@ -18,6 +15,8 @@ const TextStyle _kToolbarButtonFontStyle = TextStyle(
   fontWeight: FontWeight.w400,
 );
 
+// TODO(justinmc): Colors solution. Brightness and CupertinoColors and dynamic colors.
+/*
 const CupertinoDynamicColor _kToolbarTextColor = CupertinoDynamicColor.withBrightness(
   color: CupertinoColors.black,
   darkColor: CupertinoColors.white,
@@ -27,6 +26,8 @@ const CupertinoDynamicColor _kToolbarPressedColor = CupertinoDynamicColor.withBr
   color: Color(0x10000000),
   darkColor: Color(0x10FFFFFF),
 );
+*/
+const Color _kToolbarTextColor = Color(0xff000000);
 
 // Value measured from screenshot of iOS 16.0.2
 const EdgeInsets _kToolbarButtonPadding = EdgeInsets.symmetric(vertical: 18.0, horizontal: 16.0);
@@ -84,8 +85,9 @@ class CupertinoTextSelectionToolbarButton extends StatefulWidget {
       return buttonItem.label!;
     }
 
-    assert(debugCheckHasCupertinoLocalizations(context));
-    final CupertinoLocalizations localizations = CupertinoLocalizations.of(context);
+    // TODO(justinmc): Move these localizations into Widgets.
+    assert(debugCheckHasWidgetsLocalizations(context));
+    final WidgetsLocalizations localizations = WidgetsLocalizations.of(context);
     return switch (buttonItem.type) {
       ContextMenuButtonType.cut => localizations.cutButtonLabel,
       ContextMenuButtonType.copy => localizations.copyButtonLabel,
@@ -124,8 +126,8 @@ class _CupertinoTextSelectionToolbarButtonState extends State<CupertinoTextSelec
   Widget build(BuildContext context) {
     final Widget content = _getContentWidget(context);
     final Widget child = CupertinoButton(
-      color: isPressed ? _kToolbarPressedColor.resolveFrom(context) : CupertinoColors.transparent,
-      disabledColor: CupertinoColors.transparent,
+      //color: isPressed ? _kToolbarPressedColor.resolveFrom(context) : CupertinoColors.transparent,
+      disabledColor: const Color(0x00000000),
       // This CupertinoButton does not actually handle the onPressed callback,
       // this is only here to correctly enable/disable the button (see
       // GestureDetector comment below).
@@ -160,11 +162,7 @@ class _CupertinoTextSelectionToolbarButtonState extends State<CupertinoTextSelec
       widget.text ??
           CupertinoTextSelectionToolbarButton.getButtonLabel(context, widget.buttonItem!),
       overflow: TextOverflow.ellipsis,
-      style: _kToolbarButtonFontStyle.copyWith(
-        color: widget.onPressed != null
-            ? _kToolbarTextColor.resolveFrom(context)
-            : CupertinoColors.inactiveGray,
-      ),
+      style: _kToolbarButtonFontStyle.copyWith(color: _kToolbarTextColor),
     );
     switch (widget.buttonItem?.type) {
       case ContextMenuButtonType.cut:
@@ -182,9 +180,7 @@ class _CupertinoTextSelectionToolbarButtonState extends State<CupertinoTextSelec
         return SizedBox(
           width: 13.0,
           height: 13.0,
-          child: CustomPaint(
-            painter: _LiveTextIconPainter(color: _kToolbarTextColor.resolveFrom(context)),
-          ),
+          child: CustomPaint(painter: _LiveTextIconPainter(color: _kToolbarTextColor)),
         );
     }
   }

@@ -6,9 +6,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 
 import 'button.dart';
-import 'colors.dart';
-import 'text_selection_toolbar_button.dart';
-import 'theme.dart';
+import 'cupertino_text_selection_toolbar_button.dart';
 
 // These values were measured from a screenshot of the native context menu on
 // macOS 13.2 on a Macbook Pro.
@@ -92,14 +90,7 @@ class _CupertinoDesktopTextSelectionToolbarButtonState
           widget.text ??
               CupertinoTextSelectionToolbarButton.getButtonLabel(context, widget.buttonItem!),
           overflow: TextOverflow.ellipsis,
-          style: _kToolbarButtonFontStyle.copyWith(
-            color: _isHovered
-                ? CupertinoTheme.of(context).primaryContrastingColor
-                : const CupertinoDynamicColor.withBrightness(
-                    color: CupertinoColors.black,
-                    darkColor: CupertinoColors.white,
-                  ).resolveFrom(context),
-          ),
+          style: _kToolbarButtonFontStyle.copyWith(color: const Color(0xff000000)),
         );
 
     return SizedBox(
@@ -110,8 +101,8 @@ class _CupertinoDesktopTextSelectionToolbarButtonState
         child: CupertinoButton(
           alignment: Alignment.centerLeft,
           borderRadius: const BorderRadius.all(Radius.circular(4.0)),
-          color: _isHovered ? CupertinoTheme.of(context).primaryColor : null,
-          minSize: 0.0,
+          minimumSize: Size.zero,
+          color: _isHovered ? const Color(0xff000000) : const Color(0xffaaaaaa),
           onPressed: widget.onPressed,
           padding: _kToolbarButtonPadding,
           pressedOpacity: 0.7,

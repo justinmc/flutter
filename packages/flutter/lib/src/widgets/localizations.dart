@@ -170,6 +170,12 @@ abstract class WidgetsLocalizations {
   /// The reading direction for text in this locale.
   TextDirection get textDirection;
 
+  /// The [BackButton]'s tooltip.
+  String get backButtonTooltip;
+
+  /// The tooltip for the more button on an overflowing text selection menu.
+  String get moreButtonTooltip;
+
   /// The semantics label used for [SliverReorderableList] to reorder an item in the
   /// list to the start of the list.
   String get reorderItemToStart;
@@ -223,6 +229,12 @@ abstract class WidgetsLocalizations {
   /// Label for "share" edit buttons and menu items.
   String get shareButtonLabel;
 
+  /// The tooltip for the delete button on a [Chip].
+  String get deleteButtonTooltip;
+
+  /// Label for "scan text" OCR edit buttons and menu items.
+  String get scanTextButtonLabel;
+
   /// The `WidgetsLocalizations` from the closest [Localizations] instance
   /// that encloses the given context.
   ///
@@ -275,6 +287,12 @@ class DefaultWidgetsLocalizations implements WidgetsLocalizations {
   const DefaultWidgetsLocalizations();
 
   @override
+  String get deleteButtonTooltip => 'Delete';
+
+  @override
+  String get moreButtonTooltip => 'More';
+
+  @override
   String get reorderItemUp => 'Move up';
 
   @override
@@ -308,6 +326,9 @@ class DefaultWidgetsLocalizations implements WidgetsLocalizations {
   String get pasteButtonLabel => 'Paste';
 
   @override
+  String get scanTextButtonLabel => 'Scan text';
+
+  @override
   String get selectAllButtonLabel => 'Select all';
 
   @override
@@ -318,6 +339,9 @@ class DefaultWidgetsLocalizations implements WidgetsLocalizations {
 
   @override
   String get shareButtonLabel => 'Share';
+
+  @override
+  String get backButtonTooltip => 'Back';
 
   @override
   TextDirection get textDirection => TextDirection.ltr;
