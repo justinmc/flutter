@@ -128,6 +128,7 @@ mixin MaterialRouteTransitionMixin<T> on PageRoute<T> {
   // TODO(quncCccccc): Clean up this override method when controller can beupdated as the reverseTransitionDuration is changed.
   @override
   bool didPop(T? result) {
+    // TODO(justinmc): First stop.
     controller?.reverseDuration = reverseTransitionDuration;
     return super.didPop(result);
   }

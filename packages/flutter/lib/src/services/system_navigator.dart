@@ -62,6 +62,7 @@ abstract final class SystemNavigator {
   /// method, as the latter may cause the underlying platform to act
   /// as if the application had crashed.
   static Future<void> pop({bool? animated}) async {
+    print('justin invoke SystemNavigator.pop.');
     await SystemChannels.platform.invokeMethod<void>('SystemNavigator.pop', animated);
   }
 

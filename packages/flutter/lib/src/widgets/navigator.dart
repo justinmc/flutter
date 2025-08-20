@@ -3727,6 +3727,7 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
   bool get _usingPagesAPI => widget.pages != const <Page<dynamic>>[];
 
   void _handleHistoryChanged() {
+    print('justin handleHistoryChanged.');
     // If this Navigator handles back gestures, then rebuild when canPop changes
     // so that the PopScope can be updated.
     final bool navigatorCanPop = canPop();
@@ -5624,6 +5625,7 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
       return true;
     }());
     final _RouteEntry entry = _history.lastWhere(_RouteEntry.isPresentPredicate);
+    print('justin pop ${entry.route}.');
     if (entry.pageBased && widget.onPopPage != null) {
       if (widget.onPopPage!(entry.route, result)) {
         if (entry.currentState.index <= _RouteLifecycle.idle.index) {
@@ -5944,10 +5946,12 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
       ),
     );
 
+    print('justin build Navigator. _handlesBacks = $_handlesBackGestures. canPop = ${canPop()}.');
     if (_handlesBackGestures) {
       return PopScope(
         canPop: !canPop(),
         onPopInvokedWithResult: (bool didPop, Object? result) {
+          print('justin onPopInvokedWithResult, didPop $didPop, result $result.');
           if (didPop) {
             return;
           }

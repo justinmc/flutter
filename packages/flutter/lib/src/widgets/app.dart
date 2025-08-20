@@ -1714,6 +1714,7 @@ class _WidgetsAppState extends State<WidgetsApp> with WidgetsBindingObserver {
 
     Widget result;
     if (widget.builder != null) {
+      print('justin builder.');
       result = Builder(
         builder: (BuildContext context) {
           return widget.builder!(context, routing);

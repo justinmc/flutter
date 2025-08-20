@@ -85,6 +85,7 @@ abstract class OverlayRoute<T> extends Route<T> {
 
   @override
   bool didPop(T? result) {
+    // TODO(justinmc): Fourth stop.
     final bool returnValue = super.didPop(result);
     assert(returnValue);
     if (finishedWhenPopped) {
@@ -375,6 +376,7 @@ abstract class TransitionRoute<T> extends OverlayRoute<T> implements PredictiveB
 
   @override
   bool didPop(T? result) {
+    // TODO(justinmc): Third stop.
     assert(
       _controller != null,
       '$runtimeType.didPop called before calling install() or after calling dispose().',
@@ -922,6 +924,8 @@ mixin LocalHistoryRoute<T> on Route<T> {
 
   @override
   bool didPop(T? result) {
+    // TODO(justinmc): Second stop.
+    return true;
     if (_localHistory != null && _localHistory!.isNotEmpty) {
       final LocalHistoryEntry entry = _localHistory!.removeLast();
       assert(entry._owner == this);

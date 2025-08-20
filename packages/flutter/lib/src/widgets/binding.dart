@@ -941,6 +941,7 @@ mixin WidgetsBinding
   @protected
   @visibleForTesting
   Future<bool> handlePopRoute() async {
+    print('justin handlePopRoute. observers: ${_observers.length}');
     for (final WidgetsBindingObserver observer in List<WidgetsBindingObserver>.of(_observers)) {
       if (await observer.didPopRoute()) {
         return true;

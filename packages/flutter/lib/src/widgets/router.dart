@@ -830,14 +830,20 @@ class _RouterState<T> extends State<Router<T>> with RestorationMixin {
   }
 
   void _handleRouterDelegateNotification() {
+    print('justin _handleRouterDelegateNotification,  will call setState.');
+    // TODO(justinmc): Despite the setState, the Navigator doesn't rebuild?
+    // This is what causes it to rebuild in the ondevice version!
+    // I don't really understand how, though.
     setState(() {
       /* routerDelegate wants to rebuild */
     });
+    return;
     _maybeNeedToReportRouteInformation();
   }
 
   @override
   Widget build(BuildContext context) {
+    print('justin Router.build.');
     return UnmanagedRestorationScope(
       bucket: bucket,
       child: _RouterScope(
@@ -851,7 +857,11 @@ class _RouterState<T> extends State<Router<T>> with RestorationMixin {
           // BuildContext that contains the _RouterScope. This also prevents
           // dependencies look ups in routerDelegate from rebuilding Router
           // widget that may result in re-parsing the route information.
-          builder: widget.routerDelegate.build,
+          //builder: widget.routerDelegate.build,
+          builder: (BuildContext context) {
+            print('justin Router.build builder.');
+            return widget.routerDelegate.build(context);
+          },
         ),
       ),
     );
