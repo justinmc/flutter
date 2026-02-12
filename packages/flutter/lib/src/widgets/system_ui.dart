@@ -1,10 +1,12 @@
 import 'framework.dart';
 import 'inherited_model.dart';
 
+/// Provides [SystemUIData] to its descendants.
 class SystemUI extends InheritedModel<_SystemUIAspect> {
   /// Creates a widget that provides [SystemUIData] to its descendants.
   const SystemUI({super.key, required super.child, required this.data});
 
+  /// The data that is provided to the descendants of this widget.
   final SystemUIData data;
 
   @override
@@ -24,12 +26,17 @@ class SystemUI extends InheritedModel<_SystemUIAspect> {
   }
 }
 
+/// Describes the system UI that should be applied to the descendants of a
+/// [SystemUI] widget.
 class SystemUIData {
+  /// Creates a new [SystemUIData].
   const SystemUIData({required this.contextMenuBuilder});
 
+  /// The builder for the context menu.
   final WidgetBuilder contextMenuBuilder;
 }
 
+/// The aspects of [SystemUIData] that can be individually listened to.
 enum _SystemUIAspect {
   /// Specifies the aspect according to [SystemUIData.contextMenuBuilder];
   contextMenuBuilder,
