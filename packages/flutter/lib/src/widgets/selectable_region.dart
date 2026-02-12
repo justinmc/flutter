@@ -32,6 +32,7 @@ import 'media_query.dart';
 import 'overlay.dart';
 import 'platform_selectable_region_context_menu.dart';
 import 'selection_container.dart';
+import 'system_ui.dart';
 import 'tap_region.dart';
 import 'text_editing_intents.dart';
 import 'text_selection.dart';
@@ -1378,10 +1379,25 @@ class SelectableRegionState extends State<SelectableRegion>
 
     _selectionOverlay!.hideToolbar();
 
+    SelectableRegionContextMenuBuilder? contextMenuBuilder = widget.contextMenuBuilder;
+    if (contextMenuBuilder == null) {
+      final SystemUIContextMenuBuilder? systemUIContextMenuBuilder =
+          SystemUI.maybeContextMenuBuilderOf(context);
+      if (systemUIContextMenuBuilder != null) {
+        contextMenuBuilder = (BuildContext context, SelectableRegionState selectableRegionState) {
+          return systemUIContextMenuBuilder(
+            context,
+            selectableRegionState.contextMenuAnchors,
+            selectableRegionState.contextMenuButtonItems,
+          );
+        };
+      }
+    }
+
     _selectionOverlay!.showToolbar(
       context: context,
       contextMenuBuilder: (BuildContext context) {
-        return widget.contextMenuBuilder!(context, this);
+        return contextMenuBuilder!(context, this);
       },
     );
     return true;
