@@ -12,11 +12,22 @@ class AdaptiveSystemUI extends StatelessWidget {
   Widget build(BuildContext context) {
     return SystemUI(
       data: SystemUIData(
-        contextMenuBuilder: (BuildContext context) {
-          // TODO(justinmc): Real context menu. Figure out what to do about needing EditableTextState.
-          return const Text('I am context menuuuu');
-          //return AdaptiveTextSelectionToolbar();
-        },
+        contextMenuBuilder:
+            (
+              BuildContext context,
+              TextSelectionToolbarAnchors anchors,
+              List<ContextMenuButtonItem>? buttonItems,
+            ) {
+              // TODO(justinmc): Is this where to decide what to do for no buttonItems, or should I make this non-nullable here?
+              if (buttonItems == null || buttonItems.isEmpty) {
+                return const SizedBox.shrink();
+              }
+              final Iterable<Widget> children = AdaptiveTextSelectionToolbar.getAdaptiveButtons(
+                context,
+                buttonItems,
+              );
+              return AdaptiveTextSelectionToolbar(anchors: anchors, children: children.toList());
+            },
       ),
       child: child,
     );

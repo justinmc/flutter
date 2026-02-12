@@ -1,5 +1,7 @@
+import 'context_menu_button_item.dart';
 import 'framework.dart';
 import 'inherited_model.dart';
+import 'text_selection_toolbar_anchors.dart';
 
 // TODO(justinmc): This probably doesn't need to be an InheritedModel, could just be an InheritedWidget.
 /// Provides [SystemUIData] to its descendants.
@@ -16,7 +18,7 @@ class SystemUI extends InheritedModel<_SystemUIAspect> {
   /// If no [SystemUI] ancestor is found, returns null.
   ///
   /// The `context` argument is used to look up the [SystemUI] ancestor.
-  static WidgetBuilder? maybeContextMenuBuilderOf(BuildContext context) {
+  static SystemUIContextMenuBuilder? maybeContextMenuBuilderOf(BuildContext context) {
     return InheritedModel.inheritFrom<SystemUI>(
       context,
       aspect: _SystemUIAspect.contextMenuBuilder,
@@ -47,8 +49,15 @@ class SystemUIData {
   const SystemUIData({required this.contextMenuBuilder});
 
   /// The builder for the context menu.
-  final WidgetBuilder contextMenuBuilder;
+  final SystemUIContextMenuBuilder contextMenuBuilder;
 }
+
+typedef SystemUIContextMenuBuilder =
+    Widget Function(
+      BuildContext context,
+      TextSelectionToolbarAnchors,
+      List<ContextMenuButtonItem>? buttonItems,
+    );
 
 /// The aspects of [SystemUIData] that can be individually listened to.
 enum _SystemUIAspect {

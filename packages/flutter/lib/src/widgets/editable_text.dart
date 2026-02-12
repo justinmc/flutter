@@ -4280,13 +4280,13 @@ class EditableTextState extends State<EditableText>
   }
 
   TextSelectionOverlay _createSelectionOverlay() {
-    // TODO(justinmc): Use contextmenu here.
     EditableTextContextMenuBuilder? contextMenuBuilder = widget.contextMenuBuilder;
     if (contextMenuBuilder == null) {
-      final WidgetBuilder? systemUIContextMenuBuilder = SystemUI.maybeContextMenuBuilderOf(context);
+      final SystemUIContextMenuBuilder? systemUIContextMenuBuilder =
+          SystemUI.maybeContextMenuBuilderOf(context);
       if (systemUIContextMenuBuilder != null) {
         contextMenuBuilder = (BuildContext context, EditableTextState editableTextState) {
-          return systemUIContextMenuBuilder(context);
+          return systemUIContextMenuBuilder(context, editableTextState.contextMenuAnchors, editableTextState.contextMenuButtonItems);
         };
       }
     }
