@@ -57,6 +57,7 @@ import 'scrollable_helpers.dart';
 import 'shortcuts.dart';
 import 'size_changed_layout_notifier.dart';
 import 'spell_check.dart';
+import 'system_ui.dart';
 import 'tap_region.dart';
 import 'text.dart';
 import 'text_editing_intents.dart';
@@ -4279,7 +4280,16 @@ class EditableTextState extends State<EditableText>
   }
 
   TextSelectionOverlay _createSelectionOverlay() {
-    final EditableTextContextMenuBuilder? contextMenuBuilder = widget.contextMenuBuilder;
+    // TODO(justinmc): Use contextmenu here.
+    EditableTextContextMenuBuilder? contextMenuBuilder = widget.contextMenuBuilder;
+    if (contextMenuBuilder == null) {
+      final WidgetBuilder? systemUIContextMenuBuilder = SystemUI.maybeContextMenuBuilderOf(context);
+      if (systemUIContextMenuBuilder != null) {
+        contextMenuBuilder = (BuildContext context, EditableTextState editableTextState) {
+          return systemUIContextMenuBuilder(context);
+        };
+      }
+    }
     final selectionOverlay = TextSelectionOverlay(
       clipboardStatus: clipboardStatus,
       context: context,
@@ -4296,7 +4306,7 @@ class EditableTextState extends State<EditableText>
       contextMenuBuilder: contextMenuBuilder == null || _webContextMenuEnabled
           ? null
           : (BuildContext context) {
-              return contextMenuBuilder(context, this);
+              return contextMenuBuilder!(context, this);
             },
       magnifierConfiguration: widget.magnifierConfiguration,
     );

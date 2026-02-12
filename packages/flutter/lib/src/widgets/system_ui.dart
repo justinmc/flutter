@@ -1,6 +1,7 @@
 import 'framework.dart';
 import 'inherited_model.dart';
 
+// TODO(justinmc): This probably doesn't need to be an InheritedModel, could just be an InheritedWidget.
 /// Provides [SystemUIData] to its descendants.
 class SystemUI extends InheritedModel<_SystemUIAspect> {
   /// Creates a widget that provides [SystemUIData] to its descendants.
@@ -8,6 +9,19 @@ class SystemUI extends InheritedModel<_SystemUIAspect> {
 
   /// The data that is provided to the descendants of this widget.
   final SystemUIData data;
+
+  /// Returns the [SystemUIData.contextMenuBuilder] from the nearest [SystemUI]
+  /// ancestor.
+  ///
+  /// If no [SystemUI] ancestor is found, returns null.
+  ///
+  /// The `context` argument is used to look up the [SystemUI] ancestor.
+  static WidgetBuilder? maybeContextMenuBuilderOf(BuildContext context) {
+    return InheritedModel.inheritFrom<SystemUI>(
+      context,
+      aspect: _SystemUIAspect.contextMenuBuilder,
+    )?.data.contextMenuBuilder;
+  }
 
   @override
   bool updateShouldNotify(SystemUI oldWidget) => data != oldWidget.data;

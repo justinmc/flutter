@@ -1160,7 +1160,17 @@ class _MaterialAppState extends State<MaterialApp> {
 
     return ScrollConfiguration(
       behavior: widget.scrollBehavior ?? const MaterialScrollBehavior(),
-      child: HeroControllerScope(controller: _heroController, child: result),
+      child: HeroControllerScope(
+        controller: _heroController,
+        child: SystemUI(
+          data: SystemUIData(
+          contextMenuBuilder: (BuildContext context) {
+            // TODO(justinmc): Real context menu. Figure out what to do about needing EditableTextState.
+            return const Text('I am context menuuuu');
+          },
+          ),
+        child: result),
+      ),
     );
   }
 }
