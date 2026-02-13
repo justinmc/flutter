@@ -21,6 +21,7 @@ import 'interface_level.dart';
 import 'localizations.dart';
 import 'route.dart';
 import 'scrollbar.dart';
+import 'system_ui.dart';
 import 'theme.dart';
 
 /// An application that uses Cupertino design.
@@ -673,7 +674,7 @@ class _CupertinoAppState extends State<CupertinoApp> {
             cursorColor: effectiveThemeData.primaryColor,
             child: HeroControllerScope(
               controller: _heroController,
-              child: Builder(builder: _buildWidgetApp),
+              child: CupertinoSystemUI(child: Builder(builder: _buildWidgetApp)),
             ),
           ),
         ),
