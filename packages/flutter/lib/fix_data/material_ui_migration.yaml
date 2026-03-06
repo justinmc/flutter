@@ -1,0 +1,22 @@
+# This file contains a data-driven fix for migrating from
+# 'package:flutter/material.dart' to 'package:material_ui/material_ui.dart'.
+#
+# This fix can be applied by a tool that understands the Dart Analysis Server's
+# bulk fix format.
+version: 1
+transforms:
+  - title: "Convert Material imports to material_ui"
+    date: 2026-03-05
+    element:
+      # This glob targets all .dart files in the project. The fix will be
+      # applied to any file that contains the specified import.
+      uris:
+        - '**/*.dart'
+      # This identifies the specific import directive to change.
+      import:
+        uri: 'package:flutter/material.dart'
+    changes:
+      # This change specifically sets a new URI for the targeted import,
+      # preserving any `as`, `show`, or `hide` clauses.
+      - kind: 'setImportUri'
+        uri: 'package:material_ui/material_ui.dart'
