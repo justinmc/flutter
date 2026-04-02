@@ -3,8 +3,8 @@
 // found in the LICENSE file.
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'clipboard_utils.dart';
@@ -22,6 +22,28 @@ Iterable<SingleActivator> allModifierVariants(LogicalKeyboardKey trigger) {
       });
     });
   });
+}
+
+class EmptyTextSelectionControls extends TextSelectionControls {
+  @override
+  Widget buildHandle(BuildContext context, TextSelectionHandleType type, double textLineHeight, [VoidCallback? onTap]) {
+    return const SizedBox.shrink();
+  }
+
+  @override
+  Widget buildToolbar(BuildContext context, Rect globalEditableRegion, double textLineHeight, Offset selectionMidpoint, List<TextSelectionPoint> endpoints, TextSelectionDelegate delegate, ValueListenable<ClipboardStatus>? clipboardStatus, Offset? lastSecondaryTapDownPosition) {
+    return const SizedBox.shrink();
+  }
+
+  @override
+  Offset getHandleAnchor(TextSelectionHandleType type, double textLineHeight) {
+    return Offset.zero;
+  }
+
+  @override
+  Size getHandleSize(double textLineHeight) {
+    return Size.zero;
+  }
 }
 
 void main() {
@@ -78,32 +100,45 @@ void main() {
     TextStyle style = const TextStyle(fontSize: 10.0),
     bool enableInteractiveSelection = true,
   }) {
-    return MaterialApp(
-      home: Align(
-        alignment: Alignment.topLeft,
-        child: SizedBox(
-          // Softwrap at exactly 20 characters.
-          width: 201,
-          height: 200,
-          child: EditableText(
-            controller: controller,
-            showSelectionHandles: true,
-            autofocus: true,
-            focusNode: focusNode,
-            style: style,
-            textScaleFactor: 1,
-            // Avoid the cursor from taking up width.
-            cursorWidth: 0,
-            cursorColor: Colors.blue,
-            backgroundCursorColor: Colors.grey,
-            selectionControls: materialTextSelectionControls,
-            keyboardType: TextInputType.text,
-            maxLines: obscured ? 1 : null,
-            readOnly: readOnly,
-            textAlign: textAlign,
-            obscureText: obscured,
-            enableInteractiveSelection: enableInteractiveSelection,
-            scrollController: scrollController,
+    return WidgetsApp(
+      title: 'Flutter Test',
+      color: const Color(0xFFFFFFFF),
+      pageRouteBuilder: <T>(RouteSettings settings, WidgetBuilder builder) {
+        return PageRouteBuilder<T>(
+          settings: settings,
+          pageBuilder: (BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation) {
+            return builder(context);
+          },
+        );
+      },
+      home: Directionality(
+        textDirection: TextDirection.ltr,
+        child: Align(
+          alignment: Alignment.topLeft,
+          child: SizedBox(
+            // Softwrap at exactly 20 characters.
+            width: 201,
+            height: 200,
+            child: EditableText(
+              controller: controller,
+              showSelectionHandles: true,
+              autofocus: true,
+              focusNode: focusNode,
+              style: style,
+              textScaleFactor: 1,
+              // Avoid the cursor from taking up width.
+              cursorWidth: 0,
+              cursorColor: const Color(0xFF0000FF),
+              backgroundCursorColor: const Color(0xFF808080),
+              selectionControls: EmptyTextSelectionControls(),
+              keyboardType: TextInputType.text,
+              maxLines: obscured ? 1 : null,
+              readOnly: readOnly,
+              textAlign: textAlign,
+              obscureText: obscured,
+              enableInteractiveSelection: enableInteractiveSelection,
+              scrollController: scrollController,
+            ),
           ),
         ),
       ),
