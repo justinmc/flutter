@@ -5,6 +5,9 @@
 import 'package:flutter/material.dart';
 
 void main() {
+  // Changes made in https://github.com/flutter/flutter/pull/xxxxxx
+  import 'package:flutter/material.dart';
+
   // Generic reference variables.
   BuildContext context;
   RenderObjectWidget renderObjectWidget;
